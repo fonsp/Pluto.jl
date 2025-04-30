@@ -279,18 +279,20 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
           `
 }
 
-const until_last_slash = (/** @type {string} */ str) => {
+const dirname = (/** @type {string} */ str) => {
     // using regex /\/|\\/
     const idx = [...str.matchAll(/[\/\\]/g)].map((r) => r.index)
     return idx.length > 0 ? str.slice(0, _.last(idx) + 1) : str
 }
+
+const basename = (/** @type {string} */ str) => (str.split("/").pop() ?? "").split("\\").pop() ?? ""
 
 const pathhints =
     ({ client, suggest_new_file }) =>
     /** @type {autocomplete.CompletionSource} */
     (ctx) => {
         const query_full = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
-        const query = until_last_slash(query_full)
+        const query = dirname(query_full)
 
         // Remove the
         console.log(query_full, query)
@@ -300,15 +302,13 @@ const pathhints =
                 query,
             })
             .then((update) => {
-                const queryFileName = (query_full.split("/").pop() ?? "").split("\\").pop() ?? ""
+                const queryFileName = basename(query_full)
 
                 const results = update.message.results
                 const from = utf8index_to_ut16index(query, update.message.start)
-                const to = utf8index_to_ut16index(query, update.message.stop)
 
-                console.log(results)
-
-                if (results.length >= 1 && results[0] == queryFileName) {
+                // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                if (results.includes(queryFileName)) {
                     return null
                 }
 
@@ -347,10 +347,18 @@ const pathhints =
                     }
                 }
 
+                const validFor = (/** @type {string} */ text) => {
+                    return (
+                        /[\p{L}\p{Nl}\p{Sc}\d_!-\.]*$/u.test(text) &&
+                        // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                        !results.includes(basename(text))
+                    )
+                }
+
                 return {
                     options: styledResults,
                     from: from,
-                    validFor: /[\p{L}\p{Nl}\p{Sc}\d_!-]*$/u,
+                    validFor,
                 }
             })
     }
