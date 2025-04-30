@@ -17,6 +17,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
 import { tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import _ from "../imports/lodash.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -278,22 +279,34 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
           `
 }
 
+const until_last_slash = (/** @type {string} */ str) => {
+    // using regex /\/|\\/
+    const idx = [...str.matchAll(/[\/\\]/g)].map((r) => r.index)
+    return idx.length > 0 ? str.slice(0, _.last(idx) + 1) : str
+}
+
 const pathhints =
     ({ client, suggest_new_file }) =>
-    (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        const cursor = ctx.state.selection.main.to
-        const oldLine = ctx.state.doc.toString()
+    /** @type {autocomplete.CompletionSource} */
+    (ctx) => {
+        const query_full = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
+        const query = until_last_slash(query_full)
+
+        // Remove the
+        console.log(query_full, query)
 
         return client
             .send("completepath", {
-                query: oldLine,
+                query,
             })
             .then((update) => {
-                const queryFileName = (oldLine.split("/").pop() ?? "").split("\\").pop() ?? ""
+                const queryFileName = (query_full.split("/").pop() ?? "").split("\\").pop() ?? ""
 
                 const results = update.message.results
-                const from = utf8index_to_ut16index(oldLine, update.message.start)
-                const to = utf8index_to_ut16index(oldLine, update.message.stop)
+                const from = utf8index_to_ut16index(query, update.message.start)
+                const to = utf8index_to_ut16index(query, update.message.stop)
+
+                console.log(results)
 
                 if (results.length >= 1 && results[0] == queryFileName) {
                     return null
@@ -337,7 +350,7 @@ const pathhints =
                 return {
                     options: styledResults,
                     from: from,
-                    to: to,
+                    validFor: /[\p{L}\p{Nl}\p{Sc}\d_!-]*$/u,
                 }
             })
     }
