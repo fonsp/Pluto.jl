@@ -99,12 +99,20 @@ ${packages_context(notebook)}
         }
     }
 
+    const formRef = useRef(null)
+    useEventListener(formRef, "submit", (e) => {
+        e.preventDefault()
+        copyToClipboard()
+        console.log("submitted")
+    })
+
     return html`
-        <div class="ai-context-container">
-            <h2>AI Context</h2>
-            <p class="ai-context-intro">You can copy this text into an AI chat to give more context about the cell.</p>
+        <form class="ai-context-container" ref=${formRef}>
+            <h2>AI Prompt Generator</h2>
+            <p class="ai-context-intro">You can copy this text into an AI chat to tell it more about the current cell.</p>
             <input
                 type="text"
+                name="pluto-ai-context-question"
                 class="ai-context-question-input"
                 placeholder="Type your question here..."
                 value=${userQuestion}
@@ -116,7 +124,7 @@ ${packages_context(notebook)}
                         "copy-button": true,
                         "copied": copied,
                     })}
-                    onClick=${copyToClipboard}
+                    type="submit"
                     title="Copy to clipboard"
                 >
                     ${copied ? "Copied!" : "Copy"}
@@ -125,7 +133,7 @@ ${packages_context(notebook)}
                     <pre>${prompt.trim()}</pre>
                 </div>
             </div>
-        </div>
+        </form>
     `
 }
 
@@ -143,30 +151,3 @@ const cell_output_to_plaintext = (/** @type {import("./Editor.js").CellResultDat
 
     return JSON.stringify(cell_output)
 }
-
-// Add styles to the document
-const style = document.createElement("style")
-style.textContent = `
-.ai-context-question-input {
-    width: 100%;
-    padding: 8px 12px;
-    margin: 8px 0;
-    border: 1px solid var(--pluto-border-color);
-    border-radius: 4px;
-    font-size: 0.95em;
-    background: var(--main-bg-color);
-    color: var(--pluto-output-color);
-    transition: border-color 0.2s;
-}
-
-.ai-context-question-input:focus {
-    outline: none;
-    border-color: var(--pluto-input-color);
-}
-
-.ai-context-question-input::placeholder {
-    color: var(--pluto-input-color);
-    opacity: 0.6;
-}
-`
-document.head.appendChild(style)

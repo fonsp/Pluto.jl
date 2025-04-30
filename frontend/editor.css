@@ -1917,6 +1917,7 @@ pluto-popup.ai-context > div {
 .ai-context-container h2 {
     margin: 0 0 0.5rem 0;
     font-size: 1.2rem;
+    color: var(--pluto-output-h-color);
 }
 
 .ai-context-intro {
@@ -1929,17 +1930,17 @@ pluto-popup.ai-context > div {
     width: 100%;
     padding: 8px 12px;
     margin: 8px 0;
-    border: 1px solid var(--pluto-border-color);
+    border: 3px solid transparent;
     border-radius: 4px;
     font-size: 0.95em;
     background: var(--main-bg-color);
-    color: var(--pluto-output-color);
     transition: border-color 0.2s;
 }
 
-.ai-context-question-input:focus {
+.ai-context-question-input:focus,
+.ai-context-question-input:not(:placeholder-shown) {
     outline: none;
-    border-color: var(--pluto-input-color);
+    border-color: var(--overlay-button-border);
 }
 
 .ai-context-question-input::placeholder {
@@ -1972,7 +1973,7 @@ pluto-popup.ai-context > div {
 
 .ai-context-container .copy-button {
     position: absolute;
-    top: 0.5rem;
+    bottom: 0.5rem;
     right: 0.5rem;
     padding: 0.5rem 1rem;
     background: var(--white);
@@ -1983,7 +1984,7 @@ pluto-popup.ai-context > div {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 10px #0000001a;
+    /* box-shadow: 0 1px 10px #0000001a; */
 }
 
 .ai-context-container .copy-button.copied {
