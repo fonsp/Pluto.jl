@@ -43,9 +43,11 @@ The following packages are currently installed in this notebook: ${installed.joi
 export const AIContext = ({ cell_id, current_code }) => {
     const pluto_actions = useContext(PlutoActionsContext)
     const [copied, setCopied] = useState(false)
-    const promptRef = useRef(null)
 
     const notebook = /** @type{import("./Editor.js").NotebookData} */ (pluto_actions.get_notebook())
+
+    const default_question = notebook.cell_results[cell_id]?.errored === true ? "Why does this cell error?" : ""
+    const [userQuestion, setUserQuestion] = useState(default_question)
 
     const current_cell = `
 <pluto-ai-context-current-cell>
@@ -74,7 +76,8 @@ ${upstream_cells.map((cid) => format_code(notebook.cell_inputs[cid].code)).join(
 </pluto-ai-context-variables>
 `
 
-    const prompt = `
+    const prompt = `${userQuestion}
+
 <pluto-ai-context>
 To help me answer my question, here is some auto-generated context. The code is from a Pluto Julia notebook. We are concerned with one specific cell in the notebook, called "the current cell". And you will get additional context.
 
@@ -100,7 +103,13 @@ ${packages_context(notebook)}
         <div class="ai-context-container">
             <h2>AI Context</h2>
             <p class="ai-context-intro">You can copy this text into an AI chat to give more context about the cell.</p>
-            <p class="ai-context-intro">Add your own question.</p>
+            <input
+                type="text"
+                class="ai-context-question-input"
+                placeholder="Type your question here..."
+                value=${userQuestion}
+                onInput=${(e) => setUserQuestion(e.target.value)}
+            />
             <div class="ai-context-prompt-container">
                 <button
                     class=${cl({
@@ -112,7 +121,7 @@ ${packages_context(notebook)}
                 >
                     ${copied ? "Copied!" : "Copy"}
                 </button>
-                <div class="ai-context-prompt" ref=${promptRef}>
+                <div class="ai-context-prompt">
                     <pre>${prompt.trim()}</pre>
                 </div>
             </div>
@@ -134,3 +143,30 @@ const cell_output_to_plaintext = (/** @type {import("./Editor.js").CellResultDat
 
     return JSON.stringify(cell_output)
 }
+
+// Add styles to the document
+const style = document.createElement("style")
+style.textContent = `
+.ai-context-question-input {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border: 1px solid var(--pluto-border-color);
+    border-radius: 4px;
+    font-size: 0.95em;
+    background: var(--main-bg-color);
+    color: var(--pluto-output-color);
+    transition: border-color 0.2s;
+}
+
+.ai-context-question-input:focus {
+    outline: none;
+    border-color: var(--pluto-input-color);
+}
+
+.ai-context-question-input::placeholder {
+    color: var(--pluto-input-color);
+    opacity: 0.6;
+}
+`
+document.head.appendChild(style)

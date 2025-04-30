@@ -1912,25 +1912,44 @@ pluto-popup.ai-context > div {
 
 .ai-context-container {
     padding: 0.2rem;
-    max-width: 800px;
-    margin: 0 auto;
 }
 
 .ai-context-container h2 {
-    margin: 0 0 1rem;
-    font-size: 1.5rem;
-    color: var(--pluto-output-color);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
 }
 
 .ai-context-intro {
-    margin-bottom: 1.5rem;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
     color: var(--pluto-output-color);
-    line-height: 1.5;
+}
+
+.ai-context-question-input {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border: 1px solid var(--pluto-border-color);
+    border-radius: 4px;
+    font-size: 0.95em;
+    background: var(--main-bg-color);
+    color: var(--pluto-output-color);
+    transition: border-color 0.2s;
+}
+
+.ai-context-question-input:focus {
+    outline: none;
+    border-color: var(--pluto-input-color);
+}
+
+.ai-context-question-input::placeholder {
+    color: var(--pluto-input-color);
+    opacity: 0.6;
 }
 
 .ai-context-prompt-container {
     position: relative;
-    /* border: 1px solid var(--rule-color); */
+    margin-top: 1rem;
     border-radius: 6px;
     box-shadow: 0 2px 11px #0000001f;
     background: var(--ai-prompt-bg);
@@ -1957,7 +1976,7 @@ pluto-popup.ai-context > div {
     right: 0.5rem;
     padding: 0.5rem 1rem;
     background: var(--white);
-    border: 3px solid var(--pkg-terminal-border-color);
+    border: 3px solid var(--overlay-button-border);
     border-radius: 0.7rem;
     color: var(--black);
     font-size: 0.9rem;
