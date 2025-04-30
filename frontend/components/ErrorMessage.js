@@ -305,7 +305,7 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
-export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
+export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     const default_rewriter = {
