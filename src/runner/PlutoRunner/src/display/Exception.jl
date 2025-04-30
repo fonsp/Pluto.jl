@@ -83,7 +83,16 @@ function format_output(val::CapturedException; context=default_iocontext)
         val
     end
 
-    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
+    (
+        Dict{Symbol,Any}(
+            :msg => sprint(try_showerror, val.ex),
+            :stacktrace => stacktrace,
+            :plain_error => sprint() do io
+                try_showerror(io, val.ex, val.processed_bt[1:something(limit, end)]; color=false)
+            end,
+        ),
+        MIME"application/vnd.pluto.stacktrace+object"()
+    )
 end
 
 
@@ -136,9 +145,9 @@ end
 
 
 "Because even showerror can error... 👀"
-function try_showerror(io::IO, e, args...)
+function try_showerror(io::IO, e, args...; color::Bool=true)
     try
-        showerror(IOContext(io, :color => true), e, args...)
+        showerror(IOContext(io, :color => color), e, args...)
     catch show_ex
         print(io, "\nFailed to show error:\n\n")
         try_showerror(io, show_ex, stacktrace(catch_backtrace()))

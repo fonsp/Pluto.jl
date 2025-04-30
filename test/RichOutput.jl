@@ -414,6 +414,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test_nowarn update_run!(🍭, notebook, notebook.cells[1:5])
 
             @test occursinerror("DomainError", notebook.cells[1])
+            @test occursin("DomainError", notebook.cells[1].output.body[:plain_error])
             let
                 st = notebook.cells[1].output.body
                 @test length(st[:stacktrace]) == 4 # check in REPL
