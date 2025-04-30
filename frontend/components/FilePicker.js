@@ -294,9 +294,6 @@ const pathhints =
         const query_full = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
         const query = dirname(query_full)
 
-        // Remove the
-        console.log(query_full, query)
-
         return client
             .send("completepath", {
                 query,
