@@ -150,7 +150,7 @@ const field_rank_heuristic = (text, is_exported) => is_exported * 3 + (/^\p{Ll}/
 const julia_commit_characters = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     return ["."]
 }
-const validFor = (text) => {
+const validFor = (/** @type {string} */ text) => {
     let expected_char = /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u.test(text)
 
     return expected_char && !endswith_keyword_regex.test(text)

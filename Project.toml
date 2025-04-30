@@ -57,6 +57,7 @@ MsgPack = "1.1"
 Pkg = "1"
 PlutoDependencyExplorer = "~1.2"
 PrecompileSignatures = "3"
+# this next compat entry should match the Project.toml of PlutoRunner.
 PrecompileTools = "~1.2, ~1.3"
 REPL = "1"
 RegistryInstances = "0.1"

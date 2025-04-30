@@ -929,14 +929,27 @@ const InputContextMenu = ({
     const is_copy_output_supported = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
         let cell_result = notebook?.cell_results?.[cell_id]
-        return !!cell_result && !cell_result.errored && !cell_result.queued && cell_result.output.mime === "text/plain" && cell_result.output.body
+        if (cell_result == null) return false
+
+        return (
+            (!cell_result.errored && cell_result.output.mime === "text/plain" && cell_result.output.body != null) ||
+            (cell_result.errored && cell_result.output.mime === "application/vnd.pluto.stacktrace+object")
+        )
     }
 
     const copy_output = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
-        let cell_output = notebook?.cell_results?.[cell_id]?.output.body ?? ""
-        cell_output &&
-            navigator.clipboard.writeText(cell_output).catch((err) => {
+        let cell_result = notebook?.cell_results?.[cell_id]
+        if (cell_result == null) return
+
+        let cell_output =
+            cell_result.output.mime === "text/plain"
+                ? cell_result.output.body
+                : // @ts-ignore
+                  cell_result.output.body.plain_error
+
+        if (cell_output != null)
+            navigator.clipboard.writeText(cell_output).catch(() => {
                 alert(`Error copying cell output`)
             })
     }
