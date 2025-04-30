@@ -19,6 +19,16 @@ const format_code = (s) =>
 ${s}
 </julia-code-block>`
 
+const format_cell_output = (/** @type {import("./Editor.js").CellResultData?} */ cell_result) => {
+    const text = cell_output_to_plaintext(cell_result)
+
+    return text == null
+        ? ""
+        : `<pluto-ai-context-cell-output>
+${text}
+</pluto-ai-context-cell-output>`
+}
+
 export const AIContext = ({ cell_id, current_code }) => {
     const pluto_actions = useContext(PlutoActionsContext)
 
@@ -29,6 +39,8 @@ export const AIContext = ({ cell_id, current_code }) => {
 The current cell has the following code:
 
 ${format_code(current_code)}
+
+${format_cell_output(notebook.cell_results[cell_id])}
 </pluto-ai-context-current-cell>
 `
 
@@ -70,4 +82,19 @@ ${upstream_cells.length > 0 ? variable_context : ""}
             <h1>AI Context</h1>
         </div>
     `
+}
+
+const cell_output_to_plaintext = (/** @type {import("./Editor.js").CellResultData?} */ cell_result) => {
+    if (cell_result == null) return null
+
+    const cell_output = cell_result.output
+    if (cell_output.mime === "text/plain") {
+        return cell_output.body
+    }
+    if (cell_output.mime === "application/vnd.pluto.stacktrace+object") {
+        return cell_output.body.plain_error
+    }
+    if (cell_output.mime.includes("image")) return "<!-- Image -->"
+
+    return JSON.stringify(cell_output)
 }
