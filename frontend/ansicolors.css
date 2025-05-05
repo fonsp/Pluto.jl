@@ -1,0 +1,175 @@
+/* Adapted from https://github.com/JuliaDocs/ANSIColoredPrinters.jl/blob/main/docs/src/assets/default.css */
+html .content pre {
+    font-family: "JuliaMono", "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas",
+        "Liberation Mono", "DejaVu Sans Mono", monospace;
+}
+
+html pre.documenter-example-output {
+    line-height: 125%;
+}
+
+html span.sgr1 {
+    font-weight: bolder;
+}
+
+html span.sgr2 {
+    font-weight: lighter;
+}
+
+html span.sgr3 {
+    font-style: italic;
+}
+
+html span.sgr4 {
+    text-decoration: underline;
+}
+
+html span.sgr7 {
+    color: #fff;
+    background-color: #222;
+}
+
+html.theme--documenter-dark span.sgr7 {
+    color: #1f2424;
+    background-color: #fff;
+}
+
+html span.sgr8,
+html span.sgr8 span,
+html span span.sgr8 {
+    color: transparent;
+}
+
+html span.sgr9 {
+    text-decoration: line-through;
+}
+
+
+html span.sgr30 {
+    color: #111;
+}
+
+html span.sgr31 {
+    color: #944;
+}
+
+html span.sgr32 {
+    color: #073;
+}
+
+html span.sgr33 {
+    color: #870;
+}
+
+html span.sgr34 {
+    color: #15a;
+}
+
+html span.sgr35 {
+    color: #94a;
+}
+
+html span.sgr36 {
+    color: #08a;
+}
+
+html span.sgr37 {
+    color: #ddd;
+}
+
+html span.sgr40 {
+    background-color: #111;
+}
+
+html span.sgr41 {
+    background-color: #944;
+}
+
+html span.sgr42 {
+    background-color: #073;
+}
+
+html span.sgr43 {
+    background-color: #870;
+}
+
+html span.sgr44 {
+    background-color: #15a;
+}
+
+html span.sgr45 {
+    background-color: #94a;
+}
+
+html span.sgr46 {
+    background-color: #08a;
+}
+
+html span.sgr47 {
+    background-color: #ddd;
+}
+
+html span.sgr90 {
+    color: #888;
+}
+
+html span.sgr91 {
+    color: #d57;
+}
+
+html span.sgr92 {
+    color: #2a5;
+}
+
+html span.sgr93 {
+    color: #d94;
+}
+
+html span.sgr94 {
+    color: #08d;
+}
+
+html span.sgr95 {
+    color: #b8d;
+}
+
+html span.sgr96 {
+    color: #0bc;
+}
+
+html span.sgr97 {
+    color: #eee;
+}
+
+
+html span.sgr100 {
+    background-color: #888;
+}
+
+html span.sgr101 {
+    background-color: #d57;
+}
+
+html span.sgr102 {
+    background-color: #2a5;
+}
+
+html span.sgr103 {
+    background-color: #d94;
+}
+
+html span.sgr104 {
+    background-color: #08d;
+}
+
+html span.sgr105 {
+    background-color: #b8d;
+}
+
+html span.sgr106 {
+    background-color: #0bc;
+}
+
+html span.sgr107 {
+    background-color: #eee;
+}
