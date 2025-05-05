@@ -959,6 +959,7 @@ const InputContextMenu = ({
             type: "info",
             big: true,
             css_class: "ai-context",
+            should_focus: true,
             // source_element: button_ref.current,
             body: html`<${AIContext} cell_id=${cell_id} current_code=${get_current_code()} />`,
         })
@@ -1046,7 +1047,9 @@ const InputContextMenu = ({
                           setOpen=${setOpen}
                       />
 
-                      <${InputContextMenuItem} tag="ask_ai" contents="Ask AI" title="Ask AI about this cell" onClick=${ask_ai} setOpen=${setOpen} />
+                      ${pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features !== false
+                          ? html`<${InputContextMenuItem} tag="ask_ai" contents="Ask AI" title="Ask AI about this cell" onClick=${ask_ai} setOpen=${setOpen} />`
+                          : null}
                   </ul>`
                 : html``}
         </div>
