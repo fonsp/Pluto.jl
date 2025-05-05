@@ -97,6 +97,7 @@ export const Popup = ({ notebook, disable_input }) => {
             if (recent_event.should_focus === true) {
                 requestAnimationFrame(() => {
                     element_focused_before_popup.current = document.activeElement
+                    /** @type {HTMLElement?} */
                     const el = element_ref.current?.querySelector("a, input, button") ?? element_ref.current
                     // console.debug("restoring focus to", el)
                     el?.focus?.()

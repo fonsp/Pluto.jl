@@ -55,7 +55,7 @@ export const AIContext = ({ cell_id, current_code }) => {
     }
     let prompt = generate_prompt(prompt_args)
     let prompt_tokens = count_openai_tokens(prompt)
-    if (prompt_tokens > 4000) {
+    if (prompt_tokens > 3000) {
         console.log("Prompt is too long, truncating...", prompt, prompt_tokens)
         prompt = generate_prompt({
             ...prompt_args,

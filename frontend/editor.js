@@ -1,20 +1,6 @@
 import { html, render, useEffect, useRef, useState } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
-// Register service worker for offline CDN caching
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker
-            .register("/sw.js")
-            .then((registration) => {
-                console.log("ServiceWorker registration successful:", registration.scope)
-            })
-            .catch((error) => {
-                console.log("ServiceWorker registration failed:", error)
-            })
-    })
-}
-
 import { Editor, default_path } from "./components/Editor.js"
 import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
 import { unpack } from "./common/MsgPack.js"

@@ -29,19 +29,5 @@ const launch_params = {
 
 console.log("Launch parameters: ", launch_params)
 
-// Register service worker for offline CDN caching
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker
-            .register("/sw.js")
-            .then((registration) => {
-                console.log("ServiceWorker registration successful:", registration.scope)
-            })
-            .catch((error) => {
-                console.log("ServiceWorker registration failed:", error)
-            })
-    })
-}
-
 // @ts-ignore
 render(html`<${Welcome} launch_params=${launch_params} />`, document.querySelector("#app"))
