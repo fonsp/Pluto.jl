@@ -115,7 +115,9 @@ function _maybe_show_ansi_html(io::IO, x)
     show(IOContext(io_new, :color => true, :compact => true), mime_text, x)
     if _has_ansi(io_new)
         mime_html = MIME"text/html"()
-        show(io, mime_html, ANSIColoredPrinters.HTMLPrinter(io_new))
+        print(io, """<pre class="no-block">""")
+        show(io, mime_html, ANSIColoredPrinters.HTMLPrinter(io_new; root_tag="code"))
+        print(io, "</pre>")
         nothing, mime_html
     else
         show(io, mime_text, ANSIColoredPrinters.PlainTextPrinter(io_new))
