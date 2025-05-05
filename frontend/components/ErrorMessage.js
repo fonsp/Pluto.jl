@@ -274,6 +274,9 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
     // too sciency
     if (frame.inlined) return false
 
+    // makes no sense anyways
+    if (frame.line < 1) return false
+
     if (params == null) {
         // no type signature... must be some function call that got optimized away or something special
         // probably not directly relevant
