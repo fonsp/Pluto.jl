@@ -120,7 +120,7 @@ function _maybe_show_ansi_html(io::IO, x)
         print(io, "</pre>")
         nothing, mime_html
     else
-        show(io, mime_text, ANSIColoredPrinters.PlainTextPrinter(io_new))
+        write(io, seekstart(io_new))
         nothing, mime_text
     end
 end
