@@ -22,16 +22,15 @@ export const downstream_recursive = (/** @type {import("../components/Editor.js"
     /** @type {Set<string>} */
     const deps = new Set()
     const ends = [...starts]
-    if (recursive)
-        while (ends.length > 0) {
-            const node = ends.splice(0, 1)[0]
-            _.flatten(Object.values(graph[node].downstream_cells_map)).forEach((next_cellid) => {
-                if (!deps.has(next_cellid)) {
-                    ends.push(next_cellid)
-                    deps.add(next_cellid)
-                }
-            })
-        }
+    while (ends.length > 0) {
+        const node = ends.splice(0, 1)[0]
+        _.flatten(Object.values(graph[node].downstream_cells_map)).forEach((next_cellid) => {
+            if (!deps.has(next_cellid)) {
+                if (recursive) ends.push(next_cellid)
+                deps.add(next_cellid)
+            }
+        })
+    }
     return deps
 }
 
@@ -39,16 +38,15 @@ export const upstream_recursive = (/** @type {import("../components/Editor.js").
     /** @type {Set<string>} */
     const deps = new Set()
     const ends = [...starts]
-    if (recursive)
-        while (ends.length > 0) {
-            const node = ends.splice(0, 1)[0]
-            _.flatten(Object.values(graph[node].upstream_cells_map)).forEach((next_cellid) => {
-                if (!deps.has(next_cellid)) {
-                    ends.push(next_cellid)
-                    deps.add(next_cellid)
-                }
-            })
-        }
+    while (ends.length > 0) {
+        const node = ends.splice(0, 1)[0]
+        _.flatten(Object.values(graph[node].upstream_cells_map)).forEach((next_cellid) => {
+            if (!deps.has(next_cellid)) {
+                if (recursive) ends.push(next_cellid)
+                deps.add(next_cellid)
+            }
+        })
+    }
     return deps
 }
 
