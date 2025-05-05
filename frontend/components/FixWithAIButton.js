@@ -3,8 +3,10 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
-const ai_server_url = "https://pluto-simple-llm-features.deno.dev"
-const endpoint_url = `${ai_server_url}/fix-syntax-error-v1`
+const ai_server_url = "https://pluto-simple-llm-features.deno.dev/"
+const endpoint_url = `${ai_server_url}fix-syntax-error-v1`
+
+const pluto_premium_llm_key = localStorage.getItem("pluto_premium_llm_key")
 
 // Server availability state management
 let serverAvailabilityPromise = null
@@ -67,7 +69,7 @@ const AIPermissionPrompt = ({ onAccept, onDecline }) => {
     `
 }
 
-export const FixWithAIButton = ({ cell_id, diagnostics }) => {
+export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) => {
     const pluto_actions = useContext(PlutoActionsContext)
     if (pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features === false) return null
 
@@ -78,7 +80,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     // Reset whenever a prop changes
     useEffect(() => {
         setButtonState("initial")
-    }, [cell_id, diagnostics])
+    }, [cell_id, diagnostics, last_run_timestamp])
 
     // Check server availability when component mounts
     useEffect(() => {
@@ -136,6 +138,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
+                    ...(pluto_premium_llm_key ? { "X-Pluto-Premium-LLM-Key": pluto_premium_llm_key } : {}),
                 },
                 body: JSON.stringify({
                     code,

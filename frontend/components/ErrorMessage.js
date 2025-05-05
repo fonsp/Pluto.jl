@@ -216,7 +216,7 @@ const HighlightCallArgumentNames = ({ code }) => {
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
-export const ParseError = ({ cell_id, diagnostics }) => {
+export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
     useEffect(() => {
         window.dispatchEvent(
             new CustomEvent("cell_diagnostics", {
@@ -233,7 +233,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         <jlerror class="syntax-error">
             <header>
                 <p>Syntax error</p>
-                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} />
+                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} last_run_timestamp=${last_run_timestamp} />
             </header>
             <section>
                 <div class="stacktrace-header">
