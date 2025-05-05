@@ -5,7 +5,6 @@ authors = ["Fons van der Plas <fons@plutojl.org>"]
 version = "0.20.8"
 
 [deps]
-ANSIColoredPrinters = "a4c015fc-c6ff-483c-b24f-f7ea428134e9"
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -38,7 +37,6 @@ URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-ANSIColoredPrinters = "0.0.1"
 Base64 = "1"
 Configurations = "0.15, 0.16, 0.17"
 Dates = "0, 1"
@@ -59,6 +57,7 @@ MsgPack = "1.1"
 Pkg = "1"
 PlutoDependencyExplorer = "~1.2"
 PrecompileSignatures = "3"
+# this next compat entry should match the Project.toml of PlutoRunner.
 PrecompileTools = "~1.2, ~1.3"
 REPL = "1"
 RegistryInstances = "0.1"

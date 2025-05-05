@@ -1,5 +1,4 @@
 import Markdown
-using ANSIColoredPrinters: ANSIColoredPrinters
 
 const imagemimes = MIME[MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -84,7 +83,8 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         try
             table_data(x, IOContext(io, :compact => true)), mime
         catch
-            _maybe_show_ansi_html(io, x)
+            show(io, MIME"text/plain"(), x)
+            nothing, MIME"text/plain"()
         end
     elseif mime isa MIME"application/vnd.pluto.divelement+object"
         tree_data(x, io), mime
@@ -98,35 +98,12 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         texed = repr(mime, x)
         Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
         nothing, MIME"text/html"()
-    elseif mime isa MIME"text/plain"
-        _maybe_show_ansi_html(io, x)
     else
         # the classic:
         show(io, mime, x)
         nothing, mime
     end
 end
-
-# If output contains ANSI escape codes, convert to HTML to preserve styles;
-# otherwise, just print the output.
-function _maybe_show_ansi_html(io::IO, x)
-    io_new = IOBuffer()
-    mime_text = MIME"text/plain"()
-    show(IOContext(io_new, :color => true, :compact => true), mime_text, x)
-    if _has_ansi(io_new)
-        mime_html = MIME"text/html"()
-        print(io, """<pre class="no-block">""")
-        show(io, mime_html, ANSIColoredPrinters.HTMLPrinter(io_new; root_tag="code"))
-        print(io, "</pre>")
-        nothing, mime_html
-    else
-        write(io, seekstart(io_new))
-        nothing, mime_text
-    end
-end
-
-_has_ansi(str::String) = occursin(r"\e\[[0-9;]*m", str)
-_has_ansi(io::IOBuffer) = _has_ansi(read(seekstart(io), String))
 
 # we write our own function instead of extending Base.showable with our new MIME because:
 # we need the method Base.showable(::MIME"asdfasdf", ::Any) = Tables.rowaccess(x)
