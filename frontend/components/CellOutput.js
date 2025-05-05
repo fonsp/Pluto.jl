@@ -193,16 +193,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             break
         case "text/plain":
             if (body) {
-                // Check if the content contains ANSI escape codes
-                const has_ansi = /\x1b\[\d+m/.test(body)
-                
-                if (has_ansi) {
-                    return html`<div><${ANSITextOutput} body=${body} /></div>`
-                } else {
-                    return html`<div>
-                        <pre class="no-block"><code>${body}</code></pre>
-                    </div>`
-                }
+                return html`<div><${ANSITextOutput} body=${body} /></div>`
             } else {
                 return html`<div></div>`
             }
@@ -733,16 +724,21 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
     pre.prepend(button)
 }
 
-// A component to handle ANSI escape codes in text/plain content
-const ANSITextOutput = ({ body }) => {
+export const ANSITextOutput = ({ body }) => {
+    const has_ansi = /\x1b\[\d+m/.test(body)
+
+    if (has_ansi) {
+        return html`<${ANSIUpContents} body=${body} />`
+    } else {
+        return html`<pre class="no-block"><code>${body}</code></pre>`
+    }
+}
+
+const ANSIUpContents = ({ body }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
-    
     useLayoutEffect(() => {
         if (!node_ref.current) return
-        
-        // Convert ANSI escape codes to HTML
         node_ref.current.innerHTML = new AnsiUp().ansi_to_html(body)
     }, [body])
-    
     return html`<pre class="no-block"><code ref=${node_ref}></code></pre>`
 }
