@@ -55,8 +55,8 @@ export const AIContext = ({ cell_id, current_code }) => {
     }
     let prompt = generate_prompt(prompt_args)
     let prompt_tokens = count_openai_tokens(prompt)
-    console.log("Prompt is too long, truncating...", prompt, prompt_tokens)
-    if (prompt_tokens > 3000) {
+    if (prompt_tokens > 4000) {
+        console.log("Prompt is too long, truncating...", prompt, prompt_tokens)
         prompt = generate_prompt({
             ...prompt_args,
             recursive: false,
@@ -167,6 +167,8 @@ ${upstream_cells.map((cid) => format_code(notebook.cell_inputs[cid].code)).join(
 
 <pluto-ai-context>
 To help me answer my question, here is some auto-generated context. The code is from a Pluto Julia notebook. We are concerned with one specific cell in the notebook, called "the current cell". And you will get additional context.
+
+When suggesting new code, give each cell its own code block, and keep global variables names as they are.
 
 ${current_cell}
 
