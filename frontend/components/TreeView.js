@@ -1,9 +1,24 @@
-import { html, useRef, useState, useContext, useEffect } from "../imports/Preact.js"
+import { html, useRef, useState, useContext, useEffect, useLayoutEffect } from "../imports/Preact.js"
 
 import { OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { is_noop_action } from "../common/SliderServerClient.js"
+import AnsiUp from "../imports/AnsiUp.js"
+
+// A component to handle ANSI escape codes in text/plain content for TreeView
+const ANSITextOutput = ({ body }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+    
+    useLayoutEffect(() => {
+        if (!node_ref.current) return
+        
+        // Convert ANSI escape codes to HTML
+        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(body)
+    }, [body])
+    
+    return html`<pre class="no-block" ref=${node_ref}></pre>`
+}
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -24,7 +39,14 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/plain":
-            return html`<pre class="no-block">${body}</pre>`
+            // Check if the content contains ANSI escape codes
+            const has_ansi = /\x1b\[\d+m/.test(body)
+            
+            if (has_ansi) {
+                return html`<${ANSITextOutput} body=${body} />`
+            } else {
+                return html`<pre class="no-block">${body}</pre>`
+            }
         case "application/vnd.pluto.tree+object":
             return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
