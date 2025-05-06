@@ -298,7 +298,9 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 
     useLayoutEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        const ansi_up = new AnsiUp();
+        ansi_up.use_classes = true;
+        node_ref.current.innerHTML = ansi_up.ansi_to_html(value)
         did_ansi_up.current = true
     }, [node_ref.current, value])
 
