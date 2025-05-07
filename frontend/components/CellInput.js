@@ -61,6 +61,8 @@ import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { AIContext } from "./AIContext.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
@@ -224,7 +226,6 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
- *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  global_definition_locations: { [variable_name: string]: string },
  *  [key: string]: any,
@@ -862,6 +863,10 @@ export const CellInput = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
+                get_current_code=${() => {
+                    let cm = newcm_ref.current
+                    return cm == null ? "" : getValue6(cm)
+                }}
             />
             ${PreviewHiddenCode}
         </pluto-input>
@@ -870,7 +875,18 @@ export const CellInput = ({
 
 const PreviewHiddenCode = html`<div class="preview_hidden_code_info">👀 Reading hidden code</div>`
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
+const InputContextMenu = ({
+    on_delete,
+    cell_id,
+    run_cell,
+    skip_as_script,
+    running_disabled,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    set_cell_disabled,
+    get_current_code,
+}) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
@@ -936,6 +952,17 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             navigator.clipboard.writeText(cell_output).catch(() => {
                 alert(`Error copying cell output`)
             })
+    }
+
+    const ask_ai = () => {
+        open_pluto_popup({
+            type: "info",
+            big: true,
+            css_class: "ai-context",
+            should_focus: true,
+            // source_element: button_ref.current,
+            body: html`<${AIContext} cell_id=${cell_id} current_code=${get_current_code()} />`,
+        })
     }
 
     useEventListener(
@@ -1019,6 +1046,10 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                           onClick=${toggle_skip_as_script}
                           setOpen=${setOpen}
                       />
+
+                      ${pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features !== false
+                          ? html`<${InputContextMenuItem} tag="ask_ai" contents="Ask AI" title="Ask AI about this cell" onClick=${ask_ai} setOpen=${setOpen} />`
+                          : null}
                   </ul>`
                 : html``}
         </div>

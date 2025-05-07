@@ -328,7 +328,6 @@ export const Cell = ({
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
-                cell_dependencies=${cell_dependencies}
                 global_definition_locations=${global_definition_locations}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}

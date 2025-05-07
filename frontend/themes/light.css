@@ -123,6 +123,9 @@
         --input-context-menu-hover-bg-color: rgba(0, 0, 0, 0.1);
         --input-context-menu-li-color: #1e1e1e;
 
+        /* ai features */
+        --ai-gradient-bg: linear-gradient(20deg, #f9ecff, #fff4f2);
+        --ai-prompt-bg: #fbffff;
         /*Pkg status*/
         --pkg-popup-bg: white;
         --pkg-popup-border-color: #f0e4ee;
