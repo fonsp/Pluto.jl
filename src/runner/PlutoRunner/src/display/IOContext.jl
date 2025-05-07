@@ -4,7 +4,7 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 const default_iocontext = IOContext(devnull, 
-    :color => false, 
+    :color => true, 
     :limit => true, 
     :displaysize => (18, 88), 
     :is_pluto => true, 

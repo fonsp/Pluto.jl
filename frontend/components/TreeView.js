@@ -1,6 +1,6 @@
-import { html, useRef, useState, useContext, useEffect } from "../imports/Preact.js"
+import { html, useRef, useState, useContext, useEffect, useLayoutEffect } from "../imports/Preact.js"
 
-import { OutputBody, PlutoImage } from "./CellOutput.js"
+import { ANSITextOutput, OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { is_noop_action } from "../common/SliderServerClient.js"
@@ -24,7 +24,8 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/plain":
-            return html`<pre class="no-block">${body}</pre>`
+            // Check if the content contains ANSI escape codes
+            return html`<${ANSITextOutput} body=${body} />`
         case "application/vnd.pluto.tree+object":
             return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
