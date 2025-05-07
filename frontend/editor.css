@@ -1908,6 +1908,7 @@ pluto-cell.code_folded:focus-within > pluto-input > .preview_hidden_code_info {
 
 pluto-popup.ai-context > div {
     background: var(--ai-gradient-bg);
+    box-shadow: 0 0 3rem #00000061;
 }
 
 .ai-context-container {
@@ -2850,7 +2851,6 @@ pl-status .status-time {
     /* align-self: end; */
     padding-right: 0.5em;
     padding-left: 0.5em;
-    /* font-family: var(--roboto-mono-font-stack); */
     opacity: 0.6;
     font-size: 0.7rem;
     font-variant-numeric: tabular-nums;
