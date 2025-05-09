@@ -11,7 +11,7 @@
         --header-border-color: rgba(0, 0, 0, 0.1);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
-        
+
         /* Cells */
         --normal-cell: 0, 0, 0;
         --code-differs: 160, 130, 28;
