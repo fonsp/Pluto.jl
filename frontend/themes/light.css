@@ -11,24 +11,6 @@
         --header-border-color: rgba(0, 0, 0, 0.1);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
-
-        /* ANSI colors */
-        --ansi-black: rgb(0, 0, 0);
-        --ansi-red: rgb(187, 0, 0);
-        --ansi-green: rgb(0, 187, 0);
-        --ansi-yellow: rgb(187, 187, 0);
-        --ansi-blue: rgb(0, 0, 187);
-        --ansi-magenta: rgb(187, 0, 187);
-        --ansi-cyan: rgb(0, 187, 187);
-        --ansi-white: rgb(255, 255, 255);
-        --ansi-bright-black: rgb(85, 85, 85);
-        --ansi-bright-red: rgb(255, 85, 85);
-        --ansi-bright-green: rgb(0, 255, 0);
-        --ansi-bright-yellow: rgb(255, 255, 85);
-        --ansi-bright-blue: rgb(85, 85, 255);
-        --ansi-bright-magenta: rgb(255, 85, 255);
-        --ansi-bright-cyan: rgb(85, 255, 255);
-        --ansi-bright-white: rgb(255, 255, 255);
         
         /* Cells */
         --normal-cell: 0, 0, 0;
