@@ -57,7 +57,7 @@
 .ansi-bright-cyan-bg { background-color: var(--ansi-bright-cyan); }
 .ansi-bright-white-bg { background-color: var(--ansi-bright-white); }
 
-pluto-log-dot.Stdout, pkg-terminal {
+pluto-log-dot.Stdout {
     --ansi-red: rgb(220, 0, 0);
     --ansi-magenta: rgb(200, 0, 200);
     --ansi-white: rgb(220, 220, 220);
