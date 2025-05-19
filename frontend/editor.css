@@ -899,7 +899,7 @@ nav#at_the_top > #process_status:empty {
     display: none;
 }
 
-.statefile-fetch-progress {
+pluto-editor.fullscreen .statefile-fetch-progress {
     /* width: 200px;
     height: 27px;
     background: white;
