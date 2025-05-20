@@ -58,7 +58,9 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
     if (anything_for_a_short_while && !(binder_loading || recently_running.length !== 0)) {
         progress = 1
     }
-
+    if (!anything || !anything_for_a_short_while) {
+        return null
+    }
     const title = binder_loading
         ? "Loading binder..."
         : `Running cells... (${recently_running.length - currently_running.length}/${recently_running.length} done)`
@@ -67,7 +69,6 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
         class=${binder_loading ? "slow" : "fast"}
         style=${`
             width: ${100 * progress}vw; 
-            opacity: ${anything && anything_for_a_short_while ? 1 : 0}; 
             ${anything || anything_for_a_short_while ? "" : "transition: none;"}
             pointer-events: ${anything ? "auto" : "none"};
             cursor: ${!binder_loading && anything ? "pointer" : "auto"};
