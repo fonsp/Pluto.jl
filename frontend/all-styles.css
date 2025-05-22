@@ -1,11 +1,3 @@
-/* 
- * all-styles.css
- * This file consolidates multiple CSS files via @import.
- * It helps keep HTML cleaner and centralizes CSS dependencies.
- * NOTE: @import must be at the top of the file before any other rules.
- */
-
-
 @import url("./editor.css");
 @import url("./binder.css");
 @import url("./treeview.css");
