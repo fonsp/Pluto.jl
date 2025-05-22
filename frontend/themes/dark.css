@@ -123,6 +123,9 @@
         --input-context-menu-hover-bg-color: rgba(255, 255, 255, 0.1);
         --input-context-menu-li-color: #c7c7c7;
 
+        /* ai features */
+        --ai-gradient-bg: linear-gradient(20deg, #371d43, #613c35);
+        --ai-prompt-bg: #3a3a3a;
         /*Pkg status*/
         --pkg-popup-bg: #3d2f44;
         --pkg-popup-border-color: #574f56;
@@ -200,7 +203,6 @@
         --cm-color-variable: oklch(80% 10% 270deg);
         --cm-color-literal: oklch(80% 30% 330deg);
         --cm-filter-type: brightness(80%) saturate(80%);
-
         --cm-color-builtin: #5e7ad3;
         --cm-color-function: #f99b15;
         --cm-color-link: #815ba4;

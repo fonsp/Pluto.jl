@@ -1859,6 +1859,10 @@ pluto-input > .input_context_menu li button {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
 }
 
+.ctx_icon.ask_ai {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbubble-ellipses-outline.svg");
+}
+
 pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
@@ -1898,6 +1902,94 @@ pluto-input > .preview_hidden_code_info {
 pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded > pluto-input > .preview_hidden_code_info,
 pluto-cell.code_folded:focus-within > pluto-input > .preview_hidden_code_info {
     display: block;
+}
+
+/* AI Context */
+
+pluto-popup.ai-context > div {
+    background: var(--ai-gradient-bg);
+    box-shadow: 0 0 3rem #00000061;
+}
+
+.ai-context-container {
+    padding: 0.2rem;
+}
+
+.ai-context-container h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    color: var(--pluto-output-h-color);
+}
+
+.ai-context-intro {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--pluto-output-color);
+}
+
+.ai-context-question-input {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border: 3px solid transparent;
+    border-radius: 4px;
+    font-size: 0.95em;
+    background: var(--main-bg-color);
+    transition: border-color 0.2s;
+}
+
+.ai-context-question-input:focus,
+.ai-context-question-input:not(:placeholder-shown) {
+    outline: none;
+    border-color: var(--overlay-button-border);
+}
+
+.ai-context-question-input::placeholder {
+    color: var(--pluto-input-color);
+    opacity: 0.6;
+}
+
+.ai-context-prompt-container {
+    position: relative;
+    margin-top: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 11px #0000001f;
+    background: var(--ai-prompt-bg);
+}
+
+.ai-context-prompt {
+    max-height: 15ch;
+    overflow-y: auto;
+    padding: 0.5rem;
+    line-height: 1.5;
+}
+
+.ai-context-prompt pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    font-size: 0.5rem;
+}
+
+.ai-context-container .copy-button {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--white);
+    border: 3px solid var(--overlay-button-border);
+    border-radius: 0.7rem;
+    color: var(--black);
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    /* box-shadow: 0 1px 10px #0000001a; */
+}
+
+.ai-context-container .copy-button.copied {
+    /* color: var(--pluto-output-bg); */
 }
 
 /* PKG UI */
@@ -2759,7 +2851,6 @@ pl-status .status-time {
     /* align-self: end; */
     padding-right: 0.5em;
     padding-left: 0.5em;
-    /* font-family: var(--roboto-mono-font-stack); */
     opacity: 0.6;
     font-size: 0.7rem;
     font-variant-numeric: tabular-nums;
@@ -3798,7 +3889,7 @@ button.fix-with-ai {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(135deg, rgba(65, 105, 225, 0.4), rgba(147, 112, 219, 0.4));
+    background: var(--ai-gradient-bg);
     margin-left: 8px;
     transition: background 0.3s ease;
 }
