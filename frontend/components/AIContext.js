@@ -84,8 +84,8 @@ export const AIContext = ({ cell_id, current_code }) => {
 
     return html`
         <form class="ai-context-container" ref=${formRef}>
-            <h2>AI Prompt Generator</h2>
-            <p class="ai-context-intro">You can copy this text into an AI chat to tell it more about the current cell.</p>
+            <h2>AI Prompt Generator <em style="font-size: 0.8em; opacity: .7;">(beta)</em></h2>
+            <p class="ai-context-intro">You can copy this text into an AI chat to give it context from your notebook.</p>
             <input
                 type="text"
                 name="pluto-ai-context-question"
