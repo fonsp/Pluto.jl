@@ -1,5 +1,4 @@
 import Malt
-import .PkgCompat: package_completions
 using Markdown
 import REPL
 
@@ -55,38 +54,26 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
-function package_name_to_complete(str)
-	matches = match(r"(import|using) ([a-zA-Z0-9]+)$", str)
-	matches === nothing ? nothing : matches[2]
-end
-
 responses[:complete] = function response_complete(🙋::ClientRequest)
     try require_notebook(🙋) catch; return; end
     query = 🙋.body["query"]
     query_full = get(🙋.body, "query_full", query)
 
-    results, loc, found, too_long = if package_name_to_complete(query_full) !== nothing
-        p = package_name_to_complete(query_full)
-        cs = package_completions(p) |> sort
-        pos = lastindex(query_full)
-        [(c,"package",true) for c in cs], (nextind(query_full, pos-length(p)):pos), true, false
+    workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
+    
+    results, loc, found, too_long = if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
+        # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
+        # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
+        Malt.remote_eval_fetch(workspace.worker, quote
+            PlutoRunner.completion_fetcher(
+                $query,
+                $query_full,
+                getfield(Main, $(QuoteNode(workspace.module_name))),
+            )
+        end)
     else
-        workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
-        
-        if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
-            # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
-            # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
-            Malt.remote_eval_fetch(workspace.worker, quote
-                PlutoRunner.completion_fetcher(
-                    $query,
-                    $query_full,
-                    getfield(Main, $(QuoteNode(workspace.module_name))),
-                )
-            end)
-        else
-            # We can at least autocomplete general julia things:
-            PlutoRunner.completion_fetcher(query, query_full, Main)
-        end
+        # We can at least autocomplete general julia things:
+        PlutoRunner.completion_fetcher(query, query_full, Main)
     end
 
     start_utf8 = loc.start

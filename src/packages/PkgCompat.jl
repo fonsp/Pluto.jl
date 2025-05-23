@@ -1,6 +1,6 @@
 module PkgCompat
 
-export package_versions, package_completions
+export package_versions, registered_package_names
 
 import REPL
 import Pkg
@@ -276,35 +276,21 @@ end
 # Package names
 ###
 
-# ⚠️ Internal API with fallback
-function package_completions(partial_name::AbstractString)::Vector{String}
-	String[
-		filter(s -> startswith(s, partial_name), GracefulPkg.stdlibs_past_present_future);
-		_registered_package_completions(partial_name)
-	]
+
+# (✅ "Public" API)
+"""
+Return names of all registered packages.
+"""
+function registered_package_names(;registries::Vector=_parsed_registries[])::Vector{String}
+	flatmap(registries) do reg
+		packages = values(reg.pkgs)
+		union!(String[
+			d.name
+			for d in packages
+		], GracefulPkg.stdlibs_past_present_future)
+	end |> sort!
 end
 
-# (⚠️ Internal API with fallback)
-function _registered_package_completions(partial_name::AbstractString)::Vector{String}
-	# compat
-	try
-		@static if isdefined(REPLMode, :complete_remote_package!) && hasmethod(REPLMode.complete_remote_package!, (String,String), (:hint,))
-			val = String[]
-			REPLMode.complete_remote_package!(val, partial_name; hint=false)
-			val
-		elseif isdefined(REPLMode, :complete_remote_package) && hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
-			REPLMode.complete_remote_package(partial_name; hint=false)
-		elseif isdefined(REPLMode, :complete_remote_package) && hasmethod(REPLMode.complete_remote_package, (String,))
-			REPLMode.complete_remote_package(partial_name)
-		else
-			# this might error and go to the catch block, which is fine
-			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
-		end
-	catch e
-		@warn "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())
-		String[]
-	end
-end
 
 ###
 # Package versions
@@ -331,6 +317,7 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 		]
 	end
 end
+
 
 # ✅ "Public" API using RegistryInstances
 """
