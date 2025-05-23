@@ -190,6 +190,6 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
         aria-live="polite"
         disabled=${buttonState === "loading"}
     >
-        ${buttonState === "success" ? "Run cell" : buttonState === "loading" ? "Loading..." : "Fix with AI"}
+        ${buttonState === "success" ? "Run cell" : buttonState === "loading" ? "Loading..." : "Fix syntax with AI"}
     </button>`
 }
