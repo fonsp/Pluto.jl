@@ -5,7 +5,7 @@ import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
-import AnsiUp from "../imports/AnsiUp.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
 import { FixWithAIButton } from "./FixWithAIButton.js"
 
 const nbsp = "\u00A0"
@@ -298,9 +298,7 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 
     useLayoutEffect(() => {
         if (!node_ref.current) return
-        const ansi_up = new AnsiUp();
-        ansi_up.use_classes = true;
-        node_ref.current.innerHTML = ansi_up.ansi_to_html(value)
+        node_ref.current.innerHTML = ansi_to_html(value)
         did_ansi_up.current = true
     }, [node_ref.current, value])
 
