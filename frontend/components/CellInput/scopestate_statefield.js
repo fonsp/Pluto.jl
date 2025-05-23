@@ -294,11 +294,10 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             if (cursor.matchContext(["FunctionDefinition", "Signature"]) || (cursor.matchContext(["Assignment"]) && i_am_nth_child(cursor) === 0)) {
                 const pos_resetter = back_to_parent_resetter(cursor)
 
-                cursor.firstChild() // CallExpression now
-                cursor.firstChild()
+                cursor.firstChild() // Now we should have the function name
                 // @ts-ignore
-                if (cursor.name === "Identifier" || cursor.name === "Operator") {
-                    if (verbose) console.log("found function name", doc.sliceString(cursor.from, cursor.to))
+                if (cursor.name === "Identifier" || cursor.name === "Operator" || cursor.name === "FieldExpression") {
+                    if (verbose) console.log("found function name", doc.sliceString(cursor.from, cursor.to), cursor.name)
 
                     const last_scoper = local_scope_stack.pop()
                     register_variable(r(cursor))

@@ -290,7 +290,7 @@ const julia_code_completions_to_cm =
             ],
         }
 
-        console.log("cm completion result", result)
+        // console.log("cm completion result", result)
 
         return result
     }
