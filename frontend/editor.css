@@ -25,6 +25,7 @@
 
 @import url("./themes/light.css");
 @import url("./themes/dark.css");
+@import url("./ansi-colors.css");
 
 @import url("./featured-card.css");
 
