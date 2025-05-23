@@ -158,7 +158,7 @@ const validFor = (/** @type {string} */ text) => {
 
 const not_explicit_and_too_boring = (/** @type {autocomplete.CompletionContext} */ ctx, allow_strings = false) => {
     if (ctx.explicit) return false
-    if (ctx.matchBefore(/[ =)+-/,*]$/)) return true
+    if (ctx.matchBefore(/[ =)+-/,*:]$/)) return true
     if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return true
     if (!allow_strings) {
         if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
@@ -344,6 +344,7 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
 
     let node = syntaxTree(ctx.state).resolve(ctx.pos, -1)
     let npn = node?.parent?.name
+    if (node?.name === "Identifier" && npn === "StructDefinition") return true
     if (node?.name === "Identifier" && npn === "KeywordArguments") return true
 
     let node2 = npn === "OpenTuple" || npn === "TupleExpression" ? node?.parent : node
