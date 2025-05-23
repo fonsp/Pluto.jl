@@ -3355,7 +3355,8 @@ body.presentation pluto-output h2 {
 body.presentation pluto-notebook {
     padding-bottom: 100vh;
 }
-body.presentation #helpbox-wrapper {
+body.presentation #helpbox-wrapper,
+body.presentation footer {
     display: none !important;
 }
 
