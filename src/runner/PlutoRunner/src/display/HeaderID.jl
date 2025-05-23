@@ -1,7 +1,7 @@
 import Markdown
 
 # We add a method for the Markdown -> HTML conversion that automatically adds an id to headers
-function Markdown.html(io::IO, header::Markdown.Header{l}) where l
+function Markdown.html(io::IOContext, header::Markdown.Header{l}) where l
     id = text_to_id(stripped(header.text))
     Markdown.withtag(io, "h$l", :id => id) do
         Markdown.htmlinline(io, header.text)
