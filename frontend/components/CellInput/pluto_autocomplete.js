@@ -112,7 +112,7 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 }
 
 /** Are we matching something like `\lambd...`? */
-const match_latex_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_\^:]*/)
+const match_latex_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w\!\(\)\+\-\/\:\=\^\_]*/)
 /** Are we matching something like `Base.:writing_a_symbo...`? */
 const match_operator_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\]\{\}\.\,=]*/)
 
@@ -156,16 +156,29 @@ const validFor = (/** @type {string} */ text) => {
     return expected_char && !endswith_keyword_regex.test(text)
 }
 
+const not_explicit_and_too_boring = (/** @type {autocomplete.CompletionContext} */ ctx, allow_strings = false) => {
+    if (ctx.explicit) return false
+    if (ctx.matchBefore(/[ =)+-/,*]$/)) return true
+    if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return true
+    if (!allow_strings) {
+        if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
+            // don't complete inside a string, unless the user is doing string interpolation.
+            if (ctx.matchBefore(/\$[(\p{L}\p{Nl}\p{Sc}\d_!]$/u) == null) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) =>
     /** @returns {Promise<autocomplete.CompletionResult?>} */
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (match_latex_symbol_complete(ctx)) return null
-        if (!ctx.explicit && ctx.matchBefore(/[ =]$/)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null)
-            return null
+        if (not_explicit_and_too_boring(ctx)) return null
 
         let to_complete_full = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
         let to_complete = to_complete_full
@@ -187,11 +200,15 @@ const julia_code_completions_to_cm =
         }
 
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
-        const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
+        const is_already_a_global = (text) => {
+            const val = text != null && Object.keys(globals).includes(text)
+            // console.log("is_already_a_global", text, val)
+            return val
+        }
 
         let found = await request_autocomplete({ query: to_complete, query_full: to_complete_full })
 
-        console.log("received autocomplete results", found)
+        // console.log("received autocomplete results", { query: to_complete, query_full: to_complete_full }, found)
         if (!found) return null
         let { start, stop, results, too_long } = found
 
@@ -222,9 +239,7 @@ const julia_code_completions_to_cm =
                 ...results
                     .filter(
                         ([text, _1, _2, is_from_notebook, completion_type]) =>
-                            (ctx.explicit || completion_type != "path") &&
-                            (ctx.explicit || completion_type != "method") &&
-                            !(is_from_notebook && is_already_a_global(text))
+                            (ctx.explicit || completion_type != "path") && (ctx.explicit || completion_type != "method") && !is_already_a_global(text)
                     )
                     .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
                         // (quick) fix for identifiers that need to be escaped
@@ -283,7 +298,7 @@ const julia_code_completions_to_cm =
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null) return null
+    if (not_explicit_and_too_boring(ctx)) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
@@ -346,13 +361,7 @@ const global_variables_completion =
         if (ctx.matchBefore(/[(\p{L}\p{Nl}\p{Sc}\d_!]$/u) == null) return null
         if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return null
-        if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
-            // don't complete inside a string, unless the user is doing string interpolation.
-            if (ctx.matchBefore(/\$[(\p{L}\p{Nl}\p{Sc}\d_!]$/u) == null) {
-                return null
-            }
-        }
+        if (not_explicit_and_too_boring(ctx)) return null
 
         // see `is_wc_cat_id_start` in Julia's source for a complete list
         const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
@@ -378,7 +387,7 @@ const global_variables_completion =
                         apply: label,
                         type: from_notebook_type,
                         section: section_regular,
-                        // boost: 1,
+                        boost: 1,
                     }
                 })
             )
@@ -452,7 +461,7 @@ const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ct
     if (ctx.matchBefore(/[a-z]$/) == null) return null
     if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null) return null
+    if (not_explicit_and_too_boring(ctx)) return null
     return await keyword_completions_generator(ctx)
 }
 
@@ -542,8 +551,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (!match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment"]) != null) return null
-
+        if (not_explicit_and_too_boring(ctx, true)) return null
         const result = await get_special_symbols()
         return await autocomplete.completeFromList(result ?? [])(ctx)
     }
