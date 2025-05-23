@@ -679,6 +679,7 @@ export const CellInput = ({
                                 too_long: message.too_long,
                             }
                         },
+                        request_packages: () => pluto_actions.send("all_registered_package_names").then(({ message }) => message.results),
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                         request_unsubmitted_global_definitions: () => pluto_actions.get_unsubmitted_global_definitions(),

@@ -566,8 +566,8 @@ responses[:nbpkg_available_versions] = function response_nbpkg_available_version
     ), nothing, nothing, 🙋.initiator))
 end
 
-responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
-    results = PkgCompat.package_completions(🙋.body["query"])
+responses[:all_registered_package_names] = function response_all_registered_package_names(🙋::ClientRequest)
+    results = PkgCompat.registered_package_names()
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
         :results => results,
     ), nothing, nothing, 🙋.initiator))

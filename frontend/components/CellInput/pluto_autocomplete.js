@@ -466,6 +466,39 @@ const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ct
     return await keyword_completions_generator(ctx)
 }
 
+const complete_package_name = (/** @type {() => Promise<string[]>} */ request_packages) => {
+    let found = null
+
+    const get_packages = async () => {
+        if (found == null) {
+            const data = await request_packages().catch((e) => {
+                console.warn("Failed to fetch packages", e)
+                return null
+            })
+            if (data == null) return null
+            found = data.map((name, i) => ({
+                label: name,
+                apply: name,
+                type: "c_package",
+            }))
+        }
+        return found
+    }
+
+    return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        // space before the package name to only find remote packages
+        if (ctx.matchBefore(/[ ,][a-zA-Z0-9]+$/) == null) return null
+        if (ctx.tokenBefore(["Identifier"]) == null) return null
+
+        const tree = syntaxTree(ctx.state)
+        const node = tree.resolve(ctx.pos, -1)
+        if (!(node.matchContext(["UsingStatement", "ImportPath"]) || node.matchContext(["ImportStatement", "ImportPath"]))) return null
+
+        const packages = await get_packages()
+        return await make_it_julian(autocomplete.completeFromList(packages))(ctx)
+    }
+}
+
 const local_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
     let identifier = ctx.tokenBefore(["Identifier"])
@@ -584,11 +617,19 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
  * @param {object} props
  * @param {PlutoRequestAutocomplete} props.request_autocomplete
  * @param {() => Promise<SpecialSymbols?>} props.request_special_symbols
+ * @param {() => Promise<string[]>} props.request_packages
  * @param {(query: string) => void} props.on_update_doc_query
  * @param {() => { [uuid: string] : String[]}} props.request_unsubmitted_global_definitions
  * @param {string} props.cell_id
  */
-export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols, on_update_doc_query, request_unsubmitted_global_definitions, cell_id }) => {
+export let pluto_autocomplete = ({
+    request_autocomplete,
+    request_special_symbols,
+    request_packages,
+    on_update_doc_query,
+    request_unsubmitted_global_definitions,
+    cell_id,
+}) => {
     let last_query = null
     let last_result = null
     /**
@@ -617,6 +658,7 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
                 special_symbols_completion(request_special_symbols),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_keyword,
+                complete_package_name(request_packages),
                 // complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 local_variables_completion,

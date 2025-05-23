@@ -84,16 +84,11 @@ import Pkg
     end
 
     @testset "Completions" begin
-        cs = PkgCompat.package_completions("Hyper")
+        cs = PkgCompat.registered_package_names()
         @test "HypertextLiteral" ∈ cs
         @test "Hyperscript" ∈ cs
 
-        cs = PkgCompat.package_completions("Date")
         @test "Dates" ∈ cs
-
-        cs = PkgCompat.package_completions("Dateskjashdfkjahsdfkjh")
-
-        @test isempty(cs)
     end
 
     @testset "Compat manipulation" begin
