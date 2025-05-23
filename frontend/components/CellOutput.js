@@ -1,7 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
 import DOMPurify from "../imports/DOMPurify.js"
-import AnsiUp from "../imports/AnsiUp.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
 
 import { ErrorMessage, ParseError } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
@@ -738,7 +738,7 @@ const ANSIUpContents = ({ body }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     useLayoutEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(body)
+        node_ref.current.innerHTML = ansi_to_html(body)
     }, [body])
     return html`<pre class="no-block"><code ref=${node_ref}></code></pre>`
 }
