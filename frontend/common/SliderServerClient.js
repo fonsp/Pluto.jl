@@ -18,15 +18,32 @@ const where_assigned = (/** @type {import("../components/Editor.js").CellDepende
     return all_cells.filter((cell_id) => _.some([...vars], (v) => Object.keys(graph[cell_id].downstream_cells_map).includes(v)))
 }
 
-const recursive_dependencies = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, starts) => {
+export const downstream_recursive = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, starts, { recursive = true } = {}) => {
+    /** @type {Set<string>} */
     const deps = new Set()
     const ends = [...starts]
     while (ends.length > 0) {
         const node = ends.splice(0, 1)[0]
-        _.flatten(Object.values(graph[node].downstream_cells_map)).forEach((child) => {
-            if (!deps.has(child)) {
-                ends.push(child)
-                deps.add(child)
+        _.flatten(Object.values(graph[node].downstream_cells_map)).forEach((next_cellid) => {
+            if (!deps.has(next_cellid)) {
+                if (recursive) ends.push(next_cellid)
+                deps.add(next_cellid)
+            }
+        })
+    }
+    return deps
+}
+
+export const upstream_recursive = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, starts, { recursive = true } = {}) => {
+    /** @type {Set<string>} */
+    const deps = new Set()
+    const ends = [...starts]
+    while (ends.length > 0) {
+        const node = ends.splice(0, 1)[0]
+        _.flatten(Object.values(graph[node].upstream_cells_map)).forEach((next_cellid) => {
+            if (!deps.has(next_cellid)) {
+                if (recursive) ends.push(next_cellid)
+                deps.add(next_cellid)
             }
         })
     }
@@ -117,7 +134,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const starts = where_assigned(dep_graph, explicit_bond_names)
 
         const first_layer = where_referenced(dep_graph, explicit_bond_names)
-        const next_layers = [...recursive_dependencies(dep_graph, first_layer)]
+        const next_layers = [...downstream_recursive(dep_graph, first_layer)]
         const cells_depending_on_explicits = _.uniq([...first_layer, ...next_layers])
 
         const to_send = new Set(explicit_bond_names)
@@ -133,7 +150,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
         const need_to_send_explicits = (() => {
             const _to_send_starts = where_assigned(dep_graph, to_send)
-            const _depends_on_to_send = recursive_dependencies(dep_graph, _to_send_starts)
+            const _depends_on_to_send = downstream_recursive(dep_graph, _to_send_starts)
             return !disjoint(_to_send_starts, _depends_on_to_send)
         })()
 

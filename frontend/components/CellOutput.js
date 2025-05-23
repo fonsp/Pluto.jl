@@ -183,7 +183,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         case "application/vnd.pluto.parseerror+object":
-            return html`<div><${ParseError} cell_id=${cell_id} ...${body} /></div>`
+            return html`<div><${ParseError} cell_id=${cell_id} last_run_timestamp=${last_run_timestamp} ...${body} /></div>`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`

@@ -216,7 +216,7 @@ const HighlightCallArgumentNames = ({ code }) => {
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
-export const ParseError = ({ cell_id, diagnostics }) => {
+export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
     useEffect(() => {
         window.dispatchEvent(
             new CustomEvent("cell_diagnostics", {
@@ -233,7 +233,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         <jlerror class="syntax-error">
             <header>
                 <p>Syntax error</p>
-                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} />
+                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} last_run_timestamp=${last_run_timestamp} />
             </header>
             <section>
                 <div class="stacktrace-header">
@@ -273,6 +273,9 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
 
     // too sciency
     if (frame.inlined) return false
+
+    // makes no sense anyways
+    if (frame.line < 1) return false
 
     if (params == null) {
         // no type signature... must be some function call that got optimized away or something special
