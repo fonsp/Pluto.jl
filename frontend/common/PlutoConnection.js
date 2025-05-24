@@ -336,6 +336,8 @@ export const create_pluto_connection = async ({
     const connect = async () => {
         let update_url_with_binder_token = async () => {
             try {
+                const on_a_binder_server = window.location.href.includes("binder")
+                if (!on_a_binder_server) return
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
                 if (!response.ok) {
