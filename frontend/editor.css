@@ -667,6 +667,17 @@ dialog#export .export_small_btns {
     top: 0em;
     background: var(--export-bg-color);
 }
+dialog#export .pride_message {
+    flex: 1 0 auto;
+    align-self: center;
+    margin-left: 32ch; */
+}
+dialog#export .pride_message p {
+    margin: 0;
+    padding: 0.2ch 1ch;
+    background: black;
+    transform: rotate(3deg);
+}
 pluto-editor.static_preview button.toggle_export {
     display: none;
 }

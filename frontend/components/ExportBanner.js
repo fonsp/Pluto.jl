@@ -108,9 +108,11 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         },
         []
     )
+    const pride = true
+    const prideMonth = new Date().getMonth() === 5
 
     return html`
-        <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${new Date().getMonth() === 5 ? "pride" : ""}>
+        <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${prideMonth ? "pride" : ""}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
@@ -151,6 +153,11 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         <section>Capture the entire notebook, and any changes you make.</section>
                     </a>
                 `}
+                ${prideMonth
+                    ? html`<div class="pride_message">
+                          <p>The future is <strong>queer</strong>!</p>
+                      </div>`
+                    : null}
             </div>
             <div class="export_small_btns">
                 <button
