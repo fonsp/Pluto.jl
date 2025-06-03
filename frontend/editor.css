@@ -583,14 +583,14 @@ dialog#export::after {
     pointer-events: none;
 }
 dialog.pride#export::after {
-    --c1: hsl(51.39deg 96.73% 51.96%);
-    --c2: hsl(281.12deg 52.66% 33.14%);
-    --c3: hsl(51.39deg 96.73% 51.96%);
-    --c4: hsl(0deg 0% 99.8%);
-    --c5: hsl(334.67deg 78.95% 77.65%);
-    --c6: hsl(204.67deg 71.81% 70.78%);
-    --c7: hsl(41, 63%, 23%);
-    --c8: hsl(0deg 0% 0%);
+    --c1: hsl(51.39deg 89.27% 68.71%);
+    --c2: hsl(281.12deg 68.59% 80.75%);
+    --c3: var(--c1);
+    --c4: hsl(0deg 0% 84.61%);
+    --c5: hsl(334.67deg 58.4% 75.81%);
+    --c6: hsl(204.67deg 41.19% 68.46%);
+    --c7: hsl(41deg 70.19% 37.26%);
+    --c8: hsl(0deg 0% 26.02%);
     background: repeating-linear-gradient(
         to right,
         var(--c1) 0%,
