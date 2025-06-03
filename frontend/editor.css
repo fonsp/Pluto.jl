@@ -562,15 +562,7 @@ dialog#export::before {
     background: inherit;
 }
 dialog.pride#export {
-    background: linear-gradient(
-        80deg,
-        hsl(0deg 68.64% 31%),
-        hsl(30deg 95.85% 40.32%),
-        hsl(55deg 100% 28.35%),
-        hsl(140deg 22.16% 43.16%),
-        hsl(220deg 35.66% 38.34%),
-        hsl(280deg 30.8% 32.11%)
-    );
+    background: linear-gradient(80deg, hsl(0deg 43.55% 26.63%), hsl(30deg 50.05% 37.86%), hsl(55deg 49.41% 34.19%), hsl(140deg 12.48% 45.98%), hsl(220deg 35.66% 38.34%), hsl(280deg 30.8% 32.11%));
 }
 dialog#export::after {
     transform: translateY(1px);
