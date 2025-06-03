@@ -28,6 +28,7 @@ import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
+import lodashLibrary from "../imports/lodash.js"
 
 const prettyAssignee = (assignee) =>
     assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
@@ -444,6 +445,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                       }),
 
                                 ...observablehq_for_cells,
+                                _: lodashLibrary,
                             },
                             code,
                         })
