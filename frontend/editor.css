@@ -561,6 +561,56 @@ dialog#export::before {
     height: 100px;
     background: inherit;
 }
+dialog.pride#export {
+    background: linear-gradient(
+        80deg,
+        hsl(0deg 68.64% 31%),
+        hsl(30deg 95.85% 40.32%),
+        hsl(55deg 100% 28.35%),
+        hsl(140deg 22.16% 43.16%),
+        hsl(220deg 35.66% 38.34%),
+        hsl(280deg 30.8% 32.11%)
+    );
+}
+dialog#export::after {
+    transform: translateY(1px);
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 8px;
+    width: 100%;
+    pointer-events: none;
+}
+dialog.pride#export::after {
+    --c1: hsl(51.39deg 96.73% 51.96%);
+    --c2: hsl(281.12deg 52.66% 33.14%);
+    --c3: hsl(51.39deg 96.73% 51.96%);
+    --c4: hsl(0deg 0% 99.8%);
+    --c5: hsl(334.67deg 78.95% 77.65%);
+    --c6: hsl(204.67deg 71.81% 70.78%);
+    --c7: hsl(41, 63%, 23%);
+    --c8: hsl(0deg 0% 0%);
+    background: repeating-linear-gradient(
+        to right,
+        var(--c1) 0%,
+        var(--c1) 12.5%,
+        var(--c2) 12.5%,
+        var(--c2) 25%,
+        var(--c3) 25%,
+        var(--c3) 37.5%,
+        var(--c4) 37.5%,
+        var(--c4) 50%,
+        var(--c5) 50%,
+        var(--c5) 62.5%,
+        var(--c6) 62.5%,
+        var(--c6) 75%,
+        var(--c7) 75%,
+        /* black */ var(--c7) 87.5%,
+        var(--c8) 87.5%,
+        /* white */ var(--c8) 100%
+    );
+}
 dialog#export div#container {
     flex-direction: row;
     display: flex;

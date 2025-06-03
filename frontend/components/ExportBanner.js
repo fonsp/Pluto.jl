@@ -110,7 +110,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
     )
 
     return html`
-        <dialog id="export" inert=${!open} open=${open} ref=${element_ref}>
+        <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${new Date().getMonth() === 5 ? "pride" : ""}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
