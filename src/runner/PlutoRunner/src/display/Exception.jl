@@ -91,7 +91,7 @@ function format_output(val::CapturedException; context=default_iocontext)
             MIME"application/vnd.pluto.stacktrace+object"()
         )
     else
-        Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
+        Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => val), MIME"application/vnd.pluto.stacktrace+object"()
     end
 end
 
