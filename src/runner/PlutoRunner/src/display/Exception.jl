@@ -39,7 +39,7 @@ function format_output(val::CapturedException; context=default_iocontext)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end
 
-    stacktrace = if PRETTY_STACKTRACES[]
+    if PRETTY_STACKTRACES[]
         ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
         stack = [s for (s, _) in val.processed_bt]
 
@@ -47,7 +47,7 @@ function format_output(val::CapturedException; context=default_iocontext)
 
         function_wrap_index = findlast(frame_is_from_usercode, stack)
         internal_index = findfirst(frame_is_from_plutorunner, stack)
-        
+
         limit = if function_wrap_index !== nothing
             function_wrap_index
         elseif internal_index !== nothing
@@ -79,20 +79,20 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :parent_module => pm === nothing ? nothing : string(pm),
             )
         end
-    else
-        val
-    end
 
-    (
-        Dict{Symbol,Any}(
-            :msg => sprint(try_showerror, val.ex),
-            :stacktrace => stacktrace,
-            :plain_error => sprint() do io
-                try_showerror(io, val.ex, val.processed_bt[1:something(limit, end)]; color=false)
-            end,
-        ),
-        MIME"application/vnd.pluto.stacktrace+object"()
-    )
+        (
+            Dict{Symbol,Any}(
+                :msg => sprint(try_showerror, val.ex),
+                :stacktrace => pretty,
+                :plain_error => sprint() do io
+                    try_showerror(io, val.ex, val.processed_bt[1:something(limit, end)]; color=false)
+                end,
+            ),
+            MIME"application/vnd.pluto.stacktrace+object"()
+        )
+    else
+        Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
+    end
 end
 
 
