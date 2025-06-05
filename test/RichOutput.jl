@@ -466,7 +466,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             
             @testset "PlutoStaticHTML API" begin
                 
-                @testset "before" begin@test notebook.cells[6] |> noerror
+                @testset "before" begin
+                    @test notebook.cells[6] |> noerror
                     st = notebook.cells[1].output.body
                     @test occursin("domain"i, st[:msg])
                     @test st[:stacktrace] isa Vector
