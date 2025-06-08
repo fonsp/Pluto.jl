@@ -388,3 +388,21 @@ end
 
     cleanup(🍭, notebook)
 end
+
+
+@testset "Disabled cell definitions should be removed (#3089)" begin
+    🍭 = ServerSession()
+    notebook = Notebook(Cell.([
+        "x = 1",
+        "y = 9",
+        "x + y",
+    ]))
+    update_run!(🍭, notebook, notebook.cells)
+    set_disabled(notebook.cells[1], true)
+    update_run!(🍭, notebook, notebook.cells[1])
+    delete_cell!(notebook, notebook.cells[1])
+    update_run!(🍭, notebook, notebook.cells[1])
+    # after the update, cell 1 is removed from the notebook
+    # "x + y" (cell 2 now) should error since x is gone
+    @test notebook.cells[2].errored
+end
