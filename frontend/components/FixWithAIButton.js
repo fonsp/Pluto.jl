@@ -156,10 +156,9 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             console.debug("fixed_code", fixed_code)
 
             // Update the cell's local code without running it
-            const cm = node_ref.current?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor")
+            const cm = node_ref.current?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor .cm-content")
             if (cm) {
-                // @ts-ignore
-                cm.CodeMirror.setValue(fixed_code)
+                cm.dispatchEvent(new CustomEvent("ai-suggestion", { detail: { code: fixed_code } }))
                 setButtonState("success")
             }
         } catch (error) {

@@ -6458,81 +6458,81 @@ the currently selected completion.
 */
 declare function setSelectedCompletion(index: number): StateEffect<unknown>;
 
-type index_d_CloseBracketConfig = CloseBracketConfig;
-type index_d_Completion = Completion;
-type index_d_CompletionContext = CompletionContext;
-declare const index_d_CompletionContext: typeof CompletionContext;
-type index_d_CompletionInfo = CompletionInfo;
-type index_d_CompletionResult = CompletionResult;
-type index_d_CompletionSection = CompletionSection;
-type index_d_CompletionSource = CompletionSource;
-declare const index_d_acceptCompletion: typeof acceptCompletion;
-declare const index_d_autocompletion: typeof autocompletion;
-declare const index_d_clearSnippet: typeof clearSnippet;
-declare const index_d_closeBrackets: typeof closeBrackets;
-declare const index_d_closeBracketsKeymap: typeof closeBracketsKeymap;
-declare const index_d_closeCompletion: typeof closeCompletion;
-declare const index_d_completeAnyWord: typeof completeAnyWord;
-declare const index_d_completeFromList: typeof completeFromList;
-declare const index_d_completionKeymap: typeof completionKeymap;
-declare const index_d_completionStatus: typeof completionStatus;
-declare const index_d_currentCompletions: typeof currentCompletions;
-declare const index_d_deleteBracketPair: typeof deleteBracketPair;
-declare const index_d_hasNextSnippetField: typeof hasNextSnippetField;
-declare const index_d_hasPrevSnippetField: typeof hasPrevSnippetField;
-declare const index_d_ifIn: typeof ifIn;
-declare const index_d_ifNotIn: typeof ifNotIn;
-declare const index_d_insertBracket: typeof insertBracket;
-declare const index_d_insertCompletionText: typeof insertCompletionText;
-declare const index_d_moveCompletionSelection: typeof moveCompletionSelection;
-declare const index_d_nextSnippetField: typeof nextSnippetField;
-declare const index_d_pickedCompletion: typeof pickedCompletion;
-declare const index_d_prevSnippetField: typeof prevSnippetField;
-declare const index_d_selectedCompletion: typeof selectedCompletion;
-declare const index_d_selectedCompletionIndex: typeof selectedCompletionIndex;
-declare const index_d_setSelectedCompletion: typeof setSelectedCompletion;
-declare const index_d_snippet: typeof snippet;
-declare const index_d_snippetCompletion: typeof snippetCompletion;
-declare const index_d_snippetKeymap: typeof snippetKeymap;
-declare const index_d_startCompletion: typeof startCompletion;
-declare namespace index_d {
+type index_d$1_CloseBracketConfig = CloseBracketConfig;
+type index_d$1_Completion = Completion;
+type index_d$1_CompletionContext = CompletionContext;
+declare const index_d$1_CompletionContext: typeof CompletionContext;
+type index_d$1_CompletionInfo = CompletionInfo;
+type index_d$1_CompletionResult = CompletionResult;
+type index_d$1_CompletionSection = CompletionSection;
+type index_d$1_CompletionSource = CompletionSource;
+declare const index_d$1_acceptCompletion: typeof acceptCompletion;
+declare const index_d$1_autocompletion: typeof autocompletion;
+declare const index_d$1_clearSnippet: typeof clearSnippet;
+declare const index_d$1_closeBrackets: typeof closeBrackets;
+declare const index_d$1_closeBracketsKeymap: typeof closeBracketsKeymap;
+declare const index_d$1_closeCompletion: typeof closeCompletion;
+declare const index_d$1_completeAnyWord: typeof completeAnyWord;
+declare const index_d$1_completeFromList: typeof completeFromList;
+declare const index_d$1_completionKeymap: typeof completionKeymap;
+declare const index_d$1_completionStatus: typeof completionStatus;
+declare const index_d$1_currentCompletions: typeof currentCompletions;
+declare const index_d$1_deleteBracketPair: typeof deleteBracketPair;
+declare const index_d$1_hasNextSnippetField: typeof hasNextSnippetField;
+declare const index_d$1_hasPrevSnippetField: typeof hasPrevSnippetField;
+declare const index_d$1_ifIn: typeof ifIn;
+declare const index_d$1_ifNotIn: typeof ifNotIn;
+declare const index_d$1_insertBracket: typeof insertBracket;
+declare const index_d$1_insertCompletionText: typeof insertCompletionText;
+declare const index_d$1_moveCompletionSelection: typeof moveCompletionSelection;
+declare const index_d$1_nextSnippetField: typeof nextSnippetField;
+declare const index_d$1_pickedCompletion: typeof pickedCompletion;
+declare const index_d$1_prevSnippetField: typeof prevSnippetField;
+declare const index_d$1_selectedCompletion: typeof selectedCompletion;
+declare const index_d$1_selectedCompletionIndex: typeof selectedCompletionIndex;
+declare const index_d$1_setSelectedCompletion: typeof setSelectedCompletion;
+declare const index_d$1_snippet: typeof snippet;
+declare const index_d$1_snippetCompletion: typeof snippetCompletion;
+declare const index_d$1_snippetKeymap: typeof snippetKeymap;
+declare const index_d$1_startCompletion: typeof startCompletion;
+declare namespace index_d$1 {
   export {
-    index_d_CloseBracketConfig as CloseBracketConfig,
-    index_d_Completion as Completion,
-    index_d_CompletionContext as CompletionContext,
-    index_d_CompletionInfo as CompletionInfo,
-    index_d_CompletionResult as CompletionResult,
-    index_d_CompletionSection as CompletionSection,
-    index_d_CompletionSource as CompletionSource,
-    index_d_acceptCompletion as acceptCompletion,
-    index_d_autocompletion as autocompletion,
-    index_d_clearSnippet as clearSnippet,
-    index_d_closeBrackets as closeBrackets,
-    index_d_closeBracketsKeymap as closeBracketsKeymap,
-    index_d_closeCompletion as closeCompletion,
-    index_d_completeAnyWord as completeAnyWord,
-    index_d_completeFromList as completeFromList,
-    index_d_completionKeymap as completionKeymap,
-    index_d_completionStatus as completionStatus,
-    index_d_currentCompletions as currentCompletions,
-    index_d_deleteBracketPair as deleteBracketPair,
-    index_d_hasNextSnippetField as hasNextSnippetField,
-    index_d_hasPrevSnippetField as hasPrevSnippetField,
-    index_d_ifIn as ifIn,
-    index_d_ifNotIn as ifNotIn,
-    index_d_insertBracket as insertBracket,
-    index_d_insertCompletionText as insertCompletionText,
-    index_d_moveCompletionSelection as moveCompletionSelection,
-    index_d_nextSnippetField as nextSnippetField,
-    index_d_pickedCompletion as pickedCompletion,
-    index_d_prevSnippetField as prevSnippetField,
-    index_d_selectedCompletion as selectedCompletion,
-    index_d_selectedCompletionIndex as selectedCompletionIndex,
-    index_d_setSelectedCompletion as setSelectedCompletion,
-    index_d_snippet as snippet,
-    index_d_snippetCompletion as snippetCompletion,
-    index_d_snippetKeymap as snippetKeymap,
-    index_d_startCompletion as startCompletion,
+    index_d$1_CloseBracketConfig as CloseBracketConfig,
+    index_d$1_Completion as Completion,
+    index_d$1_CompletionContext as CompletionContext,
+    index_d$1_CompletionInfo as CompletionInfo,
+    index_d$1_CompletionResult as CompletionResult,
+    index_d$1_CompletionSection as CompletionSection,
+    index_d$1_CompletionSource as CompletionSource,
+    index_d$1_acceptCompletion as acceptCompletion,
+    index_d$1_autocompletion as autocompletion,
+    index_d$1_clearSnippet as clearSnippet,
+    index_d$1_closeBrackets as closeBrackets,
+    index_d$1_closeBracketsKeymap as closeBracketsKeymap,
+    index_d$1_closeCompletion as closeCompletion,
+    index_d$1_completeAnyWord as completeAnyWord,
+    index_d$1_completeFromList as completeFromList,
+    index_d$1_completionKeymap as completionKeymap,
+    index_d$1_completionStatus as completionStatus,
+    index_d$1_currentCompletions as currentCompletions,
+    index_d$1_deleteBracketPair as deleteBracketPair,
+    index_d$1_hasNextSnippetField as hasNextSnippetField,
+    index_d$1_hasPrevSnippetField as hasPrevSnippetField,
+    index_d$1_ifIn as ifIn,
+    index_d$1_ifNotIn as ifNotIn,
+    index_d$1_insertBracket as insertBracket,
+    index_d$1_insertCompletionText as insertCompletionText,
+    index_d$1_moveCompletionSelection as moveCompletionSelection,
+    index_d$1_nextSnippetField as nextSnippetField,
+    index_d$1_pickedCompletion as pickedCompletion,
+    index_d$1_prevSnippetField as prevSnippetField,
+    index_d$1_selectedCompletion as selectedCompletion,
+    index_d$1_selectedCompletionIndex as selectedCompletionIndex,
+    index_d$1_setSelectedCompletion as setSelectedCompletion,
+    index_d$1_snippet as snippet,
+    index_d$1_snippetCompletion as snippetCompletion,
+    index_d$1_snippetKeymap as snippetKeymap,
+    index_d$1_startCompletion as startCompletion,
   };
 }
 
@@ -7239,4 +7239,458 @@ Python language support.
 */
 declare function python(): LanguageSupport;
 
-export { Annotation, ChangeSet, Compartment, Decoration, Diagnostic, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, MatchDecorator, NodeProp, NodeWeakMap, PostgreSQL, SelectionRange, StateEffect, StateField, Text, Tooltip, Transaction, Tree, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index_d as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, completionKeymap, css, cssLanguage, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, getClientID, getSyncedVersion, highlightActiveLine, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia, keymap, lineNumbers, linter, markdown, markdownLanguage, moveLineDown, moveLineUp, parseCode, parseMixed, placeholder, python, pythonLanguage, receiveUpdates, rectangularSelection, searchKeymap, selectNextOccurrence, sendableUpdates, setDiagnostics, showTooltip, sql, syntaxHighlighting, syntaxTree, syntaxTreeAvailable, tags, tooltips };
+/**
+A changed range.
+*/
+declare class Change {
+    /**
+    The start of the change in document A.
+    */
+    readonly fromA: number;
+    /**
+    The end of the change in document A. This is equal to `fromA`
+    in case of insertions.
+    */
+    readonly toA: number;
+    /**
+    The start of the change in document B.
+    */
+    readonly fromB: number;
+    /**
+    The end of the change in document B. This is equal to `fromB`
+    for deletions.
+    */
+    readonly toB: number;
+    constructor(
+    /**
+    The start of the change in document A.
+    */
+    fromA: number, 
+    /**
+    The end of the change in document A. This is equal to `fromA`
+    in case of insertions.
+    */
+    toA: number, 
+    /**
+    The start of the change in document B.
+    */
+    fromB: number, 
+    /**
+    The end of the change in document B. This is equal to `fromB`
+    for deletions.
+    */
+    toB: number);
+}
+/**
+Options passed to diffing functions.
+*/
+interface DiffConfig {
+    /**
+    When given, this limits the depth of full (expensive) diff
+    computations, causing them to give up and fall back to a faster
+    but less precise approach when there is more than this many
+    changed characters in a scanned range. This should help avoid
+    quadratic running time on large, very different inputs.
+    */
+    scanLimit?: number;
+    /**
+    When set, this makes the algorithm periodically check how long
+    it has been running, and if it has taken more than the given
+    number of milliseconds, it aborts detailed diffing in falls back
+    to the imprecise algorithm.
+    */
+    timeout?: number;
+}
+/**
+Compute the difference between two strings.
+*/
+declare function diff(a: string, b: string, config?: DiffConfig): readonly Change[];
+/**
+Compute the difference between the given strings, and clean up the
+resulting diff for presentation to users by dropping short
+unchanged ranges, and aligning changes to word boundaries when
+appropriate.
+*/
+declare function presentableDiff(a: string, b: string, config?: DiffConfig): readonly Change[];
+
+/**
+A chunk describes a range of lines which have changed content in
+them. Either side (a/b) may either be empty (when its `to` is
+equal to its `from`), or points at a range starting at the start
+of the first changed line, to 1 past the end of the last changed
+line. Note that `to` positions may point past the end of the
+document. Use `endA`/`endB` if you need an end position that is
+certain to be a valid document position.
+*/
+declare class Chunk {
+    /**
+    The individual changes inside this chunk. These are stored
+    relative to the start of the chunk, so you have to add
+    `chunk.fromA`/`fromB` to get document positions.
+    */
+    readonly changes: readonly Change[];
+    /**
+    The start of the chunk in document A.
+    */
+    readonly fromA: number;
+    /**
+    The end of the chunk in document A. This is equal to `fromA`
+    when the chunk covers no lines in document A, or is one unit
+    past the end of the last line in the chunk if it does.
+    */
+    readonly toA: number;
+    /**
+    The start of the chunk in document B.
+    */
+    readonly fromB: number;
+    /**
+    The end of the chunk in document A.
+    */
+    readonly toB: number;
+    /**
+    This is set to false when the diff used to compute this chunk
+    fell back to fast, imprecise diffing.
+    */
+    readonly precise: boolean;
+    constructor(
+    /**
+    The individual changes inside this chunk. These are stored
+    relative to the start of the chunk, so you have to add
+    `chunk.fromA`/`fromB` to get document positions.
+    */
+    changes: readonly Change[], 
+    /**
+    The start of the chunk in document A.
+    */
+    fromA: number, 
+    /**
+    The end of the chunk in document A. This is equal to `fromA`
+    when the chunk covers no lines in document A, or is one unit
+    past the end of the last line in the chunk if it does.
+    */
+    toA: number, 
+    /**
+    The start of the chunk in document B.
+    */
+    fromB: number, 
+    /**
+    The end of the chunk in document A.
+    */
+    toB: number, 
+    /**
+    This is set to false when the diff used to compute this chunk
+    fell back to fast, imprecise diffing.
+    */
+    precise?: boolean);
+    /**
+    Returns `fromA` if the chunk is empty in A, or the end of the
+    last line in the chunk otherwise.
+    */
+    get endA(): number;
+    /**
+    Returns `fromB` if the chunk is empty in B, or the end of the
+    last line in the chunk otherwise.
+    */
+    get endB(): number;
+    /**
+    Build a set of changed chunks for the given documents.
+    */
+    static build(a: Text, b: Text, conf?: DiffConfig): readonly Chunk[];
+    /**
+    Update a set of chunks for changes in document A. `a` should
+    hold the updated document A.
+    */
+    static updateA(chunks: readonly Chunk[], a: Text, b: Text, changes: ChangeDesc, conf?: DiffConfig): readonly Chunk[];
+    /**
+    Update a set of chunks for changes in document B.
+    */
+    static updateB(chunks: readonly Chunk[], a: Text, b: Text, changes: ChangeDesc, conf?: DiffConfig): readonly Chunk[];
+}
+
+/**
+Get the changed chunks for the merge view that this editor is part
+of, plus the side it is on if it is part of a `MergeView`. Returns
+null if the editor doesn't have a merge extension active or the
+merge view hasn't finished initializing yet.
+*/
+declare function getChunks(state: EditorState): {
+    chunks: readonly Chunk[];
+    side: "a" | "b" | null;
+} | null;
+/**
+Move the selection to the next changed chunk.
+*/
+declare const goToNextChunk: StateCommand;
+/**
+Move the selection to the previous changed chunk.
+*/
+declare const goToPreviousChunk: StateCommand;
+
+/**
+Configuration options to `MergeView` that can be provided both
+initially and to [`reconfigure`](https://codemirror.net/6/docs/ref/#merge.MergeView.reconfigure).
+*/
+interface MergeConfig {
+    /**
+    Controls whether editor A or editor B is shown first. Defaults
+    to `"a-b"`.
+    */
+    orientation?: "a-b" | "b-a";
+    /**
+    Controls whether revert controls are shown between changed
+    chunks.
+    */
+    revertControls?: "a-to-b" | "b-to-a";
+    /**
+    When given, this function is called to render the button to
+    revert a chunk.
+    */
+    renderRevertControl?: () => HTMLElement;
+    /**
+    By default, the merge view will mark inserted and deleted text
+    in changed chunks. Set this to false to turn that off.
+    */
+    highlightChanges?: boolean;
+    /**
+    Controls whether a gutter marker is shown next to changed lines.
+    */
+    gutter?: boolean;
+    /**
+    When given, long stretches of unchanged text are collapsed.
+    `margin` gives the number of lines to leave visible after/before
+    a change (default is 3), and `minSize` gives the minimum amount
+    of collapsible lines that need to be present (defaults to 4).
+    */
+    collapseUnchanged?: {
+        margin?: number;
+        minSize?: number;
+    };
+    /**
+    Pass options to the diff algorithm. By default, the merge view
+    sets [`scanLimit`](https://codemirror.net/6/docs/ref/#merge.DiffConfig.scanLimit) to 500.
+    */
+    diffConfig?: DiffConfig;
+}
+/**
+Configuration options given to the [`MergeView`](https://codemirror.net/6/docs/ref/#merge.MergeView)
+constructor.
+*/
+interface DirectMergeConfig extends MergeConfig {
+    /**
+    Configuration for the first editor (the left one in a
+    left-to-right context).
+    */
+    a: EditorStateConfig;
+    /**
+    Configuration for the second editor.
+    */
+    b: EditorStateConfig;
+    /**
+    Parent element to append the view to.
+    */
+    parent?: Element | DocumentFragment;
+    /**
+    An optional root. Only necessary if the view is mounted in a
+    shadow root or a document other than the global `document`
+    object.
+    */
+    root?: Document | ShadowRoot;
+}
+/**
+A merge view manages two editors side-by-side, highlighting the
+difference between them and vertically aligning unchanged lines.
+If you want one of the editors to be read-only, you have to
+configure that in its extensions.
+
+By default, views are not scrollable. Style them (`.cm-mergeView`)
+with a height and `overflow: auto` to make them scrollable.
+*/
+declare class MergeView {
+    /**
+    The first editor.
+    */
+    a: EditorView;
+    /**
+    The second editor.
+    */
+    b: EditorView;
+    /**
+    The outer DOM element holding the view.
+    */
+    dom: HTMLElement;
+    private editorDOM;
+    private revertDOM;
+    private revertToA;
+    private revertToLeft;
+    private renderRevert;
+    private diffConf;
+    /**
+    The current set of changed chunks.
+    */
+    chunks: readonly Chunk[];
+    private measuring;
+    /**
+    Create a new merge view.
+    */
+    constructor(config: DirectMergeConfig);
+    private dispatch;
+    /**
+    Reconfigure an existing merge view.
+    */
+    reconfigure(config: MergeConfig): void;
+    private setupRevertControls;
+    private scheduleMeasure;
+    private measure;
+    private updateRevertButtons;
+    private renderRevertButton;
+    private revertClicked;
+    /**
+    Destroy this merge view.
+    */
+    destroy(): void;
+}
+
+interface UnifiedMergeConfig {
+    /**
+    The other document to compare the editor content with.
+    */
+    original: Text | string;
+    /**
+    By default, the merge view will mark inserted and deleted text
+    in changed chunks. Set this to false to turn that off.
+    */
+    highlightChanges?: boolean;
+    /**
+    Controls whether a gutter marker is shown next to changed lines.
+    */
+    gutter?: boolean;
+    /**
+    By default, deleted chunks are highlighted using the main
+    editor's language. Since these are just fragments, not full
+    documents, this doesn't always work well. Set this option to
+    false to disable syntax highlighting for deleted lines.
+    */
+    syntaxHighlightDeletions?: boolean;
+    /**
+    When enabled (off by default), chunks that look like they
+    contain only inline changes will have the changes displayed
+    inline, rather than as separate deleted/inserted lines.
+    */
+    allowInlineDiffs?: boolean;
+    /**
+    Deleted blocks larger than this size do not get
+    syntax-highlighted. Defaults to 3000.
+    */
+    syntaxHighlightDeletionsMaxLength?: number;
+    /**
+    Controls whether accept/reject buttons are displayed for each
+    changed chunk. Defaults to true.
+    */
+    mergeControls?: boolean;
+    /**
+    Pass options to the diff algorithm. By default, the merge view
+    sets [`scanLimit`](https://codemirror.net/6/docs/ref/#merge.DiffConfig.scanLimit) to 500.
+    */
+    diffConfig?: DiffConfig;
+    /**
+    When given, long stretches of unchanged text are collapsed.
+    `margin` gives the number of lines to leave visible after/before
+    a change (default is 3), and `minSize` gives the minimum amount
+    of collapsible lines that need to be present (defaults to 4).
+    */
+    collapseUnchanged?: {
+        margin?: number;
+        minSize?: number;
+    };
+}
+/**
+Create an extension that causes the editor to display changes
+between its content and the given original document. Changed
+chunks will be highlighted, with uneditable widgets displaying the
+original text displayed above the new text.
+*/
+declare function unifiedMergeView(config: UnifiedMergeConfig): (Extension | StateField<DecorationSet>)[];
+/**
+The state effect used to signal changes in the original doc in a
+unified merge view.
+*/
+declare const updateOriginalDoc: StateEffectType<{
+    doc: Text;
+    changes: ChangeSet;
+}>;
+/**
+Create an effect that, when added to a transaction on a unified
+merge view, will update the original document that's being compared against.
+*/
+declare function originalDocChangeEffect(state: EditorState, changes: ChangeSet): StateEffect<{
+    doc: Text;
+    changes: ChangeSet;
+}>;
+/**
+Get the original document from a unified merge editor's state.
+*/
+declare function getOriginalDoc(state: EditorState): Text;
+/**
+In a [unified](https://codemirror.net/6/docs/ref/#merge.unifiedMergeView) merge view, accept the
+chunk under the given position or the cursor. This chunk will no
+longer be highlighted unless it is edited again.
+*/
+declare function acceptChunk(view: EditorView, pos?: number): boolean;
+/**
+In a [unified](https://codemirror.net/6/docs/ref/#merge.unifiedMergeView) merge view, reject the
+chunk under the given position or the cursor. Reverts that range
+to the content it has in the original document.
+*/
+declare function rejectChunk(view: EditorView, pos?: number): boolean;
+
+/**
+A state effect that expands the section of collapsed unchanged
+code starting at the given position.
+*/
+declare const uncollapseUnchanged: StateEffectType<number>;
+
+type index_d_Change = Change;
+declare const index_d_Change: typeof Change;
+type index_d_Chunk = Chunk;
+declare const index_d_Chunk: typeof Chunk;
+type index_d_DiffConfig = DiffConfig;
+type index_d_DirectMergeConfig = DirectMergeConfig;
+type index_d_MergeConfig = MergeConfig;
+type index_d_MergeView = MergeView;
+declare const index_d_MergeView: typeof MergeView;
+declare const index_d_acceptChunk: typeof acceptChunk;
+declare const index_d_diff: typeof diff;
+declare const index_d_getChunks: typeof getChunks;
+declare const index_d_getOriginalDoc: typeof getOriginalDoc;
+declare const index_d_goToNextChunk: typeof goToNextChunk;
+declare const index_d_goToPreviousChunk: typeof goToPreviousChunk;
+declare const index_d_originalDocChangeEffect: typeof originalDocChangeEffect;
+declare const index_d_presentableDiff: typeof presentableDiff;
+declare const index_d_rejectChunk: typeof rejectChunk;
+declare const index_d_uncollapseUnchanged: typeof uncollapseUnchanged;
+declare const index_d_unifiedMergeView: typeof unifiedMergeView;
+declare const index_d_updateOriginalDoc: typeof updateOriginalDoc;
+declare namespace index_d {
+  export {
+    index_d_Change as Change,
+    index_d_Chunk as Chunk,
+    index_d_DiffConfig as DiffConfig,
+    index_d_DirectMergeConfig as DirectMergeConfig,
+    index_d_MergeConfig as MergeConfig,
+    index_d_MergeView as MergeView,
+    index_d_acceptChunk as acceptChunk,
+    index_d_diff as diff,
+    index_d_getChunks as getChunks,
+    index_d_getOriginalDoc as getOriginalDoc,
+    index_d_goToNextChunk as goToNextChunk,
+    index_d_goToPreviousChunk as goToPreviousChunk,
+    index_d_originalDocChangeEffect as originalDocChangeEffect,
+    index_d_presentableDiff as presentableDiff,
+    index_d_rejectChunk as rejectChunk,
+    index_d_uncollapseUnchanged as uncollapseUnchanged,
+    index_d_unifiedMergeView as unifiedMergeView,
+    index_d_updateOriginalDoc as updateOriginalDoc,
+  };
+}
+
+export { Annotation, ChangeSet, Compartment, Decoration, Diagnostic, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, MatchDecorator, NodeProp, NodeWeakMap, PostgreSQL, SelectionRange, StateEffect, StateField, Text, Tooltip, Transaction, Tree, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index_d$1 as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, completionKeymap, css, cssLanguage, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, getClientID, getSyncedVersion, highlightActiveLine, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia, keymap, lineNumbers, linter, markdown, markdownLanguage, index_d as merge, moveLineDown, moveLineUp, parseCode, parseMixed, placeholder, python, pythonLanguage, receiveUpdates, rectangularSelection, searchKeymap, selectNextOccurrence, sendableUpdates, setDiagnostics, showTooltip, sql, syntaxHighlighting, syntaxTree, syntaxTreeAvailable, tags, tooltips };
