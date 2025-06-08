@@ -3940,7 +3940,13 @@ jlerror.syntax-error > header {
     align-items: center;
 }
 
-button.fix-with-ai {
+.fix-with-ai {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fix-with-ai button {
     font-family: var(--system-ui-font-stack);
     font-size: 0.8rem;
     font-weight: 500;
@@ -3953,11 +3959,10 @@ button.fix-with-ai {
     align-items: center;
     gap: 6px;
     background: var(--ai-gradient-bg);
-    margin-left: 8px;
     transition: background 0.3s ease;
 }
 
-button.fix-with-ai::before {
+.fix-with-ai button::before {
     content: "";
     display: inline-block;
     width: 1.2em;
@@ -3967,21 +3972,33 @@ button.fix-with-ai::before {
     transition: background-image 0.3s ease;
 }
 
-button.fix-with-ai::before {
+.fix-with-ai button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sparkles.svg");
 }
-button.fix-with-ai-loading {
+
+.fix-with-ai-loading button {
     background: linear-gradient(135deg, rgba(65, 105, 225, 0.1), rgba(147, 112, 219, 0.1));
 }
-button.fix-with-ai-loading::before {
+
+.fix-with-ai-loading button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
     animation: identifier-spin 1s linear infinite;
 }
-button.fix-with-ai-success {
-    background: rgba(150, 150, 150, 0.15);
+
+.fix-with-ai-success button {
+    background: rgb(89 174 87 / 22%);
 }
-button.fix-with-ai-success::before {
+
+.fix-with-ai-success button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
+}
+
+.fix-with-ai button.reject-ai-fix {
+    background: rgba(231, 71, 71, 0.228);
+}
+
+.fix-with-ai button.reject-ai-fix::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
 }
 
 .ai-permission-prompt {

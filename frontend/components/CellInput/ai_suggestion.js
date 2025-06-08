@@ -4,35 +4,42 @@ import { LastRemoteCodeSetTimeFacet } from "../CellInput.js"
 export const AiSuggestionPlugin = () => {
     const compartment = new Compartment()
 
-    const ai_suggestion_transaction = (/** @type {EditorState} */ state, suggested_code) => {
+    const ai_suggestion_transaction = (/** @type {EditorState} */ state, suggested_code, reject) => {
         const merge_ext = merge.unifiedMergeView({ original: state.doc, gutter: false, allowInlineDiffs: true })
 
-        return state.update({
-            effects: [
-                AISuggestionTimeEffect.of(Date.now()),
-                compartment.reconfigure([
-                    merge_ext,
-                    AllAccepted,
-                    disable_merge_when_all_accepted(compartment),
-                    // dont_diff_new_changes_ext(),
-                ]),
-            ],
-            changes: [
-                {
-                    from: 0,
-                    to: state.doc.length,
-                    insert: suggested_code,
-                },
-            ],
-        })
+        return reject
+            ? state.update({
+                  effects: compartment.reconfigure([]),
+                  changes: {
+                      from: 0,
+                      to: state.doc.length,
+                      insert: suggested_code,
+                  },
+              })
+            : state.update({
+                  effects: [
+                      AISuggestionTimeEffect.of(Date.now()),
+                      compartment.reconfigure([
+                          merge_ext,
+                          AllAccepted,
+                          disable_merge_when_all_accepted(compartment),
+                          // dont_diff_new_changes_ext(),
+                      ]),
+                  ],
+                  changes: {
+                      from: 0,
+                      to: state.doc.length,
+                      insert: suggested_code,
+                  },
+              })
     }
 
     const ai_event_listener = EditorView.domEventHandlers({
         "ai-suggestion": (event, view) => {
             console.log("ai-suggestion", event)
-            const { code } = event.detail
+            const { code, reject } = event.detail
             const state = view.state
-            const tr = ai_suggestion_transaction(state, code)
+            const tr = ai_suggestion_transaction(state, code, reject)
             view.dispatch(tr)
             refresh_view(view)
             return true
@@ -46,7 +53,6 @@ const AllAccepted = StateField.define({
     create: () => false,
     update: (all_accepted, tr) => {
         if (!tr.docChanged) all_accepted
-
         return merge.getOriginalDoc(tr.state).eq(tr.newDoc)
     },
 })
@@ -86,6 +92,7 @@ const refresh_view = (/** @type {EditorView} */ view) => {
     })
 }
 
+// Broken :((((
 const dont_diff_new_changes_ext = () => {
     let _refresh = () => {}
 
