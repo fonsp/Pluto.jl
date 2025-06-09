@@ -244,7 +244,10 @@ export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
                         ({ message, from, to, line }) =>
                             html`<li
                                 class="from_this_notebook from_this_cell important"
-                                onmouseenter=${() => window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
+                                onmouseenter=${() =>
+                                    cell_is_unedited(cell_id)
+                                        ? window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))
+                                        : null}
                                 onmouseleave=${() =>
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
@@ -259,6 +262,8 @@ export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
         </jlerror>
     `
 }
+
+const cell_is_unedited = (cell_id) => document.querySelector(`pluto-cell[id="${cell_id}"].code_differs`) == null
 
 const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, frame_cell_id) => {
     if (frame_cell_id != null) return true
