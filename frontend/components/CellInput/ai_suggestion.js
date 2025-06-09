@@ -15,6 +15,7 @@ export const start_ai_suggestion = (/** @type {HTMLElement?} */ start_node, deta
                 return null
             }
 
+            let live_cm = get_live_cm()
             if (!live_cm) {
                 cm.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" })
             }
@@ -70,7 +71,6 @@ export const AiSuggestionPlugin = () => {
             const state = view.state
             const tr = ai_suggestion_transaction(state, code, reject)
             view.dispatch(tr)
-            refresh_view(view)
             return true
         },
     })
@@ -118,53 +118,45 @@ const disable_merge_when_all_accepted = (/** @type {Compartment} */ compartment)
         return null
     })
 
+// TODO: Ctrl+Z is still broken for this extension
 /**
- * Hack, hopefully we can remove this one day.
+ * An extension to add to the unified merge view. With this extension, when you make edits that are outside one of the existing chunks, no new chunk will be created.
+ *
+ * How this works: the change will also be mapped to and applied to the original doc, which means that the original doc will be updated to match the editable doc.
  */
-const refresh_view = (/** @type {EditorView} */ view) => {
-    // TODO length >= 1
-
-    view.dispatch({
-        changes: { from: 0, to: 1, insert: view.state.sliceDoc(0, 1) },
-    })
-}
-
-// Broken :((((
 const dont_diff_new_changes_ext = () => {
     const VERBOSE = false
 
-    return EditorState.transactionFilter.of((tr) => {
-        if (!tr.docChanged) return tr
-        if (!tr.isUserEvent) return tr
+    return EditorState.transactionExtender.of((tr) => {
+        if (!tr.docChanged) return null
+        if (!tr.isUserEvent) return null
 
         // if (tr.state.doc.toString().includes("alice")) {
         //     if (!merge.getOriginalDoc(tr.state).toString().includes("bob")) {
         //         const doc = merge.getOriginalDoc(tr.state)
         //         const original_changes = EditorState.create({ doc }).changes({ from: 0, to: 0, insert: "bob" })
-        //         // Some dummy changes to make the editor think it's different
-        //         // _refresh()
-        //         return [
-        //             tr,
-        //             {
-        //                 effects: merge.originalDocChangeEffect(tr.state, original_changes),
-        //             },
-        //         ]
+        //         // return [
+        //         //     tr,
+        //         return {
+        //             effects: merge.originalDocChangeEffect(tr.state, original_changes),
+        //         }
+        //         // ]
         //     }
         // }
-        // return tr
+        // return null
 
         const original_doc = merge.getOriginalDoc(tr.startState)
         const gc = merge.getChunks(tr.startState)
-        if (!gc) return tr
+        if (!gc) return null
 
         const { chunks } = gc
-        if (chunks.length === 0) return tr
+        if (chunks.length === 0) return null
 
         const in_a_chunk = chunks.some((chunk) => {
             return tr.changes.touchesRange(chunk.fromB, chunk.toB)
         })
         if (VERBOSE) console.log("chunk info:", { tr, chunks, in_a_chunk })
-        if (in_a_chunk) return tr
+        if (in_a_chunk) return null
 
         // What changes would be applied to the tr.startState if we rejected all chunks?
         const changespec_from_rejecting_all = chunks.map((chunk) => ({
@@ -196,11 +188,8 @@ const dont_diff_new_changes_ext = () => {
             )
 
         if (VERBOSE) console.log("dispatching dont_diff_new_changes effect")
-        return [
-            {
-                effects: merge.originalDocChangeEffect(tr.startState, changes_mapped_to_original_doc),
-            },
-            tr,
-        ]
+        return {
+            effects: merge.originalDocChangeEffect(tr.startState, changes_mapped_to_original_doc),
+        }
     })
 }

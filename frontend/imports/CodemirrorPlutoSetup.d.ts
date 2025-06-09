@@ -673,6 +673,42 @@ type Extension = {
     extension: Extension;
 } | readonly Extension[];
 /**
+By default extensions are registered in the order they are found
+in the flattened form of nested array that was provided.
+Individual extension values can be assigned a precedence to
+override this. Extensions that do not have a precedence set get
+the precedence of the nearest parent with a precedence, or
+[`default`](https://codemirror.net/6/docs/ref/#state.Prec.default) if there is no such parent. The
+final ordering of extensions is determined by first sorting by
+precedence and then by order within each precedence.
+*/
+declare const Prec: {
+    /**
+    The highest precedence level, for extensions that should end up
+    near the start of the precedence ordering.
+    */
+    highest: (ext: Extension) => Extension;
+    /**
+    A higher-than-default precedence, for extensions that should
+    come before those with default precedence.
+    */
+    high: (ext: Extension) => Extension;
+    /**
+    The default precedence, which is also used for extensions
+    without an explicit precedence.
+    */
+    default: (ext: Extension) => Extension;
+    /**
+    A lower-than-default precedence.
+    */
+    low: (ext: Extension) => Extension;
+    /**
+    The lowest precedence level. Meant for things that should end up
+    near the end of the extension order.
+    */
+    lowest: (ext: Extension) => Extension;
+};
+/**
 Extension compartments can be used to make a configuration
 dynamic. By [wrapping](https://codemirror.net/6/docs/ref/#state.Compartment.of) part of your
 configuration in a compartment, you can later
@@ -3404,6 +3440,14 @@ Create a line number gutter extension.
 */
 declare function lineNumbers(config?: LineNumberConfig): Extension;
 
+/**
+This facet provides a way to register functions that, given a
+transaction, provide a set of effects that the history should
+store when inverting the transaction. This can be used to
+integrate some kinds of effects in the history, so that they can
+be undone (and redone again).
+*/
+declare const invertedEffects: Facet<(tr: Transaction) => readonly StateEffect<any>[], readonly ((tr: Transaction) => readonly StateEffect<any>[])[]>;
 interface HistoryConfig {
     /**
     The minimum depth (amount of events) to store. Defaults to 100.
@@ -7693,4 +7737,4 @@ declare namespace index_d {
   };
 }
 
-export { Annotation, ChangeSet, Compartment, Decoration, Diagnostic, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, MatchDecorator, NodeProp, NodeWeakMap, PostgreSQL, SelectionRange, StateEffect, StateField, Text, Tooltip, Transaction, Tree, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index_d$1 as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, completionKeymap, css, cssLanguage, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, getClientID, getSyncedVersion, highlightActiveLine, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia, keymap, lineNumbers, linter, markdown, markdownLanguage, index_d as merge, moveLineDown, moveLineUp, parseCode, parseMixed, placeholder, python, pythonLanguage, receiveUpdates, rectangularSelection, searchKeymap, selectNextOccurrence, sendableUpdates, setDiagnostics, showTooltip, sql, syntaxHighlighting, syntaxTree, syntaxTreeAvailable, tags, tooltips };
+export { Annotation, ChangeSet, Compartment, Decoration, Diagnostic, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, MatchDecorator, NodeProp, NodeWeakMap, PostgreSQL, Prec, SelectionRange, StateEffect, StateEffectType, StateField, Text, Tooltip, Transaction, Tree, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index_d$1 as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, completionKeymap, css, cssLanguage, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, getClientID, getSyncedVersion, highlightActiveLine, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, invertedEffects, javascript, javascriptLanguage, julia, keymap, lineNumbers, linter, markdown, markdownLanguage, index_d as merge, moveLineDown, moveLineUp, parseCode, parseMixed, placeholder, python, pythonLanguage, receiveUpdates, rectangularSelection, searchKeymap, selectNextOccurrence, sendableUpdates, setDiagnostics, showTooltip, sql, syntaxHighlighting, syntaxTree, syntaxTreeAvailable, tags, tooltips };
