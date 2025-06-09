@@ -1,4 +1,15 @@
-import { Compartment, merge, StateField, ViewPlugin, ViewUpdate, StateEffect, EditorState, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
+import {
+    Compartment,
+    merge,
+    StateField,
+    ViewPlugin,
+    ViewUpdate,
+    StateEffect,
+    EditorState,
+    EditorView,
+    Annotation,
+    invertedEffects,
+} from "../../imports/CodemirrorPlutoSetup.js"
 import { LastRemoteCodeSetTimeFacet } from "../CellInput.js"
 
 export const start_ai_suggestion = (/** @type {HTMLElement?} */ start_node, detail) =>
@@ -54,6 +65,7 @@ export const AiSuggestionPlugin = () => {
                           AllAccepted,
                           disable_merge_when_all_accepted(compartment),
                           dont_diff_new_changes_ext(),
+                          dont_diff_new_changes_reverter_ext(),
                       ]),
                   ],
                   changes: {
@@ -118,11 +130,14 @@ const disable_merge_when_all_accepted = (/** @type {Compartment} */ compartment)
         return null
     })
 
-// TODO: Ctrl+Z is still broken for this extension
+const EditWasMadeByDeDiffer = Annotation.define()
+
 /**
  * An extension to add to the unified merge view. With this extension, when you make edits that are outside one of the existing chunks, no new chunk will be created.
  *
  * How this works: the change will also be mapped to and applied to the original doc, which means that the original doc will be updated to match the editable doc.
+ *
+ * TODO: Ctrl+Z is still broken for this extension
  */
 const dont_diff_new_changes_ext = () => {
     const VERBOSE = false
@@ -190,6 +205,18 @@ const dont_diff_new_changes_ext = () => {
         if (VERBOSE) console.log("dispatching dont_diff_new_changes effect")
         return {
             effects: merge.originalDocChangeEffect(tr.startState, changes_mapped_to_original_doc),
+            annotations: [EditWasMadeByDeDiffer.of(changes_mapped_to_original_doc.invert(original_doc))],
         }
+    })
+}
+
+const dont_diff_new_changes_reverter_ext = () => {
+    return invertedEffects.of((tr) => {
+        const an = tr.annotation(EditWasMadeByDeDiffer)
+        if (an) {
+            console.log("reverting changes", an)
+            return [merge.originalDocChangeEffect(tr.state, an)]
+        }
+        return []
     })
 }
