@@ -348,6 +348,7 @@ end
 
 @testset "Disabled cells should stay in the topology (#2676)" begin
     🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
     notebook = Notebook(Cell.([
         "using Dates",
         "b = 2; December",
@@ -392,6 +393,7 @@ end
 
 @testset "Disabled cell definitions should be removed (#3089)" begin
     🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
     notebook = Notebook(Cell.([
         "x = 1",
         "y = 9",
