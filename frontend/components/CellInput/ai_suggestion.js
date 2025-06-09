@@ -75,7 +75,7 @@ export const AiSuggestionPlugin = () => {
     }
 
     const disabled_extension = []
-    const reject_ai_suggestion = (/** @type {EditorView} */ view, old_code) => {
+    const reject_ai_suggestion = (/** @type {EditorView} */ view) => {
         const state = view.state
         console.log("asdffasdsadf", compartment.get(state))
         // @ts-ignore
@@ -94,15 +94,15 @@ export const AiSuggestionPlugin = () => {
                 to: Math.min(state.doc.length, chunk.toB),
                 insert: original_doc.slice(chunk.fromA, chunk.toA),
             })),
+            effects: [compartment.reconfigure([])],
         })
     }
 
     const ai_event_listener = EditorView.domEventHandlers({
         "ai-suggestion": (event, view) => {
-            console.log("ai-suggestion", event)
-            const { code, reject } = event.detail
+            const { code, reject, on_ } = event.detail
             if (reject) {
-                reject_ai_suggestion(view, code)
+                reject_ai_suggestion(view)
             } else {
                 start_ai_suggestion(view, code)
             }
@@ -157,10 +157,6 @@ const EditWasMadeByDeDiffer = Annotation.define()
 
 /**
  * An extension to add to the unified merge view. With this extension, when you make edits that are outside one of the existing chunks, no new chunk will be created.
- *
- * How this works: the change will also be mapped to and applied to the original doc, which means that the original doc will be updated to match the editable doc.
- *
- * TODO: Ctrl+Z is still broken for this extension
  */
 const dont_diff_new_changes_ext = EditorState.transactionExtender.of((tr) => {
     if (!tr.docChanged) return null
@@ -187,42 +183,33 @@ const dont_diff_new_changes_ext = EditorState.transactionExtender.of((tr) => {
     const { chunks } = gc
     if (chunks.length === 0) return null
 
-    const in_a_chunk = chunks.some((chunk) => {
-        return tr.changes.touchesRange(chunk.fromB, chunk.toB)
-    })
-    if (VERBOSE) console.log("chunk info:", { tr, chunks, in_a_chunk })
-    if (in_a_chunk) return null
-
-    // What changes would be applied to the tr.startState if we rejected all chunks?
-    const changespec_from_rejecting_all = chunks.map((chunk) => ({
-        from: chunk.fromB,
-        to: Math.min(tr.startState.doc.length, chunk.toB),
-        insert: original_doc.slice(chunk.fromA, chunk.toA),
-    }))
-    const change_from_rejecting_all = tr.startState.changes(changespec_from_rejecting_all)
-
-    if (VERBOSE) {
-        console.log("tr.startState:\n", tr.startState.doc.toString())
-
-        const start_state_after_reject_all = EditorState.create({ doc: tr.startState.doc }).update({
-            changes: changespec_from_rejecting_all,
-        }).state
-        console.log("start_state_after_reject_all:\n", start_state_after_reject_all.doc.toString())
+    // Go from a position in the editable doc to the position in the original doc.
+    const map_pos_to_original = (pos) => {
+        let out = pos
+        for (const chunk of chunks) {
+            if (chunk.fromB <= pos) {
+                out = Math.max(chunk.fromA, pos + chunk.toA - chunk.toB)
+            }
+        }
+        return out
     }
 
-    // We can use this to the `tr.changes` from the editable doc to the merge original doc. (Because they will perfectly map code positions.)
-    const changes_mapped_to_original_doc = tr.changes.map(change_from_rejecting_all)
-    if (VERBOSE)
-        console.log(
-            "original_doc after my patch:\n",
-            EditorState.create({ doc: original_doc })
-                .update({
-                    changes: changes_mapped_to_original_doc,
-                })
-                .state.doc.toString()
-        )
+    const changes = []
+    tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
+        for (let chunk of chunks) {
+            if (chunk.fromB <= fromA && toA <= chunk.toB && fromA < chunk.toB) return
+        }
 
-    if (VERBOSE) console.log("dispatching dont_diff_new_changes effect")
+        changes.push({
+            from: map_pos_to_original(fromA),
+            to: map_pos_to_original(toA),
+            insert: inserted,
+        })
+    })
+    if (changes.length === 0) return null
+
+    const changes_mapped_to_original_doc = EditorState.create({ doc: original_doc }).changes(changes)
+
     return {
         effects: merge.originalDocChangeEffect(tr.startState, changes_mapped_to_original_doc),
         annotations: EditWasMadeByDeDiffer.of(changes_mapped_to_original_doc.invert(original_doc)),
