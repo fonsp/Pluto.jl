@@ -398,9 +398,20 @@ end
         "x = 1",
         "y = 9",
         "x + y",
+        "f() = 4",
+        "f()",
     ]))
 
     update_run!(🍭, notebook, notebook.cells)
+    # start from the end so deletions do not mess-up indexing
+    set_disabled(notebook.cells[4], true)  # disable f definition
+    update_run!(🍭, notebook, notebook.cells)
+    delete_cell!(notebook, notebook.cells[4])  # remove f definition
+    update_run!(🍭, notebook, notebook.cells)
+    # after the update, cell 4 is removed from the notebook
+    # "f()" (cell 4 now) should error since f is gone
+    @test notebook.cells[4].errored
+
     set_disabled(notebook.cells[1], true)
     update_run!(🍭, notebook, notebook.cells[1])
     delete_cell!(notebook, notebook.cells[1])
