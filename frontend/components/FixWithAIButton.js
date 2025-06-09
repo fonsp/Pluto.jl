@@ -2,6 +2,7 @@ import { html, useContext, useRef, useState, useEffect } from "../imports/Preact
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { start_ai_suggestion } from "./CellInput/ai_suggestion.js"
 
 const ai_server_url = "https://pluto-simple-llm-features.deno.dev/"
 const endpoint_url = `${ai_server_url}fix-syntax-error-v1`
@@ -159,11 +160,8 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             console.debug("fixed_code", fixed_code)
 
             // Update the cell's local code without running it
-            const cm = node_ref.current?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor .cm-content")
-            if (cm) {
-                cm.dispatchEvent(new CustomEvent("ai-suggestion", { detail: { code: fixed_code } }))
-                setButtonState("success")
-            }
+            await start_ai_suggestion(node_ref.current, { code: fixed_code })
+            setButtonState("success")
         } catch (error) {
             console.error("Error fixing syntax:", error)
             setButtonState("initial")
@@ -177,10 +175,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
     }
 
     const handleRejectAI = async () => {
-        const cm = node_ref.current?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor .cm-content")
-        if (cm) {
-            cm.dispatchEvent(new CustomEvent("ai-suggestion", { detail: { code: original_code_ref.current, reject: true } }))
-        }
+        await start_ai_suggestion(node_ref.current, { code: original_code_ref.current, reject: true })
         setButtonState("initial")
     }
 

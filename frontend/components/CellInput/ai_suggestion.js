@@ -1,6 +1,34 @@
 import { Compartment, merge, StateField, ViewPlugin, ViewUpdate, StateEffect, EditorState, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
 import { LastRemoteCodeSetTimeFacet } from "../CellInput.js"
 
+export const start_ai_suggestion = (/** @type {HTMLElement?} */ start_node, detail) =>
+    new Promise(async (resolve, reject) => {
+        const get_cm = () => start_node?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor .cm-content")
+        const cm = get_cm()
+
+        if (cm) {
+            const get_live_cm = () => {
+                const cm = get_cm()
+                if (cm?.hasAttribute("data-currently-live")) {
+                    return cm
+                }
+                return null
+            }
+
+            if (!live_cm) {
+                cm.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" })
+            }
+            while (!live_cm) {
+                await new Promise((resolve) => setTimeout(resolve, 50))
+                live_cm = get_live_cm()
+            }
+            live_cm.dispatchEvent(new CustomEvent("ai-suggestion", { detail }))
+            resolve(true)
+        } else {
+            reject(new Error("Could not find an editor that belongs to this element"))
+        }
+    })
+
 export const AiSuggestionPlugin = () => {
     const compartment = new Compartment()
 
@@ -20,10 +48,11 @@ export const AiSuggestionPlugin = () => {
                   effects: [
                       AISuggestionTimeEffect.of(Date.now()),
                       compartment.reconfigure([
+                          //
                           merge_ext,
                           AllAccepted,
                           disable_merge_when_all_accepted(compartment),
-                          // dont_diff_new_changes_ext(),
+                          dont_diff_new_changes_ext(),
                       ]),
                   ],
                   changes: {
@@ -46,8 +75,13 @@ export const AiSuggestionPlugin = () => {
         },
     })
 
-    return [AISuggestionTime, ai_event_listener, compartment.of([])]
+    return [AISuggestionTime, ai_event_listener, hello_im_available, compartment.of([])]
 }
+
+const hello_im_available = ViewPlugin.define((view) => {
+    view.contentDOM.setAttribute("data-currently-live", "true")
+    return {}
+})
 
 const AllAccepted = StateField.define({
     create: () => false,
@@ -73,8 +107,9 @@ const AISuggestionTime = StateField.define({
 
 const disable_merge_when_all_accepted = (/** @type {Compartment} */ compartment) =>
     EditorState.transactionExtender.of((tr) => {
-        const code_was_submitted_after_ai_suggestion = tr.state.field(AISuggestionTime) < tr.state.facet(LastRemoteCodeSetTimeFacet)
-        if (code_was_submitted_after_ai_suggestion || tr.state.field(AllAccepted)) {
+        const code_was_submitted_after_ai_suggestion = tr.startState.field(AISuggestionTime) < tr.startState.facet(LastRemoteCodeSetTimeFacet)
+
+        if (code_was_submitted_after_ai_suggestion || tr.startState.field(AllAccepted)) {
             console.log("disabling merge")
             return {
                 effects: [compartment.reconfigure([])],
@@ -87,6 +122,8 @@ const disable_merge_when_all_accepted = (/** @type {Compartment} */ compartment)
  * Hack, hopefully we can remove this one day.
  */
 const refresh_view = (/** @type {EditorView} */ view) => {
+    // TODO length >= 1
+
     view.dispatch({
         changes: { from: 0, to: 1, insert: view.state.sliceDoc(0, 1) },
     })
@@ -94,91 +131,76 @@ const refresh_view = (/** @type {EditorView} */ view) => {
 
 // Broken :((((
 const dont_diff_new_changes_ext = () => {
-    let _refresh = () => {}
+    const VERBOSE = false
 
-    const te = EditorState.transactionExtender.of((tr) => {
-        if (!tr.docChanged) return null
-
-        if (!tr.isUserEvent) return null
+    return EditorState.transactionFilter.of((tr) => {
+        if (!tr.docChanged) return tr
+        if (!tr.isUserEvent) return tr
 
         // if (tr.state.doc.toString().includes("alice")) {
         //     if (!merge.getOriginalDoc(tr.state).toString().includes("bob")) {
         //         const doc = merge.getOriginalDoc(tr.state)
         //         const original_changes = EditorState.create({ doc }).changes({ from: 0, to: 0, insert: "bob" })
         //         // Some dummy changes to make the editor think it's different
-        //         // TODO length > 1
-        //         _refresh()
-        //         return {
-        //             effects: merge.originalDocChangeEffect(tr.state, original_changes),
-        //         }
+        //         // _refresh()
+        //         return [
+        //             tr,
+        //             {
+        //                 effects: merge.originalDocChangeEffect(tr.state, original_changes),
+        //             },
+        //         ]
         //     }
         // }
-        // return null
+        // return tr
 
+        const original_doc = merge.getOriginalDoc(tr.startState)
         const gc = merge.getChunks(tr.startState)
-        if (!gc) return null
+        if (!gc) return tr
 
         const { chunks } = gc
-
-        // const changespec_from_reverting_all = [
-        //     {from: 0, to: 1, insert: ""}
-        // ]
-        const changespec_from_reverting_all = chunks.map((chunk) => ({
-            from: chunk.fromB,
-            to: chunk.toB,
-            insert: "x".repeat(chunk.toA - chunk.fromA),
-        }))
-
-        // const before_state = EditorState.create({ doc: merge.getOriginalDoc(tr.startState) })
-        const before_state = tr.startState
-        console.log("before_state:\n", before_state.doc.toString())
-
-        const change_from_reverting_cell = before_state.changes(changespec_from_reverting_all)
-
-        const new_before_state = EditorState.create({ doc: before_state.doc }).update({
-            changes: changespec_from_reverting_all,
-        }).state
-        console.log("new_before_state:\n", new_before_state.doc.toString())
-
-        const changes_mapped_to_original_doc = tr.changes.map(change_from_reverting_cell)
-        const original_doc = merge.getOriginalDoc(tr.state)
-        console.log(
-            "original_doc after my patch:\n",
-            EditorState.create({ doc: original_doc })
-                .update({
-                    changes: changes_mapped_to_original_doc,
-                })
-                .state.doc.toString()
-        )
+        if (chunks.length === 0) return tr
 
         const in_a_chunk = chunks.some((chunk) => {
-            return tr.changes.touchesRange(chunk.fromA, chunk.toA)
+            return tr.changes.touchesRange(chunk.fromB, chunk.toB)
         })
-        console.log("change in chunk:", { tr, chunks, in_a_chunk })
+        if (VERBOSE) console.log("chunk info:", { tr, chunks, in_a_chunk })
+        if (in_a_chunk) return tr
 
-        if (!in_a_chunk) {
-            console.log("dispatching dont_diff_new_changes effect")
-            // _refresh()
-            return {
-                effects: merge.originalDocChangeEffect(tr.state, changes_mapped_to_original_doc),
-            }
+        // What changes would be applied to the tr.startState if we rejected all chunks?
+        const changespec_from_rejecting_all = chunks.map((chunk) => ({
+            from: chunk.fromB,
+            to: chunk.toB,
+            insert: original_doc.slice(chunk.fromA, chunk.toA),
+        }))
+        const change_from_rejecting_all = tr.startState.changes(changespec_from_rejecting_all)
+
+        if (VERBOSE) {
+            console.log("tr.startState:\n", tr.startState.doc.toString())
+
+            const start_state_after_reject_all = EditorState.create({ doc: tr.startState.doc }).update({
+                changes: changespec_from_rejecting_all,
+            }).state
+            console.log("start_state_after_reject_all:\n", start_state_after_reject_all.doc.toString())
         }
-        return null
+
+        // We can use this to the `tr.changes` from the editable doc to the merge original doc. (Because they will perfectly map code positions.)
+        const changes_mapped_to_original_doc = tr.changes.map(change_from_rejecting_all)
+        if (VERBOSE)
+            console.log(
+                "original_doc after my patch:\n",
+                EditorState.create({ doc: original_doc })
+                    .update({
+                        changes: changes_mapped_to_original_doc,
+                    })
+                    .state.doc.toString()
+            )
+
+        if (VERBOSE) console.log("dispatching dont_diff_new_changes effect")
+        return [
+            {
+                effects: merge.originalDocChangeEffect(tr.startState, changes_mapped_to_original_doc),
+            },
+            tr,
+        ]
     })
-
-    return ViewPlugin.define(
-        (view) => {
-            _refresh = () => {
-                console.log("refreshing")
-                requestAnimationFrame(() => {
-                    refresh_view(view)
-                })
-            }
-            return {}
-        },
-
-        {
-            provide: () => [te],
-        }
-    )
 }
