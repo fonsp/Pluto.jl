@@ -2,7 +2,7 @@
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
 
 import { useEventListener } from "../common/useEventListener.js"
-import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { html, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -48,9 +48,19 @@ export const WarnForVisisblePasswords = () => {
     }
 }
 
+const get_plutoland_available = () =>
+    fetch("https://pluto.land/ping", { priority: "low" })
+        .then((res) => res.text())
+        .then((text) => (text === "close" ? Promise.reject(close()) : true))
+        .catch(() => false)
+
 export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     // @ts-ignore
     const isDesktop = !!window.plutoDesktop
+    const [plutoland_available, set_plutoland_available] = useState(false)
+    useEffect(() => {
+        get_plutoland_available().then((x) => set_plutoland_available(x))
+    }, [])
 
     const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} */ type) => {
         if (isDesktop) {
