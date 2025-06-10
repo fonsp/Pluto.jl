@@ -61,7 +61,6 @@ import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
-import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { AIContext } from "./AIContext.js"
 import { AiSuggestionPlugin } from "./CellInput/ai_suggestion.js"
@@ -338,18 +337,12 @@ export const CellInput = ({
         }
     }, [])
 
-    const submit_code_effect = (cm) => {
-        cm.dispatch({
-            effects: [],
-        })
-    }
     useLayoutEffect(() => {
         if (show_static_fake) return
         if (dom_node_ref.current == null) return
 
         const keyMapSubmit = (/** @type {EditorView} */ cm) => {
             autocomplete.closeCompletion(cm)
-            submit_code_effect(cm)
             on_submit()
             return true
         }
@@ -362,7 +355,6 @@ export const CellInput = ({
 
                 const new_value = cm.state.doc.toString()
                 if (new_value !== remote_code_ref.current) {
-                    submit_code_effect(cm)
                     on_submit()
                 }
             })

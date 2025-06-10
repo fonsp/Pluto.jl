@@ -160,6 +160,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             console.debug("fixed_code", fixed_code)
 
             // Update the cell's local code without running it
+            if (fixed_code.trim() == "missing") throw new Error("Failed to fix syntax error")
             await start_ai_suggestion(node_ref.current, { code: fixed_code })
             setButtonState("success")
         } catch (error) {

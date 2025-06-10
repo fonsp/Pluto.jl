@@ -3,7 +3,6 @@ import {
     merge,
     StateField,
     ViewPlugin,
-    ViewUpdate,
     StateEffect,
     EditorState,
     EditorView,
@@ -11,8 +10,6 @@ import {
     invertedEffects,
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { LastRemoteCodeSetTimeFacet } from "../CellInput.js"
-
-const VERBOSE = false
 
 /**
  * Suggest AI-generated code as the new input of a cell.
@@ -59,11 +56,15 @@ export const AiSuggestionPlugin = () => {
                 AISuggestionTimeEffect.of(Date.now()),
                 compartment.reconfigure([
                     //
-                    merge.unifiedMergeView({ original: state.doc, gutter: false, allowInlineDiffs: true }),
+                    merge.unifiedMergeView({
+                        original: state.doc,
+                        gutter: false,
+                        allowInlineDiffs: suggested_code.split("\n").length === 1,
+                    }),
                     AllAccepted,
-                    disable_merge_when_all_accepted(compartment),
-                    dont_diff_new_changes_ext,
-                    dont_diff_new_changes_reverter_ext,
+                    DisableMergeWhenAllAccepted(compartment),
+                    DontDiffNewChanges,
+                    DontDiffNewChangesInverter,
                 ]),
             ],
             changes: {
@@ -77,7 +78,6 @@ export const AiSuggestionPlugin = () => {
     const disabled_extension = []
     const reject_ai_suggestion = (/** @type {EditorView} */ view) => {
         const state = view.state
-        console.log("asdffasdsadf", compartment.get(state))
         // @ts-ignore
         const is_active = compartment.get(state)?.length !== disabled_extension.length
         if (!is_active) return
@@ -87,7 +87,6 @@ export const AiSuggestionPlugin = () => {
         if (chunks.length === 0) return
 
         const original_doc = merge.getOriginalDoc(state)
-        console.log("chunks", chunks)
         view.dispatch({
             changes: chunks.map((chunk) => ({
                 from: chunk.fromB,
@@ -140,12 +139,12 @@ const AISuggestionTime = StateField.define({
     },
 })
 
-const disable_merge_when_all_accepted = (/** @type {Compartment} */ compartment) =>
+const DisableMergeWhenAllAccepted = (/** @type {Compartment} */ compartment) =>
     EditorState.transactionExtender.of((tr) => {
         const code_was_submitted_after_ai_suggestion = tr.startState.field(AISuggestionTime) < tr.startState.facet(LastRemoteCodeSetTimeFacet)
 
         if (code_was_submitted_after_ai_suggestion || tr.startState.field(AllAccepted)) {
-            console.log("disabling merge")
+            console.log("auto-disabling merge")
             return {
                 effects: [compartment.reconfigure([])],
             }
@@ -153,28 +152,14 @@ const disable_merge_when_all_accepted = (/** @type {Compartment} */ compartment)
         return null
     })
 
-const EditWasMadeByDeDiffer = Annotation.define()
+const EditWasMadeByDontDiffNewChanges = Annotation.define()
 
 /**
  * An extension to add to the unified merge view. With this extension, when you make edits that are outside one of the existing chunks, no new chunk will be created.
  */
-const dont_diff_new_changes_ext = EditorState.transactionExtender.of((tr) => {
+const DontDiffNewChanges = EditorState.transactionExtender.of((tr) => {
     if (!tr.docChanged) return null
     if (!tr.isUserEvent) return null
-
-    // if (tr.state.doc.toString().includes("alice")) {
-    //     if (!merge.getOriginalDoc(tr.state).toString().includes("bob")) {
-    //         const doc = merge.getOriginalDoc(tr.state)
-    //         const original_changes = EditorState.create({ doc }).changes({ from: 0, to: 0, insert: "bob" })
-    //         // return [
-    //         //     tr,
-    //         return {
-    //             effects: merge.originalDocChangeEffect(tr.state, original_changes),
-    //         }
-    //         // ]
-    //     }
-    // }
-    // return null
 
     const original_doc = merge.getOriginalDoc(tr.startState)
     const gc = merge.getChunks(tr.startState)
@@ -197,9 +182,11 @@ const dont_diff_new_changes_ext = EditorState.transactionExtender.of((tr) => {
     const changes = []
     tr.changes.iterChanges((fromA, toA, fromB, toB, inserted) => {
         for (let chunk of chunks) {
+            // If the change is completely contained in a chunk, don't modify the original – just let the user edit the chunk.
             if (chunk.fromB <= fromA && toA <= chunk.toB && fromA < chunk.toB) return
         }
 
+        // Otherwise, this is the matching change in the original doc.
         changes.push({
             from: map_pos_to_original(fromA),
             to: map_pos_to_original(toA),
@@ -209,14 +196,14 @@ const dont_diff_new_changes_ext = EditorState.transactionExtender.of((tr) => {
     if (changes.length === 0) return null
 
     const changes_mapped_to_original_doc = EditorState.create({ doc: original_doc }).changes(changes)
-
     return {
         effects: merge.originalDocChangeEffect(tr.startState, changes_mapped_to_original_doc),
-        annotations: EditWasMadeByDeDiffer.of(changes_mapped_to_original_doc.invert(original_doc)),
+        annotations: EditWasMadeByDontDiffNewChanges.of(changes_mapped_to_original_doc.invert(original_doc)),
     }
 })
 
-const dont_diff_new_changes_reverter_ext = invertedEffects.of((tr) => {
-    const an = tr.annotation(EditWasMadeByDeDiffer)
+/** Ensure that the effects from DontDiffNewChanges are undone when you Ctrl+Z. */
+const DontDiffNewChangesInverter = invertedEffects.of((tr) => {
+    const an = tr.annotation(EditWasMadeByDontDiffNewChanges)
     return an ? [merge.originalDocChangeEffect(tr.state, an)] : []
 })
