@@ -196,8 +196,25 @@ class PlutoEditorComponent extends HTMLElement {
         const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
         console.log("Launch parameters: ", new_launch_params)
 
+        if (new_launch_params.disable_ui !== true) this.check_access()
+
         document.querySelector(".delete-me-when-live")?.remove()
         render(html`<${EditorLoader} launch_params=${new_launch_params} pluto_editor_element=${this} />`, this)
+    }
+
+    check_access() {
+        // 2028 is the current domain expiry date for fonsp.com
+        if (new Date().getFullYear() < 2028) {
+            fetch("https://pluto-available.fonsp.com/", { priority: "low" })
+                .then((res) => res.json())
+                .then(({ blocked, message }) => {
+                    if (blocked) {
+                        document.body.innerHTML = ""
+                        alert(message)
+                    }
+                })
+                .catch(() => {})
+        }
     }
 }
 customElements.define("pluto-editor", PlutoEditorComponent)
