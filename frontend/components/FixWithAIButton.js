@@ -2,6 +2,7 @@ import { html, useContext, useRef, useState, useEffect } from "../imports/Preact
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { start_ai_suggestion } from "./CellInput/ai_suggestion.js"
 
 const ai_server_url = "https://pluto-simple-llm-features.deno.dev/"
 const endpoint_url = `${ai_server_url}fix-syntax-error-v1`
@@ -119,6 +120,8 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
         await performFix()
     }
 
+    const original_code_ref = useRef("")
+
     const performFix = async () => {
         try {
             setButtonState("loading")
@@ -126,6 +129,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             // Get the current cell's code
             const notebook = pluto_actions.get_notebook()
             const code = notebook?.cell_inputs[cell_id]?.code
+            original_code_ref.current = code
 
             if (!code) {
                 throw new Error("Could not find cell code")
@@ -156,12 +160,9 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             console.debug("fixed_code", fixed_code)
 
             // Update the cell's local code without running it
-            const cm = node_ref.current?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor")
-            if (cm) {
-                // @ts-ignore
-                cm.CodeMirror.setValue(fixed_code)
-                setButtonState("success")
-            }
+            if (fixed_code.trim() == "missing") throw new Error("Failed to fix syntax error")
+            await start_ai_suggestion(node_ref.current, { code: fixed_code })
+            setButtonState("success")
         } catch (error) {
             console.error("Error fixing syntax:", error)
             setButtonState("initial")
@@ -174,22 +175,33 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
         }
     }
 
+    const handleRejectAI = async () => {
+        await start_ai_suggestion(node_ref.current, { code: original_code_ref.current, reject: true })
+        setButtonState("initial")
+    }
+
     const handleRunCell = async () => {
         await pluto_actions.set_and_run_multiple([cell_id])
     }
 
-    return html`<button
-        ref=${node_ref}
+    return html`<div
         class=${cl({
             "fix-with-ai": true,
             [`fix-with-ai-${buttonState}`]: true,
         })}
-        onClick=${buttonState === "success" ? handleRunCell : handleFixWithAI}
-        title=${buttonState === "success" ? "Run the fixed cell" : "Attempt to fix this syntax error using an LLM service"}
-        aria-busy=${buttonState === "loading"}
-        aria-live="polite"
-        disabled=${buttonState === "loading"}
     >
-        ${buttonState === "success" ? "Run cell" : buttonState === "loading" ? "Loading..." : "Fix syntax with AI"}
-    </button>`
+        <button
+            ref=${node_ref}
+            onClick=${buttonState === "success" ? handleRunCell : handleFixWithAI}
+            title=${buttonState === "success" ? "Run the fixed cell" : "Attempt to fix this syntax error using an LLM service"}
+            aria-busy=${buttonState === "loading"}
+            aria-live="polite"
+            disabled=${buttonState === "loading"}
+        >
+            ${buttonState === "success" ? "Accept & Run" : buttonState === "loading" ? "Loading..." : "Fix syntax with AI"}
+        </button>
+        ${buttonState === "success"
+            ? html`<button onClick=${handleRejectAI} class="reject-ai-fix" title="Reject the AI fix and revert to original code">Reject</button>`
+            : null}
+    </div>`
 }

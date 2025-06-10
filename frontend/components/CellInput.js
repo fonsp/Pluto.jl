@@ -40,6 +40,7 @@ import {
     cssLanguage,
     setDiagnostics,
     moveLineUp,
+    Facet,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -60,9 +61,9 @@ import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
-import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { AIContext } from "./AIContext.js"
+import { AiSuggestionPlugin } from "./CellInput/ai_suggestion.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
@@ -203,8 +204,8 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
 
 // Compartments: https://codemirror.net/6/examples/config/
 let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>} */ codemirror_ref, value) => {
-    let compartment = useRef(new Compartment())
-    let initial_value = useRef(compartment.current.of(value))
+    const compartment = useRef(new Compartment())
+    const initial_value = useRef(compartment.current.of(value))
 
     useLayoutEffect(() => {
         codemirror_ref.current?.dispatch?.({
@@ -214,6 +215,11 @@ let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>
 
     return initial_value.current
 }
+
+export const LastRemoteCodeSetTimeFacet = Facet.define({
+    combine: (values) => values[0],
+    compare: _.isEqual,
+})
 
 let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPlutoSetup.js").Text} */ doc, { line, ch }) => {
     let line_object = doc.line(_.clamp(line + 1, 1, doc.lines))
@@ -281,6 +287,10 @@ export const CellInput = ({
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+    let last_remote_code_set_time_compartment = useCompartment(
+        newcm_ref,
+        useMemo(() => LastRemoteCodeSetTimeFacet.of(Date.now()), [remote_code])
+    )
 
     let on_change_compartment = useCompartment(
         newcm_ref,
@@ -569,6 +579,7 @@ export const CellInput = ({
                     highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    last_remote_code_set_time_compartment,
                     highlightLinePlugin(),
                     highlightRangePlugin(),
 
@@ -662,6 +673,7 @@ export const CellInput = ({
                               julia(),
                           ]),
                     go_to_definition_plugin,
+                    AiSuggestionPlugin(),
                     pluto_autocomplete({
                         request_autocomplete: async ({ query, query_full }) => {
                             let response = await timeout_promise(
