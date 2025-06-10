@@ -59,7 +59,7 @@ export const AiSuggestionPlugin = () => {
                     merge.unifiedMergeView({
                         original: state.doc,
                         gutter: false,
-                        allowInlineDiffs: suggested_code.split("\n").length === 1,
+                        allowInlineDiffs: true || suggested_code.split("\n").length === 1,
                     }),
                     AllAccepted,
                     DisableMergeWhenAllAccepted(compartment),
