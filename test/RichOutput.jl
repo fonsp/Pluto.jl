@@ -469,7 +469,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 @testset "before" begin
                     @test notebook.cells[6] |> noerror
                     st = notebook.cells[1].output.body
-                    @test occursin("domain"i, st[:msg])
+                    @test occursin(r"domain"i, st[:msg])
                     @test st[:stacktrace] isa Vector
                     @test st[:stacktrace][1] isa Dict
                 end
@@ -482,7 +482,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 @testset "after" begin
                     @test notebook.cells[6] |> noerror
                     st = notebook.cells[1].output.body
-                    @test occursin("domain"i, st[:msg])
+                    @test occursin(r"domain"i, st[:msg])
                     @test st[:stacktrace] isa Base.CapturedException
                 end
             end
