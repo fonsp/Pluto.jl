@@ -26,9 +26,11 @@ function insert_cell!(notebook, cell)
     push!(notebook.cell_order, cell.cell_id)
 end
 
-function delete_cell!(notebook, cell)
+function delete_cell!(🍭, notebook, cell)
+    # this matches exactly what the frontend does when you delete a cell, check out `confirm_delete_multiple` in `Editor.js
     deleteat!(notebook.cell_order, findfirst(==(cell.cell_id), notebook.cell_order))
     delete!(notebook.cells_dict, cell.cell_id)
+    Pluto.update_run!(🍭, notebook, Pluto.Cell[])
 end
 
 function setcode!(cell, newcode)
