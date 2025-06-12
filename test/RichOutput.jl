@@ -3,6 +3,18 @@ import Pluto
 import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 
+function withref(f::Function, ref::Ref, x)
+    oldval = ref[]
+    try
+        ref[] = x
+        f()
+    finally
+        ref[] = oldval
+    end
+end
+
+
+
 @testset "Rich output" begin
 
     🍭 = ServerSession()
@@ -394,6 +406,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             "\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend",
             "w(-4)",
             "error(" * sprint(Base.print_quoted, escape_me) * ")",
+            "6",
         ]
 
         notebook1 = Notebook([
@@ -462,6 +475,29 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 st = notebook.cells[5].output.body
                 @test occursin(escape_me, st[:msg])
             end
+            
+            @testset "PlutoStaticHTML API" begin
+                
+                @testset "before" begin
+                    @test notebook.cells[6] |> noerror
+                    st = notebook.cells[1].output.body
+                    @test occursin(r"domain"i, st[:msg])
+                    @test st[:stacktrace] isa Vector
+                    @test st[:stacktrace][1] isa Dict
+                end
+                
+                @test 🍭.options.evaluation.workspace_use_distributed == false
+                withref(PlutoRunner.PRETTY_STACKTRACES, false) do
+                    update_run!(🍭, notebook, notebook.cells[1])
+                    
+                    @testset "after" begin
+                        @test notebook.cells[6] |> noerror
+                        st = notebook.cells[1].output.body
+                        @test occursin(r"domain"i, st[:msg])
+                        @test st[:stacktrace] isa Base.CapturedException
+                    end
+                end
+            end
 
             WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
@@ -469,3 +505,5 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
     end
 
 end
+
+
