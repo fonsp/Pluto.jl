@@ -82,7 +82,7 @@ function run_reactive_core!(
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
     new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, removed_cells)
 
-    # find (indirectly) deactivated cells and update their status
+    # find (directly and indirectly) deactivated cells and update their status
     indirectly_deactivated = collect(topological_order_cached(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
 
     for cell in indirectly_deactivated
@@ -97,7 +97,7 @@ function run_reactive_core!(
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
     old_order = topological_order_cached(old_topology, roots)
 
-    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    old_runnable = setdiff(old_order.runnable, already_run)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
@@ -106,7 +106,11 @@ function run_reactive_core!(
     # get the new topological order
     new_order = topological_order_cached(new_topology, new_roots)
     new_runnable = setdiff(new_order.runnable, already_run)
-    to_run = setdiff!(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+    to_run = setdiff!(
+        union(new_runnable, old_runnable),
+        indirectly_deactivated,
+        keys(new_order.errable)
+    )::Vector{Cell} # TODO: think if old error cell order matters
 
 
     # change the bar on the sides of cells to "queued"
