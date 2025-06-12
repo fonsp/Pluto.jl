@@ -8,17 +8,8 @@ function Markdown.html(io::IOContext, header::Markdown.Header{l}) where l
     end
 end
 
-# We actually don't need to encode this! Markdown stdlib will do it for us.
-text_to_id(text::String) = text
-
-# encodeURIComponent(s::String) = join(map(codeunits(s)) do b
-# 	c = Char(b)
-# 	if c ∈ 'a':'z' || c ∈ 'A':'Z' || c ∈ '0':'9' || c ∈ ('-','.','_','~')
-# 		c
-# 	else
-# 		"%$(uppercase(string(b, base=16, pad=2)))"
-# 	end
-# end)
+# We don't need to encode this, Markdown stdlib will do it for us. But we want to replace space with `-`
+text_to_id(text::String) = replace(text, " " => "-")
 
 stripped(x::Vector) = join(Iterators.map(stripped, x))
 stripped(s::String) = s
