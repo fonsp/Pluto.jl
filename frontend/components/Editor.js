@@ -377,6 +377,7 @@ export class Editor extends Component {
         this.real_actions = {
             get_notebook: () => this?.state?.notebook ?? {},
             get_session_options: () => this.client.session_options,
+            get_launch_params: () => this.props.launch_params,
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore

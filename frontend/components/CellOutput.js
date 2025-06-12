@@ -631,6 +631,10 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                             const pre = code_element.parentElement
                             generateCopyCodeButton(pre)
                         })
+                        container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
+                            if (header_element.closest("table, pluto-display")) return
+                            generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
+                        })
                     }
                 } catch (err) {
                     console.warn("Adding markdown code copy button failed", err)
@@ -710,20 +714,54 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
 
     // create copy button
     const button = document.createElement("button")
-    button.title = "Copy to Clipboard"
+    button.title = "Copy to clipboard"
     button.className = "markdown-code-block-button"
     button.addEventListener("click", (e) => {
         const txt = pre.textContent ?? ""
         navigator.clipboard.writeText(txt)
 
-        button.classList.add("markdown-code-block-copied-code-button")
+        button.classList.add("recently-copied")
         setTimeout(() => {
-            button.classList.remove("markdown-code-block-copied-code-button")
-        }, 2000)
+            button.classList.remove("recently-copied")
+        }, 1300)
     })
 
     // Append copy button to the code block element
     pre.prepend(button)
+}
+
+/**
+ * Generates a copy button for Markdown header elements, to copy the URL to this header using the `id`.
+ */
+export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ header, /** @type {any} */ pluto_actions) => {
+    const id = header.id
+    if (!id) return
+    const button = document.createElement("button")
+    button.title = "Click to copy URL to this header"
+    button.className = "markdown-header-id-button"
+    button.addEventListener("click", (e) => {
+        const id = header.id
+        if (!id) return
+        let url_to_copy = `#${id.replaceAll(" ", "%20")}`
+        const launch_params = /** @type {import("./Editor.js").LaunchParameters?} */ (pluto_actions?.get_launch_params?.())
+        if (!launch_params) return
+        if (launch_params.isolated_cell_ids != null) return
+        const root = new URL(window.location.href)
+        root.hash = ""
+
+        const is_localhost_hostname = (hostname) => hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0"
+        if (launch_params.disable_ui && launch_params.notebook_id == null && launch_params.pluto_server_url == null && !is_localhost_hostname(root.hostname)) {
+            url_to_copy = `${root.href}${url_to_copy}`
+        }
+
+        navigator.clipboard.writeText(url_to_copy)
+
+        button.classList.add("recently-copied")
+        setTimeout(() => {
+            button.classList.remove("recently-copied")
+        }, 1300)
+    })
+    header.append(button)
 }
 
 export const ANSITextOutput = ({ body }) => {
