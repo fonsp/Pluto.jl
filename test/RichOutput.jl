@@ -3,6 +3,18 @@ import Pluto
 import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 
+function withref(f::Function, ref::Ref, x)
+    oldval = ref[]
+    try
+        ref[] = x
+        f()
+    finally
+        ref[] = oldval
+    end
+end
+
+
+
 @testset "Rich output" begin
 
     🍭 = ServerSession()
@@ -475,15 +487,15 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 end
                 
                 @test 🍭.options.evaluation.workspace_use_distributed == false
-                setcode!(notebook.cells[6], "PlutoRunner.PRETTY_STACKTRACES[] = false")
-                update_run!(🍭, notebook, notebook.cells[6])
-                update_run!(🍭, notebook, notebook.cells[1])
-                
-                @testset "after" begin
-                    @test notebook.cells[6] |> noerror
-                    st = notebook.cells[1].output.body
-                    @test occursin(r"domain"i, st[:msg])
-                    @test st[:stacktrace] isa Base.CapturedException
+                withref(PlutoRunner.PRETTY_STACKTRACES, false) do
+                    update_run!(🍭, notebook, notebook.cells[1])
+                    
+                    @testset "after" begin
+                        @test notebook.cells[6] |> noerror
+                        st = notebook.cells[1].output.body
+                        @test occursin(r"domain"i, st[:msg])
+                        @test st[:stacktrace] isa Base.CapturedException
+                    end
                 end
             end
 
@@ -493,3 +505,5 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
     end
 
 end
+
+
