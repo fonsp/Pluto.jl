@@ -240,7 +240,21 @@ end
             @test notebook.cells[4] |> noerror
         end
     end
+    
+        
+    @testset "Markdown" begin
+        notebook = Notebook([
+            Cell("md\"# Why we need more Δέντρα\""),
+        ])
+        update_run!(🍭, notebook, notebook.cells)
 
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[1].output.mime isa MIME"text/html"
+        r = notebook.cells[1].output.body
+        @test occursin("id=\"Why we need more Δέντρα\"", r)
+        @test occursin("Why we need more Δέντρα</h1>", r)
+    end
+    
     @testset "embed_display" begin
         🍭.options.evaluation.workspace_use_distributed = false
         notebook = Notebook([
