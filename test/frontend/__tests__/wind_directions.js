@@ -50,7 +50,7 @@ describe("wind_directions", () => {
         }, variable_name)
     }
 
-    let button_selector = (variable_name, value) => `pluto-cell[id="${variable_name}"] button[data-value="${value}"]`
+    let button_selector = (variable_name, value) => `pluto-cell[id="${variable_name}"] button[data-value="${value}"]:not(.markdown-header-id-button)`
     let slide_selector = (variable_name, value) => `pluto-cell[id="${variable_name}"] .carousel-slide:nth-child(${value})`
 
     it("🎠 You can move the carousel", async () => {

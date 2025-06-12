@@ -632,7 +632,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                             generateCopyCodeButton(pre)
                         })
                         container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
-                            if (header_element.closest("table, pluto-display")) return
+                            if (header_element.closest("table, pluto-display, bond")) return
                             generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
                         })
                     }
