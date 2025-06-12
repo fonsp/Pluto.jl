@@ -406,16 +406,16 @@ end
     # start from the end so deletions do not mess-up indexing
     set_disabled(notebook.cells[4], true)  # disable f definition
     update_run!(🍭, notebook, notebook.cells)
-    delete_cell!(notebook, notebook.cells[4])  # remove f definition
-    update_run!(🍭, notebook, notebook.cells)
+    
+    delete_cell!(🍭, notebook, notebook.cells[4])  # remove f definition
     # after the update, cell 4 is removed from the notebook
     # "f()" (cell 4 now) should error since f is gone
     @test notebook.cells[4].errored
 
     set_disabled(notebook.cells[1], true)
     update_run!(🍭, notebook, notebook.cells[1])
-    delete_cell!(notebook, notebook.cells[1])
-    update_run!(🍭, notebook, notebook.cells[1])
+    
+    delete_cell!(🍭, notebook, notebook.cells[1])
     # after the update, cell 1 is removed from the notebook
     # "x + y" (cell 2 now) should error since x is gone
     @test notebook.cells[2].errored
