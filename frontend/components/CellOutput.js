@@ -738,12 +738,13 @@ export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ hea
     if (!id) return
     const button = document.createElement("pluto-header-id-copy")
     button.title = "Click to copy URL to this header"
+    button.ariaLabel = "Copy URL to this header"
     button.role = "button"
     button.tabIndex = 0
-    const listener = (e) => {
+    const listener = (_e) => {
         const id = header.id
         if (!id) return
-        let url_to_copy = `#${id.replaceAll(" ", "%20")}`
+        let url_to_copy = `#${id}`
         const launch_params = /** @type {import("./Editor.js").LaunchParameters?} */ (pluto_actions?.get_launch_params?.())
         if (!launch_params) return
         if (launch_params.isolated_cell_ids != null) return
