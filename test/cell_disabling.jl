@@ -405,7 +405,7 @@ end
     update_run!(🍭, notebook, notebook.cells)
     # start from the end so deletions do not mess-up indexing
     set_disabled(notebook.cells[4], true)  # disable f definition
-    update_run!(🍭, notebook, notebook.cells)
+    update_run!(🍭, notebook, notebook.cells[4])
     
     delete_cell!(🍭, notebook, notebook.cells[4])  # remove f definition
     # after the update, cell 4 is removed from the notebook
