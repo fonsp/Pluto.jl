@@ -736,10 +736,11 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
 export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ header, /** @type {any} */ pluto_actions) => {
     const id = header.id
     if (!id) return
-    const button = document.createElement("button")
+    const button = document.createElement("pluto-header-id-copy")
     button.title = "Click to copy URL to this header"
-    button.className = "markdown-header-id-button"
-    button.addEventListener("click", (e) => {
+    button.role = "button"
+    button.tabIndex = 0
+    const listener = (e) => {
         const id = header.id
         if (!id) return
         let url_to_copy = `#${id.replaceAll(" ", "%20")}`
@@ -760,6 +761,12 @@ export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ hea
         setTimeout(() => {
             button.classList.remove("recently-copied")
         }, 1300)
+    }
+    button.addEventListener("click", listener)
+    button.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return
+        listener(e)
+        e.preventDefault()
     })
     header.append(button)
 }

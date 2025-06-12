@@ -3935,7 +3935,7 @@ pluto-cell.hooked_up > pluto-output {
 }
 
 /* Styles for markdown header ID copy button */
-.markdown-header-id-button {
+pluto-header-id-copy {
     position: relative;
     cursor: pointer;
     justify-content: center;
@@ -3947,11 +3947,11 @@ pluto-cell.hooked_up > pluto-output {
     background: none;
     transition: opacity 0.1s ease;
     font-size: inherit;
-    inset-block: .1em;
+    inset-block: 0.1em;
     opacity: 0.3;
 }
 
-.markdown-header-id-button::before {
+pluto-header-id-copy::before {
     content: "";
     display: block;
     --size: 0.7em;
@@ -3962,27 +3962,27 @@ pluto-cell.hooked_up > pluto-output {
     background-size: 100% 100%;
 }
 
-.markdown-header-id-button.recently-copied::before {
+pluto-header-id-copy.recently-copied::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
 }
 
 @media (pointer: fine) {
-    .markdown-header-id-button {
+    pluto-header-id-copy {
         opacity: 0;
     }
 }
 
 /* Show button on header hover */
-pluto-output :is(h1, h2, h3, h4, h5, h6):hover .markdown-header-id-button {
+pluto-output :is(h1, h2, h3, h4, h5, h6):hover pluto-header-id-copy {
     opacity: 0.3;
 }
 
-pluto-output:hover .markdown-header-id-button:hover {
+pluto-output:hover pluto-header-id-copy:hover {
     opacity: 1;
 }
 
 /* Show button when focused */
-.markdown-header-id-button:focus {
+pluto-header-id-copy:focus {
     opacity: 1;
     outline: 2px solid var(--black);
     outline-offset: 2px;
