@@ -251,7 +251,7 @@ end
         @test notebook.cells[1] |> noerror
         @test notebook.cells[1].output.mime isa MIME"text/html"
         r = notebook.cells[1].output.body
-        @test occursin("id=\"Why we need more Δέντρα\"", r)
+        @test occursin("id=\"Why-we-need-more-Δέντρα\"", r)
         @test occursin("Why we need more Δέντρα</h1>", r)
     end
     
