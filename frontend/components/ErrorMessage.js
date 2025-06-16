@@ -502,6 +502,11 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
     const first_package = get_first_package(limited_stacktrace)
 
+    const [stacktrace_waiting_to_view, set_stacktrace_waiting_to_view] = useState(true)
+    useEffect(() => {
+        set_stacktrace_waiting_to_view(true)
+    }, [msg, stacktrace, cell_id])
+
     return html`<jlerror>
         <div class="error-header">
             <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
@@ -511,6 +516,10 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
+            : stacktrace_waiting_to_view
+            ? html`<section class="stacktrace-waiting-to-view">
+                  <button onClick=${() => set_stacktrace_waiting_to_view(false)}>Show stack trace...</button>
+              </section>`
             : html`<section>
                   <div class="stacktrace-header">
                       <secret-h1>Stack trace</secret-h1>
