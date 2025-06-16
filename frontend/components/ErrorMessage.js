@@ -61,6 +61,8 @@ const DocLink = ({ frame }) => {
         >`
 }
 
+const noline = (line) => line == null || line < 1
+
 const StackFrameFilename = ({ frame, cell_id }) => {
     if (ignore_location(frame)) return null
 
@@ -71,17 +73,17 @@ const StackFrameFilename = ({ frame, cell_id }) => {
             internal-file=${frame.file}
             href=${`#${frame_cell_id}`}
             onclick=${(e) => {
-                focus_line(frame_cell_id, line == null ? null : line - 1)
+                focus_line(frame_cell_id, noline(line) ? null : line - 1)
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`:${nbsp}<em>line${nbsp}${line}</em>`}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${noline(line) ? null : html`:${nbsp}<em>line${nbsp}${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
         const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
 
-        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
+        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}${noline(frame.line) ? null : `:${frame.line}`}</em>`
 
         const text = sp != null ? html`<strong>${origin}</strong>${nbsp}→${nbsp}${file_line}` : file_line
 
