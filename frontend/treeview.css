@@ -291,6 +291,23 @@ jlerror > section {
     margin-block-start: 1rem;
     padding-block-start: 1rem;
 }
+jlerror .stacktrace-waiting-to-view {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1rem 0 0 0;
+}
+jlerror .stacktrace-waiting-to-view button {
+    background: var(--white);
+    border: 3px solid var(--pkg-terminal-border-color);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1em;
+    color: var(--pluto-output-color);
+    font-family: var(--system-ui-font-stack);
+    cursor: pointer;
+    font-weight: 700;
+}
 jlerror > section > ol {
     line-height: 1.6;
     /* transform: perspective(29rem) rotateX(-12.7deg); */
