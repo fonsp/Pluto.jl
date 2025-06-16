@@ -459,7 +459,13 @@ const keyword_completions = sorted_keywords.map((label) => ({
 const keyword_completions_generator = make_it_julian(autocomplete.completeFromList(keyword_completions))
 
 const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (ctx.matchBefore(/[a-z]$/) == null) return null
+    if (
+        // require a space or bracket-open before the keyword,
+        ctx.matchBefore(/[\s\(\[][a-z]*$/) == null &&
+        // or a line start
+        ctx.matchBefore(/^[a-z]*$/) == null
+    )
+        return null
     if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
     if (not_explicit_and_too_boring(ctx)) return null
