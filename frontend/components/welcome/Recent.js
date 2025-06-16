@@ -175,6 +175,14 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
         document.body.classList.toggle("nosessions", !(combined_notebooks == null || combined_notebooks.length > 0))
     }, [combined_notebooks])
 
+    const on_clear_click = (/** @type {CombinedNotebook} */ nb) => {
+        // Remove from localStorage
+        remove_notebook_from_storage(nb.path)
+
+        // Remove from component state
+        set_combined_notebooks((prevstate) => prevstate?.filter((n) => n.path !== nb.path) ?? null)
+    }
+
     /// RENDER
 
     const all_paths = combined_notebooks?.map((nb) => nb.path)
@@ -215,6 +223,20 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                           }}
                           >${shortest_path(nb.path, all_paths)}</a
                       >
+                      ${!running && !nb.transitioning
+                          ? html`<button
+                                class="clear-btn"
+                                onclick=${(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    on_clear_click(nb)
+                                }}
+                                title="Remove from recent notebooks. This does not delete the notebook file."
+                                aria-label="Remove from recent notebooks"
+                            >
+                                FORGET
+                            </button>`
+                          : null}
                   </li>`
               })
 
@@ -244,4 +266,10 @@ const get_stored_recent_notebooks = () => {
     const storedData = storedString != null ? JSON.parse(storedString) : []
     const storedList = storedData instanceof Array ? storedData : []
     return storedList.map(entry_notrunning)
+}
+
+const remove_notebook_from_storage = (path) => {
+    const stored_recent_notebooks = get_stored_recent_notebooks()
+    const updated_notebooks = stored_recent_notebooks.filter((nb) => nb.path !== path)
+    localStorage.setItem("recent notebooks", JSON.stringify(updated_notebooks.map((nb) => nb.path)))
 }
