@@ -65,6 +65,13 @@ jobs:
               working-directory: frontend-dist
               run: |
                 ls -lha
+                
+            - name: Generate bundle size report
+              working-directory: frontend-dist
+              run: |
+                # Get total size of frontend-dist folder
+                total_size=$(du -sh . | cut -f1)
+                
 
             - name: Check for corrupt files
               working-directory: frontend-dist
