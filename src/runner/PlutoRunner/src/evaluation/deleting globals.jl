@@ -139,7 +139,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromcell(method, cell_id) && method.deleted_world == alive_world_val
+        if isfromcell(method, cell_id) && !is_method_deleted(method)
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
