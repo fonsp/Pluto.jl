@@ -200,7 +200,16 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-const alive_world_val = methods(Base.sqrt).ms[1].deleted_world # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
+const alive_world_val = typemax(UInt) # This is true at least for julia 1.10 and 1.11, and it's not applicable for julia 1.12. See issue https://github.com/fonsp/Pluto.jl/issues/3259 for more details.
+
+
+# Check if a method has already been deleted/disabled
+is_method_deleted(method::Method) = @static if VERSION < v"1.12.0-beta4"
+    method.deleted_world !== alive_world_val
+else
+    # The dispatch status is set to 0 when a method is deleted. See the file `src/gc.f` changes in PR https://github.com/JuliaLang/julia/pull/58291 for more details.
+    method.dispatch_status === 0x0
+end
 
 
 
