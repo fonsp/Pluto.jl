@@ -300,7 +300,8 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
 
         let new_timestamp = audio.currentTime
         let forward = new_timestamp >= current_state_timestamp_ref.current
-        let directed = forward ? _.identity : _.reverse
+        /** @type {<T>(x: T[]) => T[]} */
+        let directed = (x) => (forward ? x : [...x].reverse())
 
         let lower = Math.min(current_state_timestamp_ref.current, new_timestamp)
         let upper = Math.max(current_state_timestamp_ref.current, new_timestamp)
