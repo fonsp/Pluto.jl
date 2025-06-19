@@ -208,7 +208,7 @@ is_method_deleted(method::Method) = @static if VERSION < v"1.12.0-beta4"
     method.deleted_world !== alive_world_val
 else
     # The dispatch status is set to 0 when a method is deleted. See the file `src/gc.f` changes in PR https://github.com/JuliaLang/julia/pull/58291 for more details.
-    method.dispatch_status === 0x0
+    method.dispatch_status == 0
 end
 
 
