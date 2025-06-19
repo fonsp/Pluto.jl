@@ -627,6 +627,7 @@ const superscript_subscript_completion = (/** @type {() => Promise<SpecialSymbol
         if (!result) return null
 
         const { sups, subs, match_sub, match_sup } = result
+        console.log("HERE IS THE DICT THAT YOU WANT ", result)
         const sup_match_result = ctx.matchBefore(match_sup)
         const sub_match_result = ctx.matchBefore(match_sub)
 
