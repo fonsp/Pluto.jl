@@ -72,6 +72,21 @@ jobs:
                 # Get total size of frontend-dist folder
                 total_size=$(du -sh . | cut -f1)
                 
+                # Create bundle size report
+                cat > AAA_bundle_size.md << EOF
+                # Bundle Size Report
+                
+                **Total bundle size:** $total_size
+                
+                ## Top 20 Largest Files
+                
+                \`\`\`
+                $(find . -type f -exec du -h {} + | sort -hr | head -20)
+                \`\`\`
+                
+                Generated on: $(date)
+                EOF
+                
 
             - name: Check for corrupt files
               working-directory: frontend-dist
