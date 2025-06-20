@@ -562,28 +562,34 @@ const apply_completion = (view, completion, from, to) => {
 }
 
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
-    const list = request_special_symbols().then((data) => {
-        if (data != null) {
-            const { latex, emoji } = data
-            return [emoji, latex].flatMap((map) =>
-                Object.entries(map).map(([label, value]) => {
-                    return {
-                        label,
-                        apply: apply_completion,
-                        detail: value ?? undefined,
-                        type: "c_special_symbol",
-                        boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
-                    }
-                })
-            )
+    let list = null
+    const get_list = () => {
+        if (list == null) {
+            list = request_special_symbols().then((data) => {
+                if (data != null) {
+                    const { latex, emoji } = data
+                    return [emoji, latex].flatMap((map) =>
+                        Object.entries(map).map(([label, value]) => {
+                            return {
+                                label,
+                                apply: apply_completion,
+                                detail: value ?? undefined,
+                                type: "c_special_symbol",
+                                boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
+                            }
+                        })
+                    )
+                }
+            })
         }
-    })
+        return list
+    }
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (!match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
         if (not_explicit_and_too_boring(ctx, true)) return null
-        return await autocomplete.completeFromList((await list) ?? [])(ctx)
+        return await autocomplete.completeFromList((await get_list()) ?? [])(ctx)
     }
 }
 
