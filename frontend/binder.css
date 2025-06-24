@@ -126,7 +126,7 @@ body.wiggle_binder .edit_or_run > button {
 .binder_help_text {
     --width: min(85vw, 570px);
     position: fixed;
-    max-height: calc(100vh - 4rem);
+    max-height: calc(100svh - 4rem);
     overflow: auto;
     width: var(--width);
     padding: 16px;
@@ -147,7 +147,7 @@ body.wiggle_binder .edit_or_run > button {
         top: 0;
         width: 100vw;
         left: 0;
-        max-height: 100vh;
+        max-height: 100svh;
     }
 }
 
