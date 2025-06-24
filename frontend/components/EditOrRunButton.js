@@ -1,8 +1,7 @@
 import _ from "../imports/lodash.js"
-import { BackendLaunchPhase } from "../common/Binder.js"
-import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
+import { html, useEffect, useState, useRef } from "../imports/Preact.js"
+import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 
-import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import { useDialog } from "../common/useDialog.js"
 
 export const RunLocalButton = ({ show, start_local }) => {
@@ -52,9 +51,10 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
         }
     }, [start_binder, offer_binder])
 
-    const recommend_download = notebookfile_ref.current.startsWith("data:")
-    const runtime_str = expected_runtime_str(notebook)
+    const nbpkg_timingdata = usePackageTimingData()
 
+    const recommend_download = notebookfile_ref.current.startsWith("data:")
+    const runtime_str = expected_runtime_str(notebook, nbpkg_timingdata)
     return html`<div class="edit_or_run">
         <button
             onClick=${(e) => {
@@ -147,20 +147,59 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
     </div>`
 }
 
-const expected_runtime = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {
-    return ((notebook.nbpkg?.install_time_ns ?? NaN) + _.sum(Object.values(notebook.cell_results).map((c) => c.runtime ?? 0))) / 1e9
+let find_imported_package_names = (/** @type {import("./Editor.js").NotebookData} */ notebook) =>
+    _.uniq(
+        Object.values(notebook.cell_inputs).flatMap((input) => {
+            let { code } = input
+            // import A, B, C
+            const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
+
+            return Array.from(code.matchAll(re)).flatMap((import_match) => {
+                const inner = import_match[0].substring(import_match[1].length)
+
+                // find the package name, e.g. `Plot` for `Plot.Extras.coolplot`
+                const inner_re = /(\w+)(\.\w+)*/g
+                return [...inner.matchAll(inner_re)].map((m) => m[1])
+            })
+        })
+    )
+
+const expected_runtime = (
+    /** @type {import("./Editor.js").NotebookData} */ notebook,
+    /** @type {import("../common/InstallTimeEstimate.js").PackageTimingData?} */ nbpkg_timingdata
+) => {
+    let nbpkg_measured = (notebook.nbpkg?.install_time_ns ?? NaN) / 1e9
+
+    let used_packages = notebook.nbpkg?.installed_versions == null ? find_imported_package_names(notebook) : Object.keys(notebook.nbpkg.installed_versions)
+    let nbpkg_estimate_data = nbpkg_timingdata == null ? null : time_estimate(nbpkg_timingdata, used_packages)
+    let nbpkg_estimate = nbpkg_estimate_data == null ? NaN : nbpkg_estimate_data.install + nbpkg_estimate_data.precompile // no load because that is included in cell runtimes
+
+    let nbpkg_best_guess = _.isNaN(nbpkg_measured) ? nbpkg_estimate : _.isNaN(nbpkg_estimate) ? nbpkg_measured : Math.max(nbpkg_measured, nbpkg_estimate)
+
+    let total_cell_runtime = _.sum(Object.values(notebook.cell_results).map((c) => c.runtime ?? 0)) / 1e9
+
+    return {
+        nbpkg_measured,
+        nbpkg_estimate,
+        nbpkg: nbpkg_best_guess,
+        total_cell_runtime,
+    }
 }
 
-const runtime_overhead = 15 // seconds
+const runtime_overhead = 10 // seconds
 const runtime_multiplier = 1.5
 
-const expected_runtime_str = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {
-    const ex = expected_runtime(notebook)
-    if (isNaN(ex)) {
+const expected_runtime_str = (
+    /** @type {import("./Editor.js").NotebookData} */ notebook,
+    /** @type {import("../common/InstallTimeEstimate.js").PackageTimingData?} */ nbpkg_timingdata
+) => {
+    const ex = expected_runtime(notebook, nbpkg_timingdata)
+    console.log("runtime estimate", ex)
+    if (isNaN(ex.nbpkg)) {
         return null
     }
 
-    const sec = _.round(runtime_overhead + ex * runtime_multiplier, -1)
+    const sec = _.round(runtime_overhead + ex.nbpkg + ex.total_cell_runtime * runtime_multiplier, -1)
     return pretty_long_time(sec)
 }
 
