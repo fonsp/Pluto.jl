@@ -69,6 +69,7 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
     metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
+    store_in_executable_order::Bool=true
 end
 
 function _initial_nb_status()
