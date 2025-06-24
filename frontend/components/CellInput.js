@@ -950,6 +950,9 @@ const InputContextMenu = ({
         )
     }
 
+    const strip_ansi_codes = (s) =>
+        typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s
+
     const copy_output = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
         let cell_result = notebook?.cell_results?.[cell_id]
@@ -962,7 +965,7 @@ const InputContextMenu = ({
                   cell_result.output.body.plain_error
 
         if (cell_output != null)
-            navigator.clipboard.writeText(cell_output).catch(() => {
+            navigator.clipboard.writeText(strip_ansi_codes(cell_output)).catch(() => {
                 alert(`Error copying cell output`)
             })
     }
