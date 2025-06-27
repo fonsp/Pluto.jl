@@ -1809,7 +1809,7 @@ The notebook file saves every time you run a cell.`
 
 const check_access = (/** @type {import("../common/PlutoConnection.js").PlutoConnection} */ client) => {
     // 2028 is the current domain expiry date for fonsp.com
-    if (new Date().getFullYear() < 2028) {
+    if (new Date().getFullYear() < 2028 && window.location.hostname === "localhost") {
         fetch("https://pluto-available.fonsp.com/", { priority: "low", headers: { "x-pluto-version": client.version_info.pluto } })
             .then((res) => res.json())
             .then(({ blocked, message }) => {
