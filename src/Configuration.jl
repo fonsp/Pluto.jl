@@ -54,11 +54,15 @@ const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
 const AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT = false
+const STORE_IN_EXECUTABLE_ORDER_NEW_DEFAULT = true
+const STORE_IN_EXECUTABLE_ORDER_EXISTING_DEFAULT = nothing
 const NOTEBOOK_DEFAULT = nothing
 const SIMULATED_LAG_DEFAULT = 0.0
 const SIMULATED_PKG_LAG_DEFAULT = 0.0
 const INJECTED_JAVASCRIPT_DATA_URL_DEFAULT = "data:text/javascript;base64,"
 const ON_EVENT_DEFAULT = function(a) #= @info "$(typeof(a))" =# end
+
+const exec_order_doc = "should the notebook file store cells in executable order, so that the notebook file can run as a standalone Julia file? If false, the visual order will be used as the file order, and the `Cell order` section is ommited"
 
 """
     ServerOptions([; kwargs...])
@@ -80,7 +84,9 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
 - `auto_reload_from_file_cooldown::Real = $AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT` Experimental, will be removed
 - `auto_reload_from_file_ignore_pkg::Bool = $AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT` Experimental flag, will be removed
-- `notebook::Union{Nothing,String} = $NOTEBOOK_DEFAULT` Optional path of notebook to launch at start
+- `store_in_executable_order_new::Bool = $STORE_IN_EXECUTABLE_ORDER_NEW_DEFAULT` For newly created files, $(exec_order_doc).
+- `store_in_executable_order_existing::Union{Nothing,Bool} = $STORE_IN_EXECUTABLE_ORDER_EXISTING_DEFAULT` After opening an existing notebook, $(exec_order_doc). If `nothing`, the notebook will be saved in the format it was opened in.
+- `notebook::Union{Nothing,String,Vector{<:String}} = $NOTEBOOK_DEFAULT` Optional path of notebook to launch at start
 - `simulated_lag::Real=$SIMULATED_LAG_DEFAULT` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
 - `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
@@ -104,6 +110,8 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
     auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT
     auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT
+    store_in_executable_order_new::Bool = STORE_IN_EXECUTABLE_ORDER_NEW_DEFAULT
+    store_in_executable_order_existing::Union{Nothing,Bool} = STORE_IN_EXECUTABLE_ORDER_EXISTING_DEFAULT
     notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT
     simulated_lag::Real = SIMULATED_LAG_DEFAULT
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
@@ -298,6 +306,8 @@ function from_flat_kwargs(;
         auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
         auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
         auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
+        store_in_executable_order_new::Bool = STORE_IN_EXECUTABLE_ORDER_NEW_DEFAULT,
+        store_in_executable_order_existing::Union{Nothing,Bool} = STORE_IN_EXECUTABLE_ORDER_EXISTING_DEFAULT,
         notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
         simulated_lag::Real = SIMULATED_LAG_DEFAULT,
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
@@ -348,6 +358,8 @@ function from_flat_kwargs(;
         auto_reload_from_file,
         auto_reload_from_file_cooldown,
         auto_reload_from_file_ignore_pkg,
+        store_in_executable_order_new,
+        store_in_executable_order_existing,
         notebook,
         simulated_lag,
         simulated_pkg_lag,

@@ -29,9 +29,3 @@ n = 1:100000
 
 # ╔═╡ b2d79376-7f73-11ea-2dce-cb9c449eece6
 seq = n .^ -2
-
-# ╔═╡ Cell order:
-# ╟─b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e
-# ╠═b2d792c2-7f73-11ea-0c65-a5042701e9f3
-# ╠═b2d79330-7f73-11ea-0d1c-a9aad1efaae1
-# ╠═b2d79376-7f73-11ea-2dce-cb9c449eece6
