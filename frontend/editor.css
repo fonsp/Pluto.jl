@@ -3962,6 +3962,11 @@ pluto-header-id-copy::before {
     background-size: 100% 100%;
 }
 
+pluto-header-id-copy-wrapper {
+    display: inline-block;
+    width: 0;
+}
+
 pluto-header-id-copy.recently-copied::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
 }

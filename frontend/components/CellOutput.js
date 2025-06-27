@@ -769,7 +769,10 @@ export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ hea
         listener(e)
         e.preventDefault()
     })
-    header.append(button)
+
+    const wrapper = document.createElement("pluto-header-id-copy-wrapper")
+    wrapper.append(button)
+    header.append(wrapper)
 }
 
 export const ANSITextOutput = ({ body }) => {
