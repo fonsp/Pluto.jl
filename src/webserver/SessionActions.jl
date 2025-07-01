@@ -73,7 +73,6 @@ function open(session::ServerSession, path::AbstractString;
         notebook.metadata["risky_file_source"] = risky_file_source
     end
     notebook.process_status = execution_allowed ? ProcessStatus.starting : ProcessStatus.waiting_for_permission
-    notebook.store_in_executable_order = something(session.options.server.store_in_executable_order_existing, notebook.store_in_executable_order)
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
@@ -223,7 +222,6 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     # Run NewNotebookEvent handler before assigning ID
     isid = try_event_call(session, NewNotebookEvent())
     notebook.notebook_id = isnothing(isid) ? notebook_id : isid
-    notebook.store_in_executable_order = session.options.server.store_in_executable_order_new
 
     update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
     add(session, notebook; run_async)
