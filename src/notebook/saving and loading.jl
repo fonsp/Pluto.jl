@@ -33,6 +33,8 @@ Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1
 function save_notebook(io::IO, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
+    
+    exe_order = notebook.store_in_executable_order
 
     # Notebook metadata
     let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
@@ -57,14 +59,14 @@ function save_notebook(io::IO, notebook::Notebook)
     end
     println(io)
 
-    cells_ordered = collect(topological_order(notebook))
+    cells_ordered = exe_order ? collect(topological_order(notebook)) : notebook.cells
 
     # NOTE: the notebook topological is cached on every update_dependency! call
     # ....  so it is possible that a cell was added/removed since this last update.
     # ....  in this case, it will not contain that cell since it is build from its
     # ....  store notebook topology. therefore, we compute an updated topological
     # ....  order in this unlikely case.
-    if length(cells_ordered) != length(notebook.cells_dict)
+    if exe_order && length(cells_ordered) != length(notebook.cells_dict)
         cells = notebook.cells
         updated_topo = updated_topology(notebook.topology, notebook, cells)
         cells_ordered = collect(topological_order(updated_topo, cells))
@@ -122,15 +124,16 @@ function save_notebook(io::IO, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
-
-    println(io, _cell_id_delimiter, "Cell order:")
-    for c in notebook.cells
-        delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
-        println(io, delim, string(c.cell_id))
-    end
-    if write_package
-        println(io, _order_delimiter_folded, string(_ptoml_cell_id))
-        println(io, _order_delimiter_folded, string(_mtoml_cell_id))
+    if exe_order
+        println(io, _cell_id_delimiter, "Cell order:")
+        for c in notebook.cells
+            delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
+            println(io, delim, string(c.cell_id))
+        end
+        if write_package
+            println(io, _order_delimiter_folded, string(_ptoml_cell_id))
+            println(io, _order_delimiter_folded, string(_mtoml_cell_id))
+        end
     end
 
     notebook
@@ -199,12 +202,23 @@ end
 
 function _read_notebook_collected_cells!(@nospecialize(io::IO))
     collected_cells = Dict{UUID,Cell}()
+    collected_cells_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
         if cell_id_str == "Cell order:"
             break
         else
-            cell_id = UUID(cell_id_str)
+            cell_id_parsed = tryparse(UUID, cell_id_str)
+            cell_id = if cell_id_parsed isa UUID
+                if haskey(collected_cells, cell_id_parsed)
+                    @warn "Cell ID appears multiple times in the file. Generating a new one."
+                    uuid1()
+                else
+                    cell_id_parsed
+                end
+            else
+                uuid1()
+            end
 
             metadata_toml_lines = String[]
             initial_code_line = ""
@@ -239,9 +253,10 @@ function _read_notebook_collected_cells!(@nospecialize(io::IO))
 
             read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
+            push!(collected_cells_order, cell_id)
         end
     end
-    return collected_cells
+    return collected_cells, collected_cells_order
 end
 
 function _read_notebook_cell_order!(@nospecialize(io::IO), collected_cells)
@@ -300,13 +315,13 @@ function _read_notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dic
     return nbpkg_ctx
 end
 
-function _read_notebook_appeared_order!(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
+function _notebook_appeared_order(cell_order::Vector{UUID}, collected_cells_order::Vector{UUID})
     setdiff!(
         union!(
             # don't include cells that only appear in the order, but no code was given
-            intersect!(cell_order, keys(collected_cells)),
+            intersect(cell_order, collected_cells_order),
             # add cells that appeared in code, but not in the order.
-            keys(collected_cells)
+            collected_cells_order
         ),
         # remove Pkg cells
         (_ptoml_cell_id, _mtoml_cell_id)
@@ -316,15 +331,16 @@ end
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
 function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString); skip_nbpkg::Bool=false)::Notebook
     notebook_metadata = _read_notebook_metadata!(io)
-    collected_cells = _read_notebook_collected_cells!(io)
+    collected_cells, collected_cells_order = _read_notebook_collected_cells!(io)
     cell_order = _read_notebook_cell_order!(io, collected_cells)
     nbpkg_ctx = skip_nbpkg ? nothing : _read_notebook_nbpkg_ctx(cell_order, collected_cells)
-    appeared_order = _read_notebook_appeared_order!(cell_order, collected_cells)
 
+    appeared_order = _notebook_appeared_order(cell_order, collected_cells_order)
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
     topology = _initial_topology(appeared_cells_dict, appeared_order)
+    was_stored_in_executable_order = !isempty(cell_order)
 
     Notebook(;
         cells_dict=appeared_cells_dict,
@@ -335,6 +351,7 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
         nbpkg_ctx,
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
         metadata=notebook_metadata,
+        store_in_executable_order=was_stored_in_executable_order,
     )
 end
 
