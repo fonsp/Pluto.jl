@@ -34,8 +34,6 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
     
-    exe_order = notebook.store_in_executable_order
-
     # Notebook metadata
     let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
         if !isempty(nb_metadata_toml)
@@ -59,14 +57,14 @@ function save_notebook(io::IO, notebook::Notebook)
     end
     println(io)
 
-    cells_ordered = exe_order ? collect(topological_order(notebook)) : notebook.cells
+    cells_ordered = collect(topological_order(notebook))
 
     # NOTE: the notebook topological is cached on every update_dependency! call
     # ....  so it is possible that a cell was added/removed since this last update.
     # ....  in this case, it will not contain that cell since it is build from its
     # ....  store notebook topology. therefore, we compute an updated topological
     # ....  order in this unlikely case.
-    if exe_order && length(cells_ordered) != length(notebook.cells_dict)
+    if length(cells_ordered) != length(notebook.cells_dict)
         cells = notebook.cells
         updated_topo = updated_topology(notebook.topology, notebook, cells)
         cells_ordered = collect(topological_order(updated_topo, cells))
@@ -124,7 +122,7 @@ function save_notebook(io::IO, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
-    if exe_order
+    begin
         println(io, _cell_id_delimiter, "Cell order:")
         for c in notebook.cells
             delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
@@ -351,7 +349,6 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
         nbpkg_ctx,
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
         metadata=notebook_metadata,
-        store_in_executable_order=was_stored_in_executable_order,
     )
 end
 
