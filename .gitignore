@@ -22,3 +22,4 @@ frontend/package-lock.json
 profile.pb.gz
 
 test/snapshots
+.vscode/*

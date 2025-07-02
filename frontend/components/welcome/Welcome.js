@@ -137,10 +137,10 @@ export const Welcome = ({ launch_params }) => {
 
     return html`
         <section id="title">
-            <h1><i>welcome to</i> <img src=${url_logo_big} />-<b>book</b></h1>
+            <h1><i>welcome to</i> <img src=${url_logo_big} /><b>book</b></h1>
         </section>
         <section id="subscript">
-            <p style="font-size:1em;"><i>The JIVE notebooks powered by</i> <b>Pluto.jl </b><img width='10' src=./img/favicon-16x16.png /></p>
+            <p style="font-size:1em;"><i>The </i><b>JIVE.jl </b><i>notebooks powered by</i> <b>Pluto.jl </b><img width='10' src=./img/favicon-16x16.png /></p>
         </section>
         <section id="mywork">
             <div>

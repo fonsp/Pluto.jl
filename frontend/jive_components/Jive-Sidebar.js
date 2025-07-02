@@ -104,9 +104,9 @@ searchItem.addEventListener("search", function () {
 // FOLDERS
 const itemBarFile = document.createElement("div")
 const itemBarAdjust = document.createElement("div")
-// const itemBarProcess = document.createElement("div")
-// const itemBarPlot = document.createElement("div")
-// const itemBarWindows = document.createElement("div")
+const itemBarProcess = document.createElement("div")
+const itemBarView = document.createElement("div")
+// const itemBarData = document.createElement("div")
 const itemBarEdit = document.createElement("div")
 
 ////////// FILE /////////////
@@ -114,7 +114,7 @@ const itemBarEdit = document.createElement("div")
 /// Accordion Open/Close Button
 const accButtonFile = document.createElement("button")
 accButtonFile.className = "jv-button jv-block jv-left-align"
-accButtonFile.name = "File"
+accButtonFile.name = ' <img width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-outline.svg"></img>'
 accButtonFile.innerHTML = accButtonFile.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
 accButtonFile.onclick = function () {
     myAccFunc(accFile.id)
@@ -188,7 +188,7 @@ itemBarFile.appendChild(accFile)
 /// Accordion Open/Close Button
 const accButtonAdjust = document.createElement("button")
 accButtonAdjust.className = "jv-button jv-block jv-left-align"
-accButtonAdjust.name = "Adjust"
+accButtonAdjust.name = ' <img width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/contrast-outline.svg"></img>'
 accButtonAdjust.innerHTML =
     accButtonAdjust.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
 accButtonAdjust.onclick = function () {
@@ -231,7 +231,7 @@ itemBarAdjust.appendChild(accAdjust)
 /// Accordion Open/Close Button
 const accButtonEdit = document.createElement("button")
 accButtonEdit.className = "jv-button jv-block jv-left-align"
-accButtonEdit.name = "Edit"
+accButtonEdit.name = ' <img width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/create-outline.svg"></img>'
 accButtonEdit.innerHTML = accButtonEdit.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
 accButtonEdit.onclick = function () {
     myAccFunc(accEdit.id)
@@ -293,6 +293,55 @@ accEdit.appendChild(accItemEditAnnotate)
 itemBarEdit.appendChild(accButtonEdit)
 itemBarEdit.appendChild(accEdit)
 
+////////// PROCESS /////////////
+
+/// Accordion Open/Close Button
+const accButtonProcess = document.createElement("button")
+accButtonProcess.className = "jv-button jv-block jv-left-align"
+accButtonProcess.name = ' <img width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cog-outline.svg"></img>'
+accButtonProcess.innerHTML =
+    accButtonProcess.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
+accButtonProcess.onclick = function () {
+    myAccFunc(accProcess.id)
+}
+
+/// Container for Accordion Menu Items
+const accProcess = document.createElement("div")
+accProcess.id = "AccProcess"
+accProcess.className = "jv-hide jv-card"
+accProcess.style.boxShadow = "none"
+accProcess.style.margin = "0px 0px 5px 15px"
+
+//// add items to menu
+// accEdit.appendChild(accItemEditAnnotate)
+// accEdit.appendChild(accItemEdit)
+itemBarProcess.appendChild(accButtonProcess)
+itemBarProcess.appendChild(accProcess)
+
+////////// VIEW /////////////
+
+/// Accordion Open/Close Button
+const accButtonView = document.createElement("button")
+accButtonView.className = "jv-button jv-block jv-left-align"
+accButtonView.name = ' <img width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/tv-outline.svg"></img>'
+accButtonView.innerHTML = accButtonView.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
+accButtonView.onclick = function () {
+    myAccFunc(accView.id)
+}
+
+/// Container for Accordion Menu Items
+const accView = document.createElement("div")
+accView.id = "AccView"
+accView.className = "jv-hide jv-card"
+accView.style.boxShadow = "none"
+accView.style.margin = "0px 0px 5px 15px"
+
+//// add items to menu
+// accEdit.appendChild(accItemEditAnnotate)
+// accEdit.appendChild(accItemEdit)
+itemBarView.appendChild(accButtonView)
+itemBarView.appendChild(accView)
+
 //////////////// Put menu together ///////////////////
 
 sideBar.appendChild(closeBtn)
@@ -301,8 +350,8 @@ sideBar.appendChild(searchItem)
 sideBar.appendChild(itemBarFile)
 sideBar.appendChild(itemBarEdit)
 sideBar.appendChild(itemBarAdjust)
-// sideBar.appendChild(itemBarProcess)
-// sideBar.appendChild(itemBarPlot)
+sideBar.appendChild(itemBarProcess)
+sideBar.appendChild(itemBarView)
 
 ////////////////
 // FUNCTIONS //
