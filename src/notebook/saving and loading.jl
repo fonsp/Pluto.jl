@@ -206,18 +206,7 @@ function _read_notebook_collected_cells!(@nospecialize(io::IO))
         if cell_id_str == "Cell order:"
             break
         else
-            cell_id_parsed = tryparse(UUID, cell_id_str)
-            cell_id = if cell_id_parsed isa UUID
-                if haskey(collected_cells, cell_id_parsed)
-                    @warn "Cell ID appears multiple times in the file. Generating a new one."
-                    uuid1()
-                else
-                    cell_id_parsed
-                end
-            else
-                uuid1()
-            end
-
+            cell_id = unique_cell_id(cell_id_str, collected_cells)
             metadata_toml_lines = String[]
             initial_code_line = ""
             while !eof(io)
@@ -255,6 +244,20 @@ function _read_notebook_collected_cells!(@nospecialize(io::IO))
         end
     end
     return collected_cells, collected_cells_order
+end
+
+function unique_cell_id(cell_id_str::String, collected_cells::Dict)
+    cell_id_parsed = tryparse(UUID, cell_id_str)
+    cell_id = if cell_id_parsed isa UUID
+        if haskey(collected_cells, cell_id_parsed)
+            @warn "Cell ID appears multiple times in the file. Generating a new one."
+            uuid1()
+        else
+            cell_id_parsed
+        end
+    else
+        uuid1()
+    end
 end
 
 function _read_notebook_cell_order!(@nospecialize(io::IO), collected_cells)
