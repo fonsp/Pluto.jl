@@ -56,7 +56,7 @@ const AIPermissionPrompt = ({ onAccept, onDecline }) => {
     return html`
         <div class="ai-permission-prompt">
             <h3>Use AI to fix syntax errors?</h3>
-            <p>Pluto will send code from this cell to a commericial LLM service to fix syntax errors. Updated code will not run without confirmation.</p>
+            <p>Pluto will send code from this cell to a commercial LLM service to fix syntax errors. Updated code will not run without confirmation.</p>
             <p>Submitted code can be used (anonymously) by Pluto developers to improve the AI service.</p>
             <label class="ask-next-time">
                 <input type="checkbox" checked=${dontAskAgain} onChange=${(e) => setDontAskAgain(e.target.checked)} />
