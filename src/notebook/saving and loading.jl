@@ -33,7 +33,7 @@ Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1
 function save_notebook(io::IO, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
-
+    
     # Notebook metadata
     let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
         if !isempty(nb_metadata_toml)
@@ -122,15 +122,16 @@ function save_notebook(io::IO, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
-
-    println(io, _cell_id_delimiter, "Cell order:")
-    for c in notebook.cells
-        delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
-        println(io, delim, string(c.cell_id))
-    end
-    if write_package
-        println(io, _order_delimiter_folded, string(_ptoml_cell_id))
-        println(io, _order_delimiter_folded, string(_mtoml_cell_id))
+    begin
+        println(io, _cell_id_delimiter, "Cell order:")
+        for c in notebook.cells
+            delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
+            println(io, delim, string(c.cell_id))
+        end
+        if write_package
+            println(io, _order_delimiter_folded, string(_ptoml_cell_id))
+            println(io, _order_delimiter_folded, string(_mtoml_cell_id))
+        end
     end
 
     notebook
@@ -199,13 +200,13 @@ end
 
 function _read_notebook_collected_cells!(@nospecialize(io::IO))
     collected_cells = Dict{UUID,Cell}()
+    collected_cells_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
         if cell_id_str == "Cell order:"
             break
         else
-            cell_id = UUID(cell_id_str)
-
+            cell_id = unique_cell_id(cell_id_str, collected_cells)
             metadata_toml_lines = String[]
             initial_code_line = ""
             while !eof(io)
@@ -239,9 +240,24 @@ function _read_notebook_collected_cells!(@nospecialize(io::IO))
 
             read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
+            push!(collected_cells_order, cell_id)
         end
     end
-    return collected_cells
+    return collected_cells, collected_cells_order
+end
+
+function unique_cell_id(cell_id_str::String, collected_cells::Dict)
+    cell_id_parsed = tryparse(UUID, cell_id_str)
+    cell_id = if cell_id_parsed isa UUID
+        if haskey(collected_cells, cell_id_parsed)
+            @warn "Cell ID appears multiple times in the file. Generating a new one."
+            uuid1()
+        else
+            cell_id_parsed
+        end
+    else
+        uuid1()
+    end
 end
 
 function _read_notebook_cell_order!(@nospecialize(io::IO), collected_cells)
@@ -300,13 +316,13 @@ function _read_notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dic
     return nbpkg_ctx
 end
 
-function _read_notebook_appeared_order!(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
+function _notebook_appeared_order(cell_order::Vector{UUID}, collected_cells_order::Vector{UUID})
     setdiff!(
         union!(
             # don't include cells that only appear in the order, but no code was given
-            intersect!(cell_order, keys(collected_cells)),
+            intersect(cell_order, collected_cells_order),
             # add cells that appeared in code, but not in the order.
-            keys(collected_cells)
+            collected_cells_order
         ),
         # remove Pkg cells
         (_ptoml_cell_id, _mtoml_cell_id)
@@ -316,15 +332,16 @@ end
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
 function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString); skip_nbpkg::Bool=false)::Notebook
     notebook_metadata = _read_notebook_metadata!(io)
-    collected_cells = _read_notebook_collected_cells!(io)
+    collected_cells, collected_cells_order = _read_notebook_collected_cells!(io)
     cell_order = _read_notebook_cell_order!(io, collected_cells)
     nbpkg_ctx = skip_nbpkg ? nothing : _read_notebook_nbpkg_ctx(cell_order, collected_cells)
-    appeared_order = _read_notebook_appeared_order!(cell_order, collected_cells)
 
+    appeared_order = _notebook_appeared_order(cell_order, collected_cells_order)
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
     topology = _initial_topology(appeared_cells_dict, appeared_order)
+    was_stored_in_executable_order = !isempty(cell_order)
 
     Notebook(;
         cells_dict=appeared_cells_dict,
