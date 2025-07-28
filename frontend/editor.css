@@ -262,6 +262,7 @@ pluto-output.rich_output code {
 pluto-output.rich_output pre > code {
     padding: 0px;
     background-color: transparent;
+    border-radius: 0;
 }
 
 pluto-log-dot pre,
