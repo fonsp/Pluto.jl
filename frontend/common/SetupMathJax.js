@@ -94,3 +94,6 @@ export const setup_mathjax = () => {
         { timeout: 2000 }
     )
 }
+
+// @ts-ignore
+window.__pluto_setup_mathjax = setup_mathjax
