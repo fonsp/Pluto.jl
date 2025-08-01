@@ -464,9 +464,12 @@ pluto-output mjx-assistive-mml {
     height: 1px;
 }
 
-/* Avoid scrollbar in cells that contain just a h3 element, like the h3 headers in https://computationalthinking.mit.edu/Fall22/images_abstractions/transformations_and_autodiff/ */
+/* Allow horizontal scrolling of wide markdown content (e.g. long MathJax
+   expressions) while keeping vertical overflow hidden. This still prevents
+   scrollbars for simple headers but avoids clipping.  */
 .raw-html-wrapper > div.markdown {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 pluto-output details {
