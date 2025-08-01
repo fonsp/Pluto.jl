@@ -451,12 +451,13 @@ pluto-output table pre {
 
 pluto-output kbd,
 kbd {
-    font-family: "Space Mono", monospace;
-    font-size: 0.7rem;
     letter-spacing: -0.7px;
     border: 1px solid var(--kbd-border-color);
-    padding: 0px 5px;
     border-radius: 3px;
+    padding: 0.1em 0.4em;
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 /* Avoid scrollbar in in-line latex with markdown, see https://github.com/fonsp/Pluto.jl/issues/1309 */
@@ -2198,7 +2199,7 @@ pkg-popup.busy {
 }
 
 pkg-version {
-    font-family: "Space Mono", monospace;
+    font-family: monospace;
     font-size: 0.75rem;
     opacity: 0.5;
 }
@@ -2274,7 +2275,7 @@ body pkg-terminal:not(.asdf) pre:not(.asdf) {
     white-space: pre-wrap;
     word-break: break-all;
     font-size: 0.6rem;
-    font-family: "Space Mono", monospace;
+    font-family: monospace;
     font-variant-ligatures: none;
     margin: 0;
     color: inherit;
