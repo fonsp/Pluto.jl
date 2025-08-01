@@ -53,7 +53,6 @@ jobs:
                   options = Pluto.Configuration.from_flat_kwargs(; 
                     port=parse(Int, ENV["PLUTO_PORT"]), 
                     require_secret_for_access=false,
-                    workspace_use_distributed_stdlib=false,
                   )
                   🍭 = Pluto.ServerSession(; options)
                   server = Pluto.run!(🍭)
