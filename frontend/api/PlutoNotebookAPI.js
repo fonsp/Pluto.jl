@@ -456,7 +456,7 @@ export class PlutoNotebook {
      * @returns {Promise<Object|undefined>} Response from backend if run=true
      * @throws {Error} If not connected to notebook
      */
-    async updateCellCode(cell_id, code, run = true) {
+    async updateCellCode(cell_id, code, run = true, metadata = {}) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }
@@ -466,7 +466,7 @@ export class PlutoNotebook {
         this._notify_update("cell_local_update", { cell_id, code })
 
         if (run) {
-            return await this.setCellsAndRun([cell_id])
+            return await this.setCellsAndRun([cell_id], { cell_id: metadata })
         }
     }
 
@@ -475,7 +475,7 @@ export class PlutoNotebook {
      * @param {Array<string>} cell_ids - Array of cell UUIDs to update and run
      * @returns {Promise<Object>} - Response from backend
      */
-    async setCellsAndRun(cell_ids) {
+    async setCellsAndRun(cell_ids, metadata_record) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }
@@ -494,6 +494,7 @@ export class PlutoNotebook {
                             notebook.cell_inputs[cell_id] = {}
                         }
                         notebook.cell_inputs[cell_id].code = this.cell_inputs_local[cell_id].code
+                        notebook.cell_inputs[cell_id].metadata = { ...notebook.cell_inputs[cell_id].metadata, ...metadata_record[cell_id] }
                     }
                 }
             })
@@ -554,7 +555,7 @@ export class PlutoNotebook {
      * @example
      * const cellId = await notebook.addCell(0, "println(\"Hello World\")");
      */
-    async addCell(index = 0, code = "") {
+    async addCell(index = 0, code = "", metadata = {}) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }
@@ -565,7 +566,7 @@ export class PlutoNotebook {
                 cell_id: cell_id,
                 code,
                 code_folded: false,
-                metadata: { ...DEFAULT_CELL_METADATA },
+                metadata: { ...DEFAULT_CELL_METADATA, ...metadata },
             }
 
             // Add to cell_order
@@ -573,7 +574,7 @@ export class PlutoNotebook {
         })
 
         // Wait for the server to confirm the cell addition
-        const response = await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.notebook_id })
+        await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.notebook_id })
 
         // Update local state to match server response
         // this.notebook_state = new_notebook;
