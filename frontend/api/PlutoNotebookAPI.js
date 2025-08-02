@@ -373,12 +373,9 @@ export class PlutoNotebook {
         }
 
         try {
-            const notebook = this.notebook_state
-            let source = notebook.metadata?.risky_file_source
-
             // Check if we need confirmation for risky files
             // Note: In API context, we skip the browser confirm() and assume consent
-            const should_proceed = !maybe_confirm || source == null || !maybe_confirm
+            const should_proceed = !maybe_confirm
 
             if (should_proceed) {
                 // Clear risky file metadata if present
