@@ -3101,6 +3101,44 @@ footer #info {
     align-items: center;
 }
 
+/* LANGUAGE PICKER */
+
+.language-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 1rem;
+    font-size: 0.75rem;
+}
+
+.language-picker label {
+    color: var(--footer-color);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.language-picker select {
+    background: var(--white);
+    border: 2px solid var(--footer-input-border-color);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--footer-color);
+    cursor: pointer;
+}
+
+.language-picker select:focus {
+    outline: 2px solid var(--footer-filepicker-focus-color);
+    outline-offset: 1px;
+}
+
+@media (max-width: 650px) {
+    .language-picker {
+        display: none;
+    }
+}
+
 /* UNDO DELETED CELL */
 
 nav#undo_delete {

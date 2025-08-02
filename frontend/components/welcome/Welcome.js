@@ -131,14 +131,13 @@ export const Welcome = ({ launch_params }) => {
     if (block_screen_with_this_text != null) {
         return html`
             <div class="navigating-away-banner">
-                <h2>Loading ${block_screen_with_this_text}...</h2>
+                <h2>${th("t_loading_something", { text: block_screen_with_this_text })}</h2>
             </div>
         `
     }
 
     return html`
         <section id="title">
-            <h1>${th("welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })}</h1>
         </section>
         <section id="mywork">
             <div>
@@ -151,7 +150,7 @@ export const Welcome = ({ launch_params }) => {
                 />
             </div>
         </section>
-        <section id="open">
+        <section id="open_action">
             <div>
                 <${Open}
                     client=${client_ref.current}

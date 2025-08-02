@@ -24,7 +24,7 @@ export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_quer
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body: t("live_docs_body"),
+        body: t("t_live_docs_body"),
         loading: false,
     })
     let update_state = (mutation) => set_state(immer((state) => mutation(state)))

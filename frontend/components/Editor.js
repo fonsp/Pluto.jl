@@ -1,5 +1,4 @@
 import { html, Component } from "../imports/Preact.js"
-import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -46,9 +45,7 @@ import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
-
-// This is imported asynchronously - uncomment for development
-// import environment from "../common/Environment.js"
+import { LanguagePicker } from "./LanguagePicker.js"
 
 export const default_path = ""
 const DEBUG_DIFFING = false
@@ -1791,6 +1788,7 @@ The notebook file saves every time you run a cell.`
                     <${SlideControls} />
                     <footer>
                         <div id="info">
+                            <${LanguagePicker} />
                             <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
                             <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">

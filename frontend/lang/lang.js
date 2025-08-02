@@ -24,8 +24,9 @@ const a = i18next
     },
     // supportedLngs: ["en", "nl"],
     detection: {
-      order: ["navigator"],
-      caches: false,
+      order: ["localStorage", "navigator"],
+      caches: ["localStorage"],
+      lookupLocalStorage: "i18nextLng",
     },
     // lng: "nl",
   }); 
@@ -33,6 +34,43 @@ const a = i18next
   
 
 export const t = i18next.t
+
+/**
+ * Get available languages with their display names and translation completeness
+ * @returns {Array<{code: string, name: string, completeness: number}>}
+ */
+export const getAvailableLanguages = () => {
+    const languages = Object.keys(i18next.options.resources || {})
+    const englishKeys = Object.keys(i18next.options.resources?.en?.translation || {})
+    const totalKeys = englishKeys.length
+    
+    return languages.map(lang => {
+        const langKeys = Object.keys(i18next.options.resources?.[lang]?.translation || {})
+        const completeness = totalKeys > 0 ? Math.round((langKeys.length / totalKeys) * 100) : 100
+        
+        return {
+            code: lang,
+            name: t(`t_language_name_${lang}`, { lng: lang }),
+            completeness: completeness
+        }
+    })
+}
+
+/**
+ * Change the current language
+ * @param {string} language - Language code
+ */
+export const changeLanguage = async (language) => {
+    await i18next.changeLanguage(language)
+}
+
+/**
+ * Get current language
+ * @returns {string}
+ */
+export const getCurrentLanguage = () => {
+    return i18next.language
+}
 
 // export const th = (strings, ...values) => {
 //     const strings_translated = strings.map(s => i18next.t(s, { interpolation: { escapeValue: false } }))
@@ -43,7 +81,7 @@ export const t = i18next.t
 /**
  * Like t, but you can interpolate Preact elements.
  * @param {string} key 
- * @param {Record<string, any>=} insertions
+* @param {Record<string, any>=} insertions
  * @returns {string | import("../imports/Preact.js").ReactElement}
  */
 export const th = (key, insertions) => {
