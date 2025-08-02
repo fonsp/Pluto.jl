@@ -437,7 +437,7 @@ export class PlutoNotebook {
      * @returns {Promise<any>} Function result
      * @throws {Error} Not implemented
      */
-    async execute(symbol, arguments = []) {
+    async execute(symbol, args = []) {
         throw new Error("Not implemented")
     }
 

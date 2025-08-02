@@ -7,9 +7,9 @@
     "description": "",
     "scripts": {
         "clean": "rm -rf ../frontend-dist ../frontend-dist-static",
-        "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html",
+        "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html api/PlutoNotebookAPI.js",
         "note about order": "super weird but index.html has to come before editor.html or the prefetch in index.html will not bundle correctly.",
-        "build": "npm run clean && cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html",
+        "build": "npm run clean && cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html  api/PlutoNotebookAPI.js",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
