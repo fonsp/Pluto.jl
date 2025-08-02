@@ -381,7 +381,8 @@ export class PlutoNotebook {
             })
 
             // Send restart command to server
-            await this.client.send(
+            // Awaiting this is futile, I think (@pankgeorg, 2/8/2025)
+            this.client.send(
                 "restart_process",
                 {},
                 {
