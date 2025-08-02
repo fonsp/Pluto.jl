@@ -44,11 +44,17 @@
  * @version 1.0.0
  */
 
-import { create_pluto_connection, ws_address_from_base, type PlutoConnection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { empty_notebook_state } from "../editor.js"
 import { applyPatches, produceWithPatches } from "../imports/immer.js"
 
-import type { NotebookPkgData, CellInputData, CellResultData, NotebookData } from "../components/Editor"
+/**
+ * @typedef CellData
+ * @type {{
+ *  input: import("../components/Editor.js").CellInputData,
+ *  results: import("../components/Editor.js").CellResultData,
+ * }}
+ */
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
 const DEFAULT_CELL_METADATA = {
@@ -60,7 +66,6 @@ const DEFAULT_CELL_METADATA = {
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
-    //@ts-ignore
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
 /**
@@ -77,17 +82,16 @@ const uuidv4 = () =>
  * const notebook = await pluto.createNotebook(``);
  */
 export class Pluto {
-    server_url: string
-    ws_address: string
-    private _notebooks: Map<string, PlutoNotebook>
-
     /**
      * Create a new Pluto instance
      * @param {string} [server_url="http://localhost:1234"] - Pluto server URL
      */
     constructor(server_url = "http://localhost:1234") {
+        /** @type {string} */
         this.server_url = server_url
+        /** @type {string} */
         this.ws_address = ws_address_from_base(server_url)
+        /** @type {Map<string, PlutoNotebook>} */
         this._notebooks = new Map()
     }
 
@@ -233,24 +237,6 @@ export class Pluto {
  * });
  */
 export class PlutoNotebook {
-    ws_address: string
-    notebook_id: string
-    connected: boolean = false
-    initializing: boolean = false
-    notebook_status = null
-
-    cell_inputs_local: Record<string, CellInputData>
-
-    notebook_state: NotebookData
-
-    last_update_time: number = 0
-    pending_local_updates: number
-    last_update_counter: number = -1
-    client: PlutoConnection | null
-
-    _update_handlers: Set<Function>
-    _connection_status_handlers: Set<Function>
-    _update_queue_promise: Promise<any>
     /**
      * Create a new PlutoNotebook instance
      *
@@ -261,29 +247,44 @@ export class PlutoNotebook {
      * @param {string} notebook_id - Specific notebook ID to connect to
      */
     constructor(ws_address, notebook_id) {
+        /** @type {string} */
         this.ws_address = ws_address
+        /** @type {string} */
         this.notebook_id = notebook_id
+        /** @type {boolean} */
         this.connected = false
+        /** @type {boolean} */
         this.initializing = true
+        /** @type {*} */
+        this.notebook_status = null
 
-        // Initialize notebook state
+        /** @type {Record<string, import("../components/Editor.js").CellInputData>} */
+        this.cell_inputs_local = {}
+
+        /** @type {import("../components/Editor.js").NotebookData*/
         this.notebook_state = empty_notebook_state({
             notebook_id: this.notebook_id,
         })
+
+        /** @type {number} */
+        this.last_update_time = 0
+        /** @type {number} */
+        this.pending_local_updates = 0
+        /** @type {number} */
+        this.last_update_counter = -1
+        /** @type {import("../common/PlutoConnection.js").PlutoConnection | null} */
+        this.client = null
+
+        /** @type {Set<Function>} */
+        this._update_handlers = new Set()
+        /** @type {Set<Function>} */
+        this._connection_status_handlers = new Set()
+        /** @type {Promise<void>} */
+        this._update_queue_promise = Promise.resolve()
+
+        // Initialize notebook state
         this.cell_inputs_local = {}
         this.last_update_time = 0
-
-        // Connection state
-        this.client = null
-        this.pending_local_updates = 0
-        this.last_update_counter = -1
-
-        // Event handlers
-        this._update_handlers = new Set()
-        this._connection_status_handlers = new Set()
-
-        // Initialize update queue for batched operations
-        this._update_queue_promise = Promise.resolve()
     }
 
     /**
@@ -431,6 +432,10 @@ export class PlutoNotebook {
     /**
      * Execute a function within the Julia context
      *
+     * @param {string} symbol - Function symbol to execute
+     * @param {Array<any>} [arguments=[]] - Arguments to pass to the function
+     * @returns {Promise<any>} Function result
+     * @throws {Error} Not implemented
      */
     async execute(symbol, arguments = []) {
         throw new Error("Not implemented")
@@ -443,7 +448,7 @@ export class PlutoNotebook {
      * cell_results, cell_order, and metadata. This matches the structure
      * used by Editor.js.
      *
-     * @returns {NotebookState|null} Current notebook state, or null if not connected
+     * @returns {NotebookData|null} Current notebook state, or null if not connected
      */
     getNotebookState() {
         return this.notebook_state
@@ -453,7 +458,7 @@ export class PlutoNotebook {
      * Get specific cell data
      *
      * @param {string} cell_id - Cell UUID
-     * @returns {string|null} Cell data object with input, result, and local state
+     * @returns {CellData|null} Cell data object with input, result, and local state
      */
     getCell(cell_id) {
         if (!this.notebook_state) return null
@@ -461,7 +466,6 @@ export class PlutoNotebook {
         return {
             input: this.notebook_state.cell_inputs?.[cell_id],
             result: this.notebook_state.cell_results?.[cell_id],
-            local: this.cell_inputs_local[cell_id],
         }
     }
 
@@ -471,7 +475,7 @@ export class PlutoNotebook {
      * Returns cells in the order specified by cell_order, with complete
      * input and result data for each cell.
      *
-     * @returns {Array<CellData>} Array of cell data objects in execution order
+     * @returns {Array<{cell_id: string} & CellData>} Array of cell data objects in execution order
      */
     getCells() {
         if (!this.notebook_state || !this.notebook_state.cell_order) return []
@@ -488,9 +492,10 @@ export class PlutoNotebook {
      * This updates the cell's code and optionally triggers execution.
      * The change is first stored locally, then sent to the server.
      *
-     * @param {CellId} cell_id - Cell UUID
+     * @param {string} cell_id - Cell UUID
      * @param {string} code - New cell code
      * @param {boolean} [run=true] - Whether to run the cell after updating
+     * @param {Object} [metadata={}] - Additional cell metadata
      * @returns {Promise<Object|undefined>} Response from backend if run=true
      * @throws {Error} If not connected to notebook
      */
@@ -511,6 +516,7 @@ export class PlutoNotebook {
     /**
      * Submit local cell changes to backend and run cells
      * @param {Array<string>} cell_ids - Array of cell UUIDs to update and run
+     * @param {Record<string, Object>} metadata_record - Metadata for each cell
      * @returns {Promise<Object>} - Response from backend
      */
     async setCellsAndRun(cell_ids, metadata_record) {
@@ -586,6 +592,7 @@ export class PlutoNotebook {
      *
      * @param {number} [index=0] - Position to insert the cell (0-based)
      * @param {string} [code=""] - Initial cell code
+     * @param {Object} [metadata={}] - Additional cell metadata
      * @returns {Promise<CellId>} UUID of the newly created cell
      * @throws {Error} If not connected to notebook
      *
@@ -651,6 +658,7 @@ export class PlutoNotebook {
 
     /**
      * Interrupt notebook execution
+     * @returns {Promise<void>}
      */
     async interrupt() {
         if (!this.client) {
@@ -687,6 +695,7 @@ export class PlutoNotebook {
     /**
      * Register a handler for connection status changes
      * @param {Function} handler - Function to call on connection status changes
+     * @returns {function(): void} Unsubscribe function
      */
     onConnectionStatus(handler) {
         this._connection_status_handlers.add(handler)
@@ -710,6 +719,12 @@ export class PlutoNotebook {
 
     // Private methods
 
+    /**
+     * Handle update from WebSocket
+     * @param {Object} update - Update object from server
+     * @param {boolean} by_me - Whether update was triggered by this client
+     * @private
+     */
     _handle_update(update, by_me) {
         if (this.notebook_state?.notebook_id === update.notebook_id) {
             const message = update.message
@@ -724,6 +739,11 @@ export class PlutoNotebook {
         }
     }
 
+    /**
+     * Handle notebook diff message
+     * @param {Object} message - Notebook diff message
+     * @private
+     */
     _handle_notebook_diff(message) {
         if (message?.counter != null) {
             if (message.counter <= this.last_update_counter) {
@@ -738,6 +758,11 @@ export class PlutoNotebook {
         }
     }
 
+    /**
+     * Apply patches to notebook state
+     * @param {Array} patches - Array of patches to apply
+     * @private
+     */
     _apply_patches(patches) {
         try {
             // Ensure we have a valid notebook state before applying patches
@@ -774,11 +799,22 @@ export class PlutoNotebook {
         }
     }
 
+    /**
+     * Handle connection status change
+     * @param {boolean} connected - Whether connection is active
+     * @param {boolean} hopeless - Whether connection is hopeless
+     * @private
+     */
     _handle_connection_status(connected, hopeless) {
         this.connected = connected
         this._notify_connection_status_change(connected, hopeless)
     }
 
+    /**
+     * Handle reconnect event
+     * @returns {Promise<boolean>} Whether reconnect was successful
+     * @private
+     */
     async _handle_reconnect() {
         console.warn("Reconnected! Checking states")
 
@@ -789,6 +825,12 @@ export class PlutoNotebook {
         return true
     }
 
+    /**
+     * Update notebook state using a mutate function
+     * @param {Function} mutate_fn - Function to mutate the notebook state
+     * @returns {Promise<void>}
+     * @private
+     */
     async _update_notebook_state(mutate_fn) {
         if (!this.notebook_state) return
 
@@ -816,6 +858,12 @@ export class PlutoNotebook {
         }
     }
 
+    /**
+     * Notify update handlers
+     * @param {string} event_type - Type of event
+     * @param {*} data - Event data
+     * @private
+     */
     _notify_update(event_type, data) {
         this._update_handlers.forEach((handler) => {
             try {
@@ -826,6 +874,12 @@ export class PlutoNotebook {
         })
     }
 
+    /**
+     * Notify connection status handlers
+     * @param {boolean} connected - Whether connection is active
+     * @param {boolean} hopeless - Whether connection is hopeless
+     * @private
+     */
     _notify_connection_status_change(connected, hopeless) {
         this._connection_status_handlers.forEach((handler) => {
             try {
