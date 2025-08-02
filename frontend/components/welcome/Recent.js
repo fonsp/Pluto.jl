@@ -5,6 +5,7 @@ import * as preact from "../../imports/Preact.js"
 import { cl } from "../../common/ClassTable.js"
 import { link_edit, link_open_path } from "./Open.js"
 import { ProcessStatus } from "../../common/ProcessStatus.js"
+import { t, th } from "../../lang/lang.js"
 
 /**
  * @typedef CombinedNotebook
@@ -204,9 +205,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                           onclick=${() => on_session_click(nb)}
                           title=${running
                               ? nb.entry?.process_status === ProcessStatus.waiting_for_permission
-                                  ? "Stop session"
-                                  : "Shut down notebook"
-                              : "Start notebook in background"}
+                                  ? t("stop_notebook_session")
+                                  : t("shut_down_notebook")
+                              : t("start_notebook_in_background")}
                       >
                           <span class="ionicon"></span>
                       </button>
@@ -231,10 +232,10 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                                     e.stopPropagation()
                                     on_clear_click(nb)
                                 }}
-                                title="Remove from recent notebooks. This does not delete the notebook file."
-                                aria-label="Remove from recent notebooks"
+                                title=${t("remove_from_recent_notebooks")}
+                                aria-label=${t("remove_from_recent_notebooks")}
                             >
-                                FORGET
+                                ${t("FORGET")}
                             </button>`
                           : null}
                   </li>`
@@ -242,7 +243,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     if (CustomRecent == null) {
         return html`
-            <h2>My work</h2>
+            <h2>${t("My work")}</h2>
             <ul id="recent" class="show_scrollbar">
                 <li class="new">
                     <a
@@ -250,7 +251,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                         onClick=${(e) => {
                             on_start_navigation("new notebook")
                         }}
-                        ><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a
+                        ><button><span class="ionicon"></span></button>${th("newnotebook")}</a
                     >
                 </li>
                 ${recents}

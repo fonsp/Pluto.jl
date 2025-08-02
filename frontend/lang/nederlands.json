@@ -1,0 +1,11 @@
+{
+    "My work": "Mijn werk",
+    "newnotebook": "Maak een <strong>nieuwe notebook</strong>",
+    "welcome_to_pluto": "welkom bij {{pluto}}",
+    "FORGET": "VERGEET",
+    "live_docs_body": "<p>Welkom bij de <b>Live docs</b>! Houd dit schermpje open terwijl je werkt aan je notebook, en je krijgt documentatie van alles wat je typt!</p><p>Je kunt ook een zoekopdracht hierboven typen.</p><hr><p><em>Zit je vast? Hier zijn <a target=\"_blank\" href=\"https://julialang.org/about/help/\">wat tips</a>.</em></p>",
+    "stop_notebook_session": "Stop notebooksessie",
+    "shut_down_notebook": "Notebook afsluiten",
+    "start_notebook_in_background": "Notebook starten in de achtergrond",
+    "remove_from_recent_notebooks": "Verwijder uit deze lijst. Dit verwijdert niet het notebook-bestand."
+}

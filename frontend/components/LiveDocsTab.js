@@ -5,6 +5,7 @@ import observablehq from "../common/SetupCellEnvironment.js"
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
+import { t } from "../lang/lang.js"
 
 /**
  * @param {{
@@ -23,7 +24,7 @@ export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_quer
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body: `<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a target="_blank" href="https://julialang.org/about/help/">some tips</a>.</em></p>`,
+        body: t("live_docs_body"),
         loading: false,
     })
     let update_state = (mutation) => set_state(immer((state) => mutation(state)))

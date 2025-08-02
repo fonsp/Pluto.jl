@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ES2021",
-        "module": "ES2020",
-        "lib": ["ES2021", "DOM", "WebWorker", "DOM.Iterable"],
+        "target": "esnext",
+        "module": "esnext",
+        "lib": ["esnext", "DOM", "WebWorker", "DOM.Iterable"],
         "allowJs": true,
         "checkJs": true,
         "noEmit": true,

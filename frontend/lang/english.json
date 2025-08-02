@@ -1,0 +1,13 @@
+{
+    "My work": "My work",
+    "newnotebook": "Create a <strong>new notebook</strong>",
+    "welcome_to_pluto": "welcome to {{pluto}}",
+    "confirmdeletencells": "Are you sure you want to delete {{count}} cells?",
+    "confirmdeletecells_one": "Are you sure you want to delete this cell?",
+    "FORGET": "FORGET",
+    "live_docs_body": "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a target=\"_blank\" href=\"https://julialang.org/about/help/\">some tips</a>.</em></p>",
+    "stop_notebook_session": "Stop session",
+    "shut_down_notebook": "Shut down notebook",
+    "start_notebook_in_background": "Start notebook in background",
+    "remove_from_recent_notebooks": "Remove from recent notebooks. This does not delete the notebook file."
+}

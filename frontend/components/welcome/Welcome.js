@@ -9,6 +9,7 @@ import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
 import { get_environment } from "../../common/Environment.js"
 import default_featured_sources from "../../featured_sources.js"
+import { t, th } from "../../lang/lang.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -137,7 +138,7 @@ export const Welcome = ({ launch_params }) => {
 
     return html`
         <section id="title">
-            <h1>welcome to <img src=${url_logo_big} /></h1>
+            <h1>${th("welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })}</h1>
         </section>
         <section id="mywork">
             <div>
