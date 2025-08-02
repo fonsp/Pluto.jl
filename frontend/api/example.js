@@ -33,11 +33,15 @@ const waitForCellId = async (cell_id) => {
     let last = null;
     let reset = () => {};
     const fn = ({ type, data }) => {
-      console.log({ type, data });
       if (type === "notebook_updated") {
         last = data.notebook.cell_results[cell_id];
         const { queued, running, output } = data.notebook.cell_results[cell_id];
-        if (last && !queued && !running && output.last_run_timestamp > now) {
+        if (
+          last &&
+          !queued &&
+          !running &&
+          output.last_run_timestamp * 1000 > now
+        ) {
           reset();
           resolve(data.notebook.cell_results[cell_id]);
         }

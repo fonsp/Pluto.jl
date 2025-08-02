@@ -382,13 +382,11 @@ export class PlutoNotebook {
 
             if (should_proceed) {
                 // Clear risky file metadata if present
-                if (source != null) {
-                    await this._update_notebook_state((nb) => {
-                        if (nb.metadata?.risky_file_source) {
-                            delete nb.metadata.risky_file_source
-                        }
-                    })
-                }
+                await this._update_notebook_state((nb) => {
+                    if (nb.metadata?.risky_file_source) {
+                        delete nb.metadata.risky_file_source
+                    }
+                })
 
                 // Send restart command to server
                 await this.client.send(
@@ -794,7 +792,7 @@ export class PlutoNotebook {
     _notify_update(event_type, data) {
         this._update_handlers.forEach((handler) => {
             try {
-                handler({ type: event_type, data, timestamp: Date.now() })
+                handler({ type: event_type, data, timestamp: Date.now(), notebook: this.notebook_state })
             } catch (error) {
                 console.error("Error in update handler:", error)
             }
