@@ -138,6 +138,7 @@ export const Welcome = ({ launch_params }) => {
 
     return html`
         <section id="title">
+            <h1>${th("t_welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })}</h1>
         </section>
         <section id="mywork">
             <div>
