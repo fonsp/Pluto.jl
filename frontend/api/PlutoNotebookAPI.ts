@@ -44,9 +44,11 @@
  * @version 1.0.0
  */
 
-import { create_pluto_connection, ws_address_from_base } from "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@main/frontend/common/PlutoConnection.js"
-import { empty_notebook_state } from "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@main/frontend/editor.js"
-import { applyPatches, produceWithPatches } from "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@main/frontend/imports/immer.js"
+import { create_pluto_connection, ws_address_from_base, type PlutoConnection } from "../common/PlutoConnection.js"
+import { empty_notebook_state } from "../editor.js"
+import { applyPatches, produceWithPatches } from "../imports/immer.js"
+
+import type { NotebookPkgData, CellInputData, CellResultData, NotebookData } from "../components/Editor"
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
 const DEFAULT_CELL_METADATA = {
@@ -75,6 +77,10 @@ const uuidv4 = () =>
  * const notebook = await pluto.createNotebook(``);
  */
 export class Pluto {
+    server_url: string
+    ws_address: string
+    private _notebooks: Map<string, PlutoNotebook>
+
     /**
      * Create a new Pluto instance
      * @param {string} [server_url="http://localhost:1234"] - Pluto server URL
@@ -163,6 +169,9 @@ export class Pluto {
 
             // Create and connect to the new notebook
             const notebook = this.notebook(notebook_id)
+            if (!notebook) {
+                throw new Error(`Notebook ${notebook_id} could not be created properly`)
+            }
             const connected = await notebook.connect()
 
             if (!connected) {
@@ -224,6 +233,24 @@ export class Pluto {
  * });
  */
 export class PlutoNotebook {
+    ws_address: string
+    notebook_id: string
+    connected: boolean = false
+    initializing: boolean = false
+    notebook_status = null
+
+    cell_inputs_local: Record<string, CellInputData>
+
+    notebook_state: NotebookData
+
+    last_update_time: number = 0
+    pending_local_updates: number
+    last_update_counter: number = -1
+    client: PlutoConnection | null
+
+    _update_handlers: Set<Function>
+    _connection_status_handlers: Set<Function>
+    _update_queue_promise: Promise<any>
     /**
      * Create a new PlutoNotebook instance
      *
@@ -240,7 +267,9 @@ export class PlutoNotebook {
         this.initializing = true
 
         // Initialize notebook state
-        this.notebook_state = null
+        this.notebook_state = empty_notebook_state({
+            notebook_id: this.notebook_id,
+        })
         this.cell_inputs_local = {}
         this.last_update_time = 0
 
@@ -291,7 +320,7 @@ export class PlutoNotebook {
                     this.notebook_state.cell_results = {}
                 }
                 if (!this.notebook_state.status_tree) {
-                    this.notebook_state.status_tree = { subtasks: {} }
+                    this.notebook_state.status_tree = { subtasks: {}, finished_at: 0, name: "noop", started_at: Date.now(), success: true, timing: "local" }
                 }
             }
 
@@ -324,7 +353,7 @@ export class PlutoNotebook {
         }
         this.connected = false
         this.client = null
-        this.notebook_state = null
+        this.notebook_state = empty_notebook_state()
         this._update_handlers.clear()
         this._connection_status_handlers.clear()
     }
@@ -400,6 +429,14 @@ export class PlutoNotebook {
     }
 
     /**
+     * Execute a function within the Julia context
+     *
+     */
+    async execute(symbol, arguments = []) {
+        throw new Error("Not implemented")
+    }
+
+    /**
      * Get the current notebook state (equivalent to Editor.js this.state.notebook)
      *
      * Returns the complete notebook state structure including cell_inputs,
@@ -463,7 +500,7 @@ export class PlutoNotebook {
         }
 
         // Update local state
-        this.cell_inputs_local[cell_id] = { code }
+        this.cell_inputs_local[cell_id] = { ...this.cell_inputs_local[cell_id], code, metadata: { ...this.cell_inputs_local[cell_id]?.metadata, ...metadata } }
         this._notify_update("cell_local_update", { cell_id, code })
 
         if (run) {
@@ -490,12 +527,11 @@ export class PlutoNotebook {
             const [new_notebook, changes] = produceWithPatches(this.notebook_state, (notebook) => {
                 for (let cell_id of cell_ids) {
                     if (this.cell_inputs_local[cell_id]) {
-                        // Ensure cell_inputs[cell_id] exists before setting code
-                        if (!notebook.cell_inputs[cell_id]) {
-                            notebook.cell_inputs[cell_id] = {}
+                        notebook.cell_inputs[cell_id] = {
+                            ...notebook.cell_inputs[cell_id],
+                            code: this.cell_inputs_local[cell_id].code,
+                            metadata: { ...notebook.cell_inputs[cell_id].metadata, ...metadata_record[cell_id] },
                         }
-                        notebook.cell_inputs[cell_id].code = this.cell_inputs_local[cell_id].code
-                        notebook.cell_inputs[cell_id].metadata = { ...notebook.cell_inputs[cell_id].metadata, ...metadata_record[cell_id] }
                     }
                 }
             })
