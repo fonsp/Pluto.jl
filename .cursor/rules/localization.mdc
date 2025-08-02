@@ -1,0 +1,110 @@
+---
+description: How to localize strings in the Pluto.jl frontend.
+globs: *.js
+alwaysApply: false
+---
+
+# Pluto.jl Frontend Localization
+
+Pluto.jl uses i18next for internationalization. All user-facing strings should be localized. Always localize complete sentences, not just parts of them.
+
+## Usage
+
+### Import Functions
+```js
+import { t, th } from "../../lang/lang.js"
+```
+
+### Translation Functions
+
+#### `t(key, options?)` - Plain Text
+Use for plain text strings (button titles, tooltips, etc.):
+```js
+t("stop_notebook_session")
+t("confirmdeletencells", { count: 5 })
+```
+
+#### `th(key, insertions?)` - HTML Content
+Use for content that contains HTML markup or Preact elements:
+```js
+th("newnotebook")  // Contains <strong> tags
+th("welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })
+
+html`
+<h2>${th("something_with_a_number", { count: 5 })}</h2>
+`
+
+```
+### When to Use Each Function
+- **`t()`**: Tooltips, button titles, aria-labels, plain text content
+- **`th()`**: Any content with HTML markup, or when interpolating Preact elements.
+
+## Language Files
+
+### Location
+Language files are stored in `frontend/lang/` as JSON files:
+- `english.json` (fallback language)
+- `nederlands.json`
+- Add new languages following the pattern: `{language}.json`
+
+### JSON Structure
+```json
+{
+    "simple_key": "Simple translation",
+    "html_content": "Text with <strong>HTML</strong> markup",
+    "with_interpolation": "Welcome to {{appname}}",
+    "pluralized": "Delete {{count}} items",
+    "pluralized_one": "Delete this item"
+}
+```
+
+
+## Best Practices
+
+1. **Always localize user-facing strings** - Never hardcode English text
+2. **Use descriptive keys** - Keys should indicate context and usage
+3. **Consistent interpolation** - Use `{{variable}}` syntax for placeholders
+4. **HTML-safe content** - Use `th()` for any content containing markup
+5. **Pluralization** - Use separate keys for singular/plural forms when needed
+6. **Fallback coverage** - Ensure all keys exist in `english.json` (fallback language)
+7. **Complete sentences** - Always localize complete sentences, not just parts of them.
+
+## Examples
+
+### Simple text:
+```js
+// ✅ Good
+title={t("remove_from_recent_notebooks")}
+
+// ❌ Bad
+title="Remove from recent notebooks"
+```
+
+### HTML content:
+```js
+// ✅ Good
+${th("newnotebook")}  // "Create a <strong>new notebook</strong>"
+
+// ❌ Bad  
+html`Create a <strong>new notebook</strong>`
+```
+
+### With interpolation:
+```js
+// ✅ Good
+${th("welcome_to_pluto", { pluto: html`<img src=${logo} />` })}
+
+// ❌ Bad
+html`Welcome to <img src=${logo} />`
+```
+
+### Complete sentences:
+```js
+// ✅ Good
+html`
+<h2>${th("cells_deleted", { count: n })}</h2>
+`
+
+// ❌ Bad
+<h2>${n}${th("cells_deleted")}</h2>
+```
