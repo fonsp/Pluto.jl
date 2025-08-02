@@ -373,33 +373,25 @@ export class PlutoNotebook {
         }
 
         try {
-            // Check if we need confirmation for risky files
-            // Note: In API context, we skip the browser confirm() and assume consent
-            const should_proceed = !maybe_confirm
+            // Clear risky file metadata if present
+            await this._update_notebook_state((nb) => {
+                if (nb.metadata?.risky_file_source) {
+                    delete nb.metadata.risky_file_source
+                }
+            })
 
-            if (should_proceed) {
-                // Clear risky file metadata if present
-                await this._update_notebook_state((nb) => {
-                    if (nb.metadata?.risky_file_source) {
-                        delete nb.metadata.risky_file_source
-                    }
-                })
-
-                // Send restart command to server
-                await this.client.send(
-                    "restart_process",
-                    {},
-                    {
-                        notebook_id: this.notebook_id,
-                    }
-                )
-
-                this._notify_update("notebook_restarted", {
+            // Send restart command to server
+            await this.client.send(
+                "restart_process",
+                {},
+                {
                     notebook_id: this.notebook_id,
-                })
-            } else {
-                throw new Error("Restart cancelled - risky file confirmation required")
-            }
+                }
+            )
+
+            this._notify_update("notebook_restarted", {
+                notebook_id: this.notebook_id,
+            })
         } catch (error) {
             console.error("Failed to restart notebook:", error)
             throw error
