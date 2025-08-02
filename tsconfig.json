@@ -13,6 +13,6 @@
         "strictNullChecks": true,
         "skipDefaultLibCheck": true
     },
-    "include": ["frontend/**/*.js", "node_modules/**/*.js", "frontend/Desktop.d.ts"],
+    "include": ["frontend/**/*.js", "node_modules/**/*.js", "frontend/Desktop.d.ts", "frontend/api/PlutoNotebookAPI.ts"],
     "exclude": ["frontend/components/CellInput/tests/"]
 }
