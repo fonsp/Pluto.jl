@@ -97,7 +97,7 @@ export class Pluto {
 
     /**
      * Get list of currently running notebooks on the server
-     * @returns {Promise<Array<any>>} Array of notebook information objects
+     * @returns {Promise<Array<PlutoNotebook>>} Array of notebook information objects
      * @throws {Error} If connection to server fails
      */
     async getRunningNotebooks() {
@@ -437,8 +437,39 @@ export class PlutoNotebook {
      * @returns {Promise<any>} Function result
      * @throws {Error} Not implemented
      */
-    async execute(symbol, args = []) {
-        throw new Error("Not implemented")
+    async execute(input) {
+        const cell_id = "00000000-0000-0208-1991-000000000000"
+        try {
+            if (!this.notebook_state.cell_results[cell_id]) {
+                console.log()
+                throw new Error(`
+# REPL cell not installed. Try including the following cell, with id "00000000-0000-0208-1991-000000000000"
+begin
+	function eval_in_pluto(x::String)
+		id = PlutoRunner.moduleworkspace_count[]
+		new_workspace_name = Symbol("workspace#", id)
+		Core.eval(getproperty(Main, new_workspace_name), Meta.parse(x))
+	end
+	AbstractPlutoDingetjes.Display.with_js_link(eval_in_pluto)
+end
+`)
+            }
+            const link_id = this.notebook_state.cell_results[cell_id].output.body.split('", "')[1].substr(0, 16)
+            return this.client
+                .send(
+                    "request_js_link_response",
+                    {
+                        cell_id,
+                        link_id,
+                        input,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id }
+                )
+                .then((r) => r.message)
+        } catch (ex) {
+            console.error(ex)
+            rethrow(ex)
+        }
     }
 
     /**
