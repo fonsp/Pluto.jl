@@ -468,7 +468,7 @@ end
                 .then((r) => r.message)
         } catch (ex) {
             console.error(ex)
-            rethrow(ex)
+            throw ex
         }
     }
 
