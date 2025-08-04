@@ -3,9 +3,10 @@ import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
 import { html } from "../imports/Preact.js"
 
 // @ts-ignore
-import english from "./english.json" with { type: "json" }
+import english from "../lang/english.json" with { type: "json" }
 // @ts-ignore
-import nederlands from "./nederlands.json" with { type: "json" }
+import nederlands from "../lang/nederlands.json" with { type: "json" }
+import _ from "../imports/lodash.js"
 
 console.log({english, nederlands})
 
