@@ -1,4 +1,5 @@
 import { html, Component } from "../imports/Preact.js"
+import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -47,6 +48,9 @@ import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
 import { LanguagePicker } from "./LanguagePicker.js"
 import { t, th } from "../common/lang.js"
+
+// This is imported asynchronously - uncomment for development
+// import environment from "../common/Environment.js"
 
 export const default_path = ""
 const DEBUG_DIFFING = false
