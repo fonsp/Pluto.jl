@@ -88,15 +88,21 @@ export const getCurrentLanguage = () => {
  * @returns {string | import("../imports/Preact.js").ReactElement}
  */
 export const th = (key, insertions) => {
-    const slot = (name) => `❊${name}⦿`
+    const slot_name = (name) => `❊${name}⦿`
+
+    const slot = (name, value) => _.isArray(value) ? value.map((v,i) => slot_name(name + "__" + i)) : slot_name(name)
+    
+    
+    
+    const unslot = (value) => _.isArray(value) ? value : [value]
     const can_interpolate_directly = (value) => typeof value === "string" || typeof value === "number" || typeof value === "boolean"
     
-    const with_slots = t(key, {interpolation: { escapeValue: false }, ...Object.fromEntries(Object.entries(insertions ?? {}).map(([key, value]) => [key, can_interpolate_directly(value) ? value : slot(key)]))})
+    const with_slots = t(key, {interpolation: { escapeValue: false }, ...Object.fromEntries(Object.entries(insertions ?? {}).map(([key, value]) => [key, can_interpolate_directly(value) ? value : slot(key, value)]))})
     
     const string_parts = with_slots.split(/❊.*?⦿/)
     // Disabled because i want HTML to be supported
     // if(string_parts.length === 1) return string_parts[0]
-    return html(to_template_strings_array(string_parts), ...Object.values(insertions ?? {}).filter(v => !can_interpolate_directly(v)))
+    return html(to_template_strings_array(string_parts), ...Object.values(insertions ?? {}).filter(v => !can_interpolate_directly(v)).flatMap(unslot))
 }
 
 
