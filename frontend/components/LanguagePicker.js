@@ -6,11 +6,17 @@ import { getCurrentLanguage, getAvailableLanguages, changeLanguage, t } from "..
  * Language picker component for the footer
  */
 export const LanguagePicker = () => {
+    // Disabled while I work on using the `t` function throughout the codebase.
+
+    return null
+
     const [currentLanguage, setCurrentLanguage] = preact.useState(getCurrentLanguage())
     const availableLanguages = getAvailableLanguages()
 
     const handleLanguageChange = async (event) => {
         if (event.target.value === "contribute") {
+            // TODO
+            alert("TODO")
             window.open("https://github.com/fonsp/Pluto.jl/tree/main/frontend/lang", "_blank")
             return
         }
