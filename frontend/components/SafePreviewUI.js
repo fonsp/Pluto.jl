@@ -67,6 +67,7 @@ export const SafePreviewOutput = () => {
     >`
 }
 
-export const SafePreviewSanitizeMessage = () => {
-    return html`<div class="safe-preview-output"><span class="offline-icon pluto-icon"></span><span>${th("t_safe_preview_not_rendered")}</span></div>`
-}
+/** @type {string} */ // Because this is used as innerHTML content, without preact.
+export const SafePreviewSanitizeMessage = `<div class="safe-preview-output">
+<span class="offline-icon pluto-icon"></span><span>${t("t_safe_preview_not_rendered")}</span>
+</div>`
