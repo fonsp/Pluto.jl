@@ -24,7 +24,9 @@ const a = i18next
     },
     // supportedLngs: ["en", "nl"],
     detection: {
-      order: ["localStorage", "navigator"],
+      // Disabled autodetection for now because we don't have enough translations yet.
+      // order: ["localStorage", "navigator"],
+      order: ["localStorage"],
       caches: ["localStorage"],
       lookupLocalStorage: "i18nextLng",
     },

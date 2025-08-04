@@ -10,6 +10,11 @@ export const LanguagePicker = () => {
     const availableLanguages = getAvailableLanguages()
 
     const handleLanguageChange = async (event) => {
+        if (event.target.value === "contribute") {
+            window.open("https://github.com/fonsp/Pluto.jl/tree/main/frontend/lang", "_blank")
+            return
+        }
+
         const selectedLanguage = event.target.value
         setCurrentLanguage(selectedLanguage)
         await changeLanguage(selectedLanguage)
@@ -29,6 +34,7 @@ export const LanguagePicker = () => {
                 ${availableLanguages.map(
                     (lang) => html`<option value=${lang.code}>${lang.name}${lang.completeness < 100 ? ` (${lang.completeness}%)` : ""}</option>`
                 )}
+                <option value="contribute">Help translate!</option>
             </select>
         </div>
     `
