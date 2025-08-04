@@ -7,6 +7,7 @@ import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { ansi_to_html } from "../imports/AnsiUp.js"
 import { FixWithAIButton } from "./FixWithAIButton.js"
+import { t, th } from "../common/lang.js"
 
 const nbsp = "\u00A0"
 
@@ -130,9 +131,7 @@ const Funccall = ({ frame }) => {
 
     // if function name is #12 or #15#16 then it is an anonymous function
 
-    const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
-        ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
-        : funcname
+    const funcname_display = funcname.match(/^#\d+(#\d+)?$/) ? html`<abbr title=${t("t_anonymous_function_abbr")}>anonymous function</abbr>` : funcname
 
     let inner = html`<strong>${funcname_display}</strong><${HighlightCallArgumentNames} code=${call_funcname_args[1]} />`
 
@@ -142,7 +141,7 @@ const Funccall = ({ frame }) => {
             ? html`<a
                   aria-expanded=${expanded}
                   aria-controls=${id}
-                  title="Display the complete type information of this function call"
+                  title=${t("t_display_complete_type_information_of_this_function_call")}
                   role="button"
                   href="#"
                   onClick=${(e) => {
@@ -315,6 +314,8 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
+console.log({ wot: t("t_multiple_definitions_for", { symbols: ["x", "y", "z"] }) })
+
 export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -332,7 +333,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                         e.preventDefault()
                         pluto_actions.wrap_remote_cell(cell_id, "begin")
                     }}
-                    >Wrap all code in a <em>begin ... end</em> block.</a
+                    >${t("t_wrap_all_code_in_a_begin_end_block")}</a
                 >`
                 if (x.includes("\n\nBoundaries: ")) {
                     const boundaries = JSON.parse(x.split("\n\nBoundaries: ")[1]).map((x) => x - 1) // Julia to JS index
@@ -343,17 +344,17 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                                 e.preventDefault()
                                 pluto_actions.split_remote_cell(cell_id, boundaries, true)
                             }}
-                            >Split this cell into ${boundaries.length} cells</a
+                            >${t("t_split_this_cell_into_cells", { count: boundaries.length })}</a
                         >, or
                     </p>`
-                    return html`<p>Multiple expressions in one cell.</p>
-                        <p>How would you like to fix it?</p>
+                    return html`<p>${t("t_multiple_expressions_in_one_cell")}</p>
+                        <p>${t("t_how_would_you_like_to_fix_it")}</p>
                         <ul>
                             <li>${split_hint}</li>
                             <li>${begin_hint}</li>
                         </ul>`
                 } else {
-                    return html`<p>Multiple expressions in one cell.</p>
+                    return html`<p>${t("t_multiple_expressions_in_one_cell")}</p>
                         <p>${begin_hint}</p>`
                 }
             },
@@ -411,7 +412,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                             return html`<a href="#" onclick=${onclick}>${what}</a>`
                         })
 
-                        return html`<p>Multiple definitions for${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                        return html`<p>${th("t_multiple_definitions_for", { symbols: symbol_links })}</p>`
                     } else {
                         return html`<p>${line}</p>`
                     }
@@ -453,7 +454,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 })
 
                 // const plural = symbol_links.length > 1
-                return html`<p><em>Another cell defining ${insert_commas_and_and(symbol_links)} contains errors.</em></p>`
+                return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_links })}</em></p>`
             },
             show_stacktrace: () => {
                 const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
@@ -470,17 +471,12 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
                 const pkg_terminal_value = pluto_actions.get_notebook()?.nbpkg?.terminal_outputs?.[package_name]
 
-                return html`<p>The package <strong>${package_name}.jl</strong> could not load because it failed to initialize.</p>
-                    <p>That's not nice! Things you could try:</p>
-                    <ul>
-                        <li>Restart the notebook.</li>
-                        <li>Try a different Julia version.</li>
-                        <li>Contact the developers of ${package_name}.jl about this error.</li>
-                    </ul>
-                    ${pkg_terminal_value == null
-                        ? null
-                        : html` <p>You might find useful information in the package installation log:</p>
-                              <${PkgTerminalView} value=${pkg_terminal_value} />`} `
+                return html`${th("t_package_could_not_load", { package: package_name })}
+                ${th("t_package_could_not_load_things_you_could_try", { package: package_name })}
+                ${pkg_terminal_value == null
+                    ? null
+                    : html` <p>${t("t_might_find_info_in_pkg_log")}</p>
+                          <${PkgTerminalView} value=${pkg_terminal_value} />`} `
             },
             show_stacktrace: () => false,
         },
@@ -511,7 +507,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
     return html`<jlerror>
         <div class="error-header">
-            <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
+            <secret-h1>${first_package == null ? t("t_error_message") : t("t_error_message_from_package", { package: first_package })}</secret-h1>
             <!-- <p>This message was included with the error:</p> -->
         </div>
 
@@ -524,8 +520,8 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
               </section>`
             : html`<section>
                   <div class="stacktrace-header">
-                      <secret-h1>Stack trace</secret-h1>
-                      <p>Here is what happened, the most recent locations are first:</p>
+                      <secret-h1>${t("t_stack_trace")}</secret-h1>
+                      <p>${t("t_here_is_what_happened_the_most_recent_locations_are_first")}</p>
                   </div>
 
                   <ol>
@@ -554,7 +550,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                                         set_show_more(true)
                                         e.preventDefault()
                                     }}
-                                    >Show more...</a
+                                    >${t("t_show_more")}</a
                                 >
                             </li>`
                           : null}
@@ -577,27 +573,8 @@ const get_first_package = (limited_stacktrace) => {
 }
 
 const motivational_word_probability = 0.1
-const motivational_words = [
-    //
-    "Don't panic!",
-    "Keep calm, you got this!",
-    "You got this!",
-    "Goofy computer!",
-    "This one is on the computer!",
-    "beep boop CRASH 🤖",
-    "computer bad, you GREAT!",
-    "Probably not your fault!",
-    "Try asking on Julia Discourse!",
-    "uhmmmmmm??!",
-    "Maybe time for a break? ☕️",
-    "Everything is going to be okay!",
-    "Computers are hard!",
-    "C'est la vie !",
-    "¯\\_(ツ)_/¯",
-    "Oh no! 🙀",
-    "oopsie 💣",
-    "Be patient :)",
-]
+const motivational_words = /** @type {string[]} */ (t("t_motivational_words_be_creative_and_write_as_many_as_you_want", { returnObjects: true }))
+console.log("motivational_words", motivational_words)
 
 const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {

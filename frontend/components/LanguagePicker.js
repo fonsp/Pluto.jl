@@ -7,7 +7,6 @@ import { getCurrentLanguage, getAvailableLanguages, changeLanguage, t } from "..
  */
 export const LanguagePicker = () => {
     // Disabled while I work on using the `t` function throughout the codebase.
-
     return null
 
     const [currentLanguage, setCurrentLanguage] = preact.useState(getCurrentLanguage())
