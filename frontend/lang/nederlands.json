@@ -11,8 +11,7 @@
     "t_remove_from_recent_notebooks": "Verwijder uit deze lijst. Dit verwijdert niet het notebook-bestand.",
     "t_loading_something": "{{text}} aan het laden...",
     "t_language_picker_label": "Taal",
-    "t_language_name_en": "English",
-    "t_language_name_nl": "Nederlands",
+    "t_language_name": "Nederlands",
     "t_add_cell": "Cel toevoegen ({{key}})",
     "t_refresh_to_see_language_change_confirm": "Taal gewijzigd! Wil je de pagina opnieuw laden om de taal te gebruiken?"
 }

@@ -1,3 +1,4 @@
+import { t } from "../common/lang.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
@@ -235,7 +236,7 @@ export const Notebook = ({
                         animation-fill-mode: both;
                         margin-bottom: ${Math.max(0, (notebook.cell_order.length - render_cell_outputs_minimum) * 10)}rem;"
                       >
-                          Loading cells...
+                          ${t("t_loading_cells")}
                       </div>`
                     : null
             }

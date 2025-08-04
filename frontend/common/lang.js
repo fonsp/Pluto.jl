@@ -53,7 +53,7 @@ export const getAvailableLanguages = () => {
         
         return {
             code: lang,
-            name: t(`t_language_name_${lang}`, { lng: lang }),
+            name: t(`t_language_name`, { lng: lang }),
             completeness: completeness
         }
     })

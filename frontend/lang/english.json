@@ -1,4 +1,7 @@
 {
+    
+    "t_language_name": "English",
+    
     "t_My work": "My work",
     "t_newnotebook": "Create a <strong>new notebook</strong>",
     "t_welcome_to_pluto": "welcome to {{pluto}}",
@@ -28,8 +31,9 @@
     "t_cell_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />Use the context menu to enable it again",
     "t_cell_indirectly_disabled_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable {{upstreamLink}} to affect this cell.",
     "t_language_picker_label": "Language",
-    "t_language_name_en": "English",
-    "t_language_name_nl": "Nederlands",
+    
+
+   
     "t_refresh_to_see_language_change_confirm": "Language changed! Would you like to refresh the page to see the changes?",
     "t_anonymous_function_abbr": "A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.",
     "t_display_complete_type_information_of_this_function_call": "Display the complete type information of this function call",
@@ -69,11 +73,12 @@
     "t_package_could_not_load": "<p>The package <strong>{{package}}.jl</strong> could not load because it failed to initialize.</p><p>That's not nice! Things you could try:</p>",
     "t_package_could_not_load_things_you_could_try": "<ul><li>Restart the notebook.</li><li>Try a different Julia version.</li><li>Contact the developers of {{package}}.jl about this error.</li></ul>",
     "t_might_find_info_in_pkg_log": "You might find useful information in the package installation log:",
-    
+
     "t_edit_frontmatter": "Edit frontmatter",
     "t_start_presentation": "Start presentation",
     "t_close": "Close",
 
+    "t_export_action_ellipsis": "Export...",
     "t_export_category_export": "export",
     "t_export_category_record": "record",
     "t_export_card_notebook_file": "Notebook file",
@@ -84,5 +89,81 @@
     "t_export_card_pdf_description": "A static <b>.pdf</b> file for print or email.",
     "t_export_card_record": "Record <em>(preview)</em>",
     "t_export_card_record_description": "Capture the entire notebook, and any changes you make.",
-    "t_export_card_pride_month_message": "The future is <strong>queer</strong>!"
+    "t_export_card_pride_month_message": "The future is <strong>queer</strong>!",
+
+    "t_save_notebook_ellipsis": "Save notebook...",
+    "t_save_notebook_button_label_when_currently_not_saved": "Choose",
+    "t_save_notebook_button_label_when_currently_saved": "Move",
+
+    "t_process_status_loading_binder": "Loading binder...",
+    "t_process_status_reconnecting": "Reconnecting...",
+    "t_process_status_loading": "Loading...",
+    "t_process_restart_action": "Restart notebook",
+    "t_process_restart_action_required": "{{restart_notebook}} (required)",
+    "t_process_restart_action_recommended": "{{restart_notebook}} (recommended)",
+    "t_process_restarting": "Process exited — restarting...",
+    "t_process_exited_restart_action": "Process exited — {{restart_action_short}}",
+    "t_process_restart_action_short": "restart",
+    "t_process_give_permission_to_run_code": "Run notebook code",
+    
+    "t_safe_preview": "Safe preview",
+    "t_safe_preview_not_executed": "Code not executed in <em>Safe preview</em>",
+    "t_safe_preview_not_rendered": "Scripts and styles not rendered in <em>Safe preview</em>",
+    "t_safe_preview_confirm_before": "Are you sure that you trust this file?",
+    "t_safe_preview_confirm_before_danger": "⚠️ Danger!",
+    "t_safe_preview_confirm_after": "A malicious notebook can steal passwords and data.",
+    "t_safe_preview_body": "You are reading and editing this file without running Julia code.",
+    "t_safe_preview_run_this_notebook": "When you are ready, you can {{run_this_notebook}}.",
+    "t_safe_preview_run_this_notebook_link": "run this notebook",
+    
+    "t_instant_feedback_ellipsis": "Instant feedback...",
+    "t_how_can_we_improve": "🙋 How can we make {{pluto}} better?",
+    "t_FAQ": "FAQ",
+
+    "t_loading_cells": "Loading cells...",
+    "t_reading_hidden_code": "👀 Reading hidden code",
+    "t_enable_and_run_cell": "Enable and run the cell",
+    "t_disable_this_cell_and_all_cells_that_depend_on_it": "Disable this cell, and all cells that depend on it",
+    "t_enable_cell_action": "Enable cell",
+    "t_disable_cell_action": "Disable cell",
+    "t_delete_cell_action": "Delete cell",
+    "t_show_logs_action": "Show logs",
+    "t_hide_logs_action": "Hide logs",
+    "t_show_logs_action_description": "Show cell logs",
+    "t_hide_logs_action_description": "Hide cell logs",
+    "t_copy_output_action": "Copy output",
+    "t_copy_output_action_description": "Copy the output of this cell to the clipboard.",
+    "t_enable_in_file_action": "Enable in file",
+    "t_enable_in_file_action_description": "This cell is currently stored in the notebook file as a Julia comment. Click here to enable it.",
+    "t_disable_in_file_action": "Disable in file",
+    "t_disable_in_file_action_description": "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto.",
+    "t_ask_ai_action": "Ask AI",
+    "t_ask_ai_action_description": "Ask AI about this cell",
+    
+    
+    "t_ai_prompt_generator_title": "AI Prompt Generator",
+    "t_ai_prompt_generator_intro": "You can copy this text into an AI chat to give it context from your notebook.",
+    "t_ai_prompt_generator_question_input_placeholder": "Type your question here...",
+    "t_copy_action": "Copy",
+    "t_copy_action_description": "Copy to clipboard",
+    "t_copy_action_complete": "Copied!",
+    
+    "t_ai_permission_prompt_title": "Use AI to fix syntax errors?",
+    "t_ai_permission_prompt_body": "Pluto will send code from this cell to a commercial LLM service to fix syntax errors. Updated code will not run without confirmation.",
+    "t_ai_permission_prompt_body_2": "Submitted code can be used (anonymously) by Pluto developers to improve the AI service.",
+    "t_dont_ask_again": "Don't ask again",
+    "t_no": "No",
+    "t_yes": "Yes",
+    
+    "t_ai_accept_and_close": "Accept AI syntax fix and close",
+    "t_ai_decline_and_close": "Decline AI syntax fix and close",
+    "t_ai_accept_and_run": "Accept & Run",
+    "t_ai_accept_and_run_description": "Run the fixed cell",
+    "t_ai_reject_and_revert": "Reject and revert to original code",
+    "t_ai_reject": "Reject",
+    "t_ai_loading": "Loading...",
+    "t_ai_syntax_fix_failed": "Failed to fix syntax error: {{error}}",
+    "t_ai_fix_syntax_with_ai": "Fix syntax with AI",
+    "t_ai_fix_syntax_with_ai_description": "Attempt to fix this syntax error using an LLM service"
 }
+        

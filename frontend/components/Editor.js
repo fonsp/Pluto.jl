@@ -46,6 +46,7 @@ import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
 import { LanguagePicker } from "./LanguagePicker.js"
+import { t, th } from "../common/lang.js"
 
 export const default_path = ""
 const DEBUG_DIFFING = false
@@ -1553,7 +1554,9 @@ The notebook file saves every time you run a cell.`
                 !warn_about_untrusted_code ||
                 !maybe_confirm ||
                 source == null ||
-                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+                confirm(
+                    `${th("t_safe_preview_confirm_before_danger")} ${t("t_safe_preview_confirm_before")}\n\n${source}\n\n${t("t_safe_preview_confirm_after")}`
+                )
             ) {
                 await this.actions.update_notebook((notebook) => {
                     delete notebook.metadata.risky_file_source
@@ -1628,7 +1631,9 @@ The notebook file saves every time you run a cell.`
                             ${
                                 this.state.extended_components.CustomHeader == null &&
                                 (status.binder
-                                    ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    ? html`<pluto-filepicker
+                                          ><a href=${this.export_url("notebookfile")} target="_blank">${t("t_save_notebook_ellipsis")}</a></pluto-filepicker
+                                      >`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -1638,33 +1643,34 @@ The notebook file saves every time you run a cell.`
                                           suggest_new_file=${{
                                               base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                           }}
-                                          placeholder="Save notebook..."
-                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
+                                          placeholder=${t("t_save_notebook_ellipsis")}
+                                          button_label=${notebook.in_temp_dir
+                                              ? t("t_save_notebook_button_label_when_currently_not_saved")
+                                              : t("t_save_notebook_button_label_when_currently_saved")}
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
                             <div id="process_status">${
                                 status.binder && status.loading
-                                    ? "Loading binder..."
+                                    ? t("t_process_status_loading_binder")
                                     : statusval === "disconnected"
-                                    ? "Reconnecting..."
+                                    ? t("t_process_status_reconnecting")
                                     : statusval === "loading"
-                                    ? "Loading..."
+                                    ? t("t_process_status_loading")
                                     : statusval === "nbpkg_restart_required"
-                                    ? html`${restart_button("Restart notebook")}${" (required)"}`
+                                    ? th("t_process_restart_action_required", { restart_notebook: restart_button(t("t_process_restart_action")) })
                                     : statusval === "nbpkg_restart_recommended"
-                                    ? html`${restart_button("Restart notebook")}${" (recommended)"}`
+                                    ? th("t_process_restart_action_recommended", { restart_notebook: restart_button(t("t_process_restart_action")) })
                                     : statusval === "process_restarting"
-                                    ? "Process exited — restarting..."
+                                    ? th("t_process_restarting")
                                     : statusval === "process_dead"
-                                    ? html`${"Process exited — "}${restart_button("restart")}`
+                                    ? th("t_process_exited_restart_action", { restart_action_short: restart_button(t("t_process_restart_action_short")) })
                                     : statusval === "process_waiting_for_permission"
-                                    ? html`${restart_button("Run notebook code", true)}`
+                                    ? restart_button(t("t_process_give_permission_to_run_code"), true)
                                     : null
                             }</div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
+                            <button class="toggle_export" title=${t("t_export_action_ellipsis")} onClick=${() =>
+            this.setState({ export_menu_open: !export_menu_open })}><span></span></button>
                         </nav>
                     </header>
                     
@@ -1789,11 +1795,13 @@ The notebook file saves every time you run a cell.`
                     <footer>
                         <div id="info">
                             <${LanguagePicker} />
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
                             <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">
-                                <label for="opinion">🙋 How can we make <a href="https://plutojl.org/" target="_blank">Pluto.jl</a> better?</label>
-                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
+                                <label for="opinion">${th("t_how_can_we_improve", {
+                                    pluto: html`<a href="https://plutojl.org/" target="_blank">Pluto.jl</a>`,
+                                })}</label>
+                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder=${t("t_instant_feedback_ellipsis")} />
                                 <button>Send</button>
                             </form>
                         </div>
