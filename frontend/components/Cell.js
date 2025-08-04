@@ -10,7 +10,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { SafePreviewOutput } from "./SafePreviewUI.js"
 import { useEventListener } from "../common/useEventListener.js"
-import { t, th } from "../lang/lang.js"
+import { t, th } from "../common/lang.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)

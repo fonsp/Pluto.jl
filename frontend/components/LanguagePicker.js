@@ -1,6 +1,6 @@
 import * as preact from "../imports/Preact.js"
 import { html } from "../imports/Preact.js"
-import { getCurrentLanguage, getAvailableLanguages, changeLanguage, t } from "../lang/lang.js"
+import { getCurrentLanguage, getAvailableLanguages, changeLanguage, t } from "../common/lang.js"
 
 /**
  * Language picker component for the footer

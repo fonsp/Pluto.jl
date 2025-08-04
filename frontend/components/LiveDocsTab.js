@@ -5,7 +5,7 @@ import observablehq from "../common/SetupCellEnvironment.js"
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
-import { t } from "../lang/lang.js"
+import { t } from "../common/lang.js"
 
 /**
  * @param {{

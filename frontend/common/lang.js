@@ -1,5 +1,5 @@
-import i18next from "https://esm.sh/i18next"
-import LanguageDetector from "https://esm.sh/i18next-browser-languagedetector"
+import i18next from "../imports/i18next.js"
+import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
 import { html } from "../imports/Preact.js"
 
 // @ts-ignore
@@ -93,9 +93,11 @@ export const th = (key, insertions) => {
     const string_parts = with_slots.split(/❊.*?⦿/)
     // Disabled because i want HTML to be supported
     // if(string_parts.length === 1) return string_parts[0]
-    return html(string_parts, ...Object.values(insertions ?? {}).filter(v => !can_interpolate_directly(v)))
+    return html(to_template_strings_array(string_parts), ...Object.values(insertions ?? {}).filter(v => !can_interpolate_directly(v)))
 }
 
 
-// console.log(1, html`asdf <a>asdf</a>`)
-// console.log(2, html([`asdf <a>asdf</a>`]))
+const to_template_strings_array = (/** @type {string[]} */ strings) => {
+    // @ts-ignore
+    return /** @type {TemplateStringsArray} */ (strings)
+}

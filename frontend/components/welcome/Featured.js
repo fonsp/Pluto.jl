@@ -2,7 +2,7 @@ import _ from "../../imports/lodash.js"
 import { html, useEffect, useState } from "../../imports/Preact.js"
 import register from "../../imports/PreactCustomElement.js"
 import { FeaturedCard } from "./FeaturedCard.js"
-import { t, th } from "../../lang/lang.js"
+import { t, th } from "../../common/lang.js"
 
 /**
  * @typedef SourceManifestNotebookEntry

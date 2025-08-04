@@ -5,7 +5,7 @@ import * as preact from "../../imports/Preact.js"
 import { cl } from "../../common/ClassTable.js"
 import { link_edit, link_open_path } from "./Open.js"
 import { ProcessStatus } from "../../common/ProcessStatus.js"
-import { t, th } from "../../lang/lang.js"
+import { t, th } from "../../common/lang.js"
 
 /**
  * @typedef CombinedNotebook

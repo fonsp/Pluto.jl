@@ -9,7 +9,7 @@ import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
 import { get_environment } from "../../common/Environment.js"
 import default_featured_sources from "../../featured_sources.js"
-import { t, th } from "../../lang/lang.js"
+import { t, th } from "../../common/lang.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
