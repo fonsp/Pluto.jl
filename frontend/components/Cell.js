@@ -230,7 +230,7 @@ export const Cell = ({
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const on_delete = useCallback(() => {
-        pluto_actions.confirm_delete_multiple("Delete", pluto_actions.get_selected_cells(cell_id, selected))
+        pluto_actions.confirm_delete_multiple(pluto_actions.get_selected_cells(cell_id, selected))
     }, [pluto_actions, selected, cell_id])
     const on_submit = useCallback(() => {
         if (!disable_input_ref.current) {

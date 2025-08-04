@@ -94,7 +94,7 @@ export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_quer
             <input
                 title=${no_docs_found ? `"${state.searched_query}" not found` : ""}
                 id="live-docs-search"
-                placeholder="Search docs..."
+                placeholder=${t("t_live_docs_search_placeholder")}
                 ref=${live_doc_search_ref}
                 onInput=${(e) => on_update_doc_query(e.target.value)}
                 value=${desired_doc_query}

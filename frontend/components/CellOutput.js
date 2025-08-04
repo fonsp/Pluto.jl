@@ -29,6 +29,7 @@ import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 import lodashLibrary from "../imports/lodash.js"
+import { t } from "../common/lang.js"
 
 const prettyAssignee = (assignee) =>
     assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
@@ -673,7 +674,7 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
 
     // create copy button
     const button = document.createElement("button")
-    button.title = "Copy to clipboard"
+    button.title = t("t_copy_action_description")
     button.className = "markdown-code-block-button"
     button.addEventListener("click", (e) => {
         const txt = pre.textContent ?? ""
@@ -696,8 +697,8 @@ export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ hea
     const id = header.id
     if (!id) return
     const button = document.createElement("pluto-header-id-copy")
-    button.title = "Click to copy URL to this header"
-    button.ariaLabel = "Copy URL to this header"
+    button.title = t("t_copy_header_id_action_description")
+    button.ariaLabel = t("t_copy_header_id_action_description")
     button.role = "button"
     button.tabIndex = 0
     const listener = (_e) => {

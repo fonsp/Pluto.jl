@@ -584,10 +584,10 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
-            confirm_delete_multiple: async (verb, cell_ids) => {
-                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+            confirm_delete_multiple: async (cell_ids) => {
+                if (cell_ids.length <= 1 || confirm(t("t_confirm_delete_multiple_cells", { count: cell_ids.length }))) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                        if (confirm(t("t_confirm_delete_multiple_interrupt_notebook"))) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
@@ -847,7 +847,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                                 message.patches,
                                 empty_notebook_state({ notebook_id: this.state.notebook.notebook_id })
                             ).catch((e) => {
-                                alert("Oopsie!! please refresh your browser and everything will be alright!")
+                                alert(t("t_oopsie_pls_refresh"))
                                 throw e
                             })
                         } else if (message.patches.length !== 0) {
@@ -1188,7 +1188,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                if (!confirm(t("t_confirm_move_file", { old_path, new_path }))) {
                     throw new Error("Declined by user")
                 }
             }
@@ -1238,9 +1238,9 @@ all patches: ${JSON.stringify(patches, null, 1)}
             window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
-        this.delete_selected = (verb) => {
+        this.delete_selected = () => {
             if (this.state.selected_cells.length > 0) {
-                this.actions.confirm_delete_multiple(verb, this.state.selected_cells)
+                this.actions.confirm_delete_multiple(this.state.selected_cells)
                 return true
             }
         }
@@ -1320,7 +1320,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             } else if (["BracketLeft", "BracketRight"].includes(e.code) && (is_mac_keyboard ? e.altKey && e.metaKey : e.ctrlKey && e.shiftKey)) {
                 this.fold_selected(e.code === "BracketLeft")
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                if (this.delete_selected("Delete")) {
+                if (this.delete_selected()) {
                     e.preventDefault()
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
@@ -1336,31 +1336,33 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
                 const fold_prefix = is_mac_keyboard ? `⌥${and}⌘` : `Ctrl${and}Shift`
 
+                const or = t("t_key_or")
+
                 alert(
                     `
-⇧${and}Enter:   run cell
-${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
-${ctrl_or_cmd_name}${and}S:   submit all changes
-Delete or Backspace:   delete empty cell
+⇧${and}Enter:   ${t("t_key_run")}
+${ctrl_or_cmd_name}${and}Enter:   ${t("t_key_run_add")}
+${ctrl_or_cmd_name}${and}S:   ${t("t_key_submit_all_changes")}
+Delete ${or} Backspace:   ${t("t_key_delete_or_backspace")}
 
-PageUp or fn${and}↑:   jump to cell above
-PageDown or fn${and}↓:   jump to cell below
-${control_name}${and}click:   jump to definition
-${alt_or_options_name}${and}↑:   move line/cell up
-${alt_or_options_name}${and}↓:   move line/cell down
+PageUp ${or} fn${and}↑:   ${t("t_key_page_up")}
+PageDown ${or} fn${and}↓:   ${t("t_key_page_down")}
+${control_name}${and}click:   ${t("t_key_ctrl_click")}
+${alt_or_options_name}${and}↑:   ${t("t_key_alt_up")}
+${alt_or_options_name}${and}↓:   ${t("t_key_alt_down")}
 
-${control_name}${and}/:   toggle comment
-${control_name}${and}M:   toggle markdown
-${fold_prefix}${and}[:   hide cell code
-${fold_prefix}${and}]:   show cell code
-${ctrl_or_cmd_name}${and}Q:   interrupt notebook
+${control_name}${and}/:   ${t("t_key_ctrl_slash")}
+${control_name}${and}M:   ${t("t_key_ctrl_m")}
+${fold_prefix}${and}[:   ${t("t_key_ctrl_m")}
+${fold_prefix}${and}]:   ${t("t_key_ctrl_m")}
+${ctrl_or_cmd_name}${and}Q:   ${t("t_key_ctrl_q")}
 
-Select multiple cells by dragging a selection box from the space between cells.
-${ctrl_or_cmd_name}${and}C:   copy selected cells
-${ctrl_or_cmd_name}${and}X:   cut selected cells
-${ctrl_or_cmd_name}${and}V:   paste selected cells
+${t("t_key_selection_description")}
+${ctrl_or_cmd_name}${and}C:   ${t("t_key_ctrl_c")}
+${ctrl_or_cmd_name}${and}X:   ${t("t_key_ctrl_x")}
+${ctrl_or_cmd_name}${and}V:   ${t("t_key_ctrl_v")}
 
-The notebook file saves every time you run a cell.`
+${t("t_key_autosave_description")}`
                 )
                 e.preventDefault()
             } else if (e.key === "Escape") {
@@ -1586,7 +1588,7 @@ The notebook file saves every time you run a cell.`
                     ${
                         status.static_preview && status.offer_local
                             ? html`<button
-                                  title="Go back"
+                                  title=${t("t_navigate_to_previous_page")}
                                   onClick=${() => {
                                       history.back()
                                   }}

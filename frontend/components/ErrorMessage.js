@@ -333,7 +333,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                         e.preventDefault()
                         pluto_actions.wrap_remote_cell(cell_id, "begin")
                     }}
-                    >${t("t_wrap_all_code_in_a_begin_end_block")}</a
+                    >${th("t_wrap_all_code_in_a_begin_end_block")}</a
                 >`
                 if (x.includes("\n\nBoundaries: ")) {
                     const boundaries = JSON.parse(x.split("\n\nBoundaries: ")[1]).map((x) => x - 1) // Julia to JS index

@@ -102,6 +102,9 @@ export const th = (key, insertions) => {
     const string_parts = with_slots.split(/❊.*?⦿/)
     // Disabled because i want HTML to be supported
     // if(string_parts.length === 1) return string_parts[0]
+    
+    // TODO uhhhh but the inserted objects need to be ordered!
+    
     return html(to_template_strings_array(string_parts), ...Object.values(insertions ?? {}).filter(v => !can_interpolate_directly(v)).flatMap(unslot))
 }
 

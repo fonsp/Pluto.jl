@@ -8,7 +8,18 @@
     "t_confirmdeletencells": "Are you sure you want to delete {{count}} cells?",
     "t_confirmdeletecells_one": "Are you sure you want to delete this cell?",
     "t_FORGET": "FORGET",
+    
+    "t_live_docs_search_placeholder": "Search docs...",
     "t_live_docs_body": "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a target=\"_blank\" href=\"https://julialang.org/about/help/\">some tips</a>.</em></p>",
+    "t_panel_status": "Process status",
+    "t_panel_status_short": "Status",
+    "t_panel_docs": "Live docs",
+    "t_panel_status_progress": "Status {{progress}}",
+    "t_panel_status_progress_inner": "({{done}}/{{total}})",
+    "t_panel_close": "Close panel",
+    "t_panel_popout": "Pop out panel",
+    
+    
     "t_stop_notebook_session": "Stop session",
     "t_shut_down_notebook": "Shut down notebook",
     "t_start_notebook_in_background": "Start notebook in background",
@@ -147,6 +158,7 @@
     "t_copy_action": "Copy",
     "t_copy_action_description": "Copy to clipboard",
     "t_copy_action_complete": "Copied!",
+    "t_copy_header_id_action_description": "Click to copy URL to this header",
     
     "t_ai_permission_prompt_title": "Use AI to fix syntax errors?",
     "t_ai_permission_prompt_body": "Pluto will send code from this cell to a commercial LLM service to fix syntax errors. Updated code will not run without confirmation.",
@@ -164,6 +176,89 @@
     "t_ai_loading": "Loading...",
     "t_ai_syntax_fix_failed": "Failed to fix syntax error: {{error}}",
     "t_ai_fix_syntax_with_ai": "Fix syntax with AI",
-    "t_ai_fix_syntax_with_ai_description": "Attempt to fix this syntax error using an LLM service"
+    "t_ai_fix_syntax_with_ai_description": "Attempt to fix this syntax error using an LLM service",
+    
+    "t_confirm_delete_multiple_cells": "Delete {{count}} cells?",
+    "t_confirm_delete_multiple_interrupt_notebook": "This cell is still running - would you like to interrupt the notebook?",
+    "t_confirm_move_file": "Are you sure? Will move from\n\n{{old_path}}\n\nto\n\n{{new_path}}?",
+    
+    
+    "t_oopsie_pls_refresh": "Oopsie!! please refresh your browser and everything will be alright!",
+    
+    
+    "t_key_run": "run cell",
+    "t_key_run_add": "run cell and add cell below",
+    "t_key_submit_all_changes": "submit all changes",
+    "t_key_delete_or_backspace": "delete empty cell",
+    "t_key_page_up": "jump to cell above",
+    "t_key_page_down": "jump to cell below",
+    "t_key_ctrl_click": "jump to definition",
+    "t_key_alt_up": "move line/cell up",
+    "t_key_alt_down": "move line/cell down",
+    "t_key_ctrl_slash": "toggle comment",
+    "t_key_ctrl_m": "toggle markdown",
+    "t_key_ctrl_q": "interrupt notebook",
+    "t_key_ctrl_c": "copy selected cells",
+    "t_key_ctrl_x": "cut selected cells",
+    "t_key_ctrl_v": "paste selected cells",
+    
+    "t_key_autosave_description": "The notebook file saves every time you run a cell.",
+    "t_key_selection_description": "Select multiple cells by dragging a selection box from the space between cells.",
+    
+    "t_key_or": "or",
+    
+    "t_navigate_to_previous_page": "Go back",
+    
+    
+    "t_edit_or_run_this_notebook": "<strong>Edit</strong> or <strong>run</strong> this notebook",
+    "t_edit_or_run_description_1": "To be able to edit code and run cells, you need to run the notebook yourself.",
+    "t_edit_or_run_description_2": "Where would you like to run the notebook?",
+    "t_binder_help_text_title": "In the cloud <em>(experimental)</em>",
+    "t_binder_help_text": "<a target='_blank' href='https://mybinder.org/'>Binder</a> is a free, open source service that runs scientific notebooks in the cloud! It will take a while, usually 2-7 minutes to get a session.",
+    "t_edit_or_run_runtime": "This notebook takes about <span>{{runtime}}</span> to run.",
+    "t_edit_or_run_local": "On your computer",
+    "t_edit_or_run_local_description": "(Recommended if you want to store your changes.)",
+    "t_edit_or_run_download_notebook": "Download the notebook:",
+    "t_edit_or_run_copy_notebook_url": "Copy the notebook URL:",
+    "t_edit_or_run_run_pluto": "Run Pluto",
+    "t_edit_or_run_run_pluto_description": "Also see: <a target='_blank' href='{{url}}'>How to install Julia and Pluto</a>",
+    "t_edit_or_run_open_the_notebook_file": "Open the notebook file",
+    "t_edit_or_run_open_the_notebook_file_description": "Type the saved filename in the <em>open</em> box.",
+    "t_edit_or_run_paste_url_in_the_open_box": "Paste URL in the <em>Open</em> box",
+    
+    "t_time_minutes_one": "{{count}} minute",
+    "t_time_minutes_other": "{{count}} minutes",
+    "t_time_seconds_one": "{{count}} second",
+    "t_time_seconds_other": "{{count}} seconds",
+    
+    "t_frontmatter_title": "Frontmatter",
+    "t_frontmatter_description": "If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and social media.",
+    "t_frontmatter_synchronized": "Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.",
+    "t_frontmatter_delete_field": "Delete field",
+    "t_frontmatter_add_field": "Add field {{plus}}",
+    "t_frontmatter_add_author": "Add author {{plus}}",
+    "t_frontmatter_cancel": "Cancel",
+    "t_frontmatter_save": "Save",
+    "t_frontmatter_preview": "Preview",
+    
+    
+    "t_logs_truncated": "{{count}} logs not shown...",    
+    "t_logs_stdout": "This text was written to the <a href=\"https://en.wikipedia.org/wiki/Standard_streams\" target=\"_blank\">terminal stream</a> while running the cell. It is not the <em>return value</em> of the cell.",
+    "t_logs_click_for_more_info": "Click for more info",
+    
+    "t_ready_notif_title": "Pluto: notebook ready",
+    "t_ready_notif_body": "✓ All {{count}} steps completed",
+    "t_ready_notif": "Notify when done",
+    "t_ready_notif_permission": "Pluto needs permission to show notifications. <strong>Enable notifications</strong> in your browser settings to use this feature.",
+    
+    "t_pkg_disables_str": "{{function}} disables Pluto's built-in package manager.",
+    "t_pkg_stdlib": "{{package}} is part of Julia's pre-installed <em>standard library</em>.",
+    "t_pkg_will_be_installed": "{{package}} will be installed when you run this notebook.",
+    "t_pkg_is_installing": "{{package}} is installing...",
+    "t_pkg_is_installed": "{{package}} is installed in the notebook.",
+    
+    "t_pkg_not_found": "The package {{package}} could not be found in the registry. Did you make a typo?",
+    "t_pkg_will_be_installed_in_notebook": "{{package}} will be installed in the notebook when you run this cell."
+    
 }
         
