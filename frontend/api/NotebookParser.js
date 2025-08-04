@@ -133,6 +133,89 @@ function parseHeader(lines) {
 }
 
 /**
+ * Create default cell result structure
+ * @param {string} cellId - Cell ID
+ * @returns {Object} Default cell result object
+ */
+function createDefaultCellResult(cellId) {
+    return {
+        cell_id: cellId,
+        queued: false,
+        running: false,
+        errored: false,
+        runtime: null,
+        downstream_cells_map: {},
+        upstream_cells_map: {},
+        precedence_heuristic: null,
+        depends_on_disabled_cells: false,
+        depends_on_skipped_cells: false,
+        output: {
+            body: "",
+            persist_js_state: false,
+            last_run_timestamp: 0,
+            mime: "text/plain",
+            rootassignee: null,
+            has_pluto_hook_features: false,
+        },
+        logs: [],
+        published_object_keys: [],
+    };
+}
+
+/**
+ * Parse cell metadata from lines
+ * @param {string[]} lines - Array of file lines
+ * @param {number} startIndex - Starting index
+ * @returns {{metadata: Object, hasExplicitDisabledMetadata: boolean, endIndex: number}}
+ */
+function parseCellMetadata(lines, startIndex) {
+    const metadata = { ...DEFAULT_CELL_METADATA };
+    let hasExplicitDisabledMetadata = false;
+    let i = startIndex;
+    
+    while (i < lines.length && lines[i].startsWith(CELL_METADATA_PREFIX)) {
+        const metadataLine = lines[i].slice(CELL_METADATA_PREFIX.length);
+        
+        if (metadataLine.includes("disabled = true")) {
+            metadata.disabled = true;
+            hasExplicitDisabledMetadata = true;
+        }
+        if (metadataLine.includes("show_logs = false")) {
+            metadata.show_logs = false;
+        }
+        if (metadataLine.includes("skip_as_script = true")) {
+            metadata.skip_as_script = true;
+        }
+        i++;
+    }
+    
+    return { metadata, hasExplicitDisabledMetadata, endIndex: i };
+}
+
+/**
+ * Collect lines until the next cell delimiter
+ * @param {string[]} lines - Array of file lines
+ * @param {number} startIndex - Starting index
+ * @returns {{code: string, endIndex: number}}
+ */
+function collectCellCode(lines, startIndex) {
+    const codeLines = [];
+    let i = startIndex;
+    
+    while (i < lines.length && !lines[i].startsWith(CELL_ID_DELIMITER)) {
+        codeLines.push(lines[i]);
+        i++;
+    }
+    
+    let code = codeLines.join('\n');
+    if (code.endsWith(CELL_SUFFIX)) {
+        code = code.slice(0, -CELL_SUFFIX.length);
+    }
+    
+    return { code: code.trimEnd(), endIndex: i };
+}
+
+/**
  * Parse cells from notebook content
  * @param {string[]} lines - Array of file lines
  * @param {number} startIndex - Index where cells start
@@ -157,80 +240,37 @@ function parseCells(lines, startIndex) {
         // Check for cell delimiter
         if (line.startsWith(CELL_ID_DELIMITER)) {
             const cellIdStr = line.slice(CELL_ID_DELIMITER.length);
+            i++; // Move past cell delimiter
             
             // Handle special package cells differently
             if (cellIdStr === PTOML_CELL_ID || cellIdStr === MTOML_CELL_ID) {
-                i++; // Move past cell delimiter
-                
-                // Collect package cell code
-                const codeLines = [];
-                while (i < lines.length && !lines[i].startsWith(CELL_ID_DELIMITER)) {
-                    codeLines.push(lines[i]);
-                    i++;
-                }
-                
-                let code = codeLines.join('\n');
-                if (code.endsWith(CELL_SUFFIX)) {
-                    code = code.slice(0, -CELL_SUFFIX.length);
-                }
-                code = code.trimEnd();
-                
+                const { code, endIndex } = collectCellCode(lines, i);
                 packageCells[cellIdStr] = code;
+                i = endIndex;
                 continue;
             }
             
-            i++; // Move past cell delimiter
-            
             // Parse cell metadata (optional)
-            const metadata = { ...DEFAULT_CELL_METADATA };
-            let hasExplicitDisabledMetadata = false;
+            const { metadata, hasExplicitDisabledMetadata, endIndex: metadataEndIndex } = parseCellMetadata(lines, i);
+            i = metadataEndIndex;
             
-            while (i < lines.length && lines[i].startsWith(CELL_METADATA_PREFIX)) {
-                const metadataLine = lines[i].slice(CELL_METADATA_PREFIX.length);
-                // Simple metadata parsing
-                if (metadataLine.includes("disabled = true")) {
-                    metadata.disabled = true;
-                    hasExplicitDisabledMetadata = true;
-                }
-                if (metadataLine.includes("show_logs = false")) {
-                    metadata.show_logs = false;
-                }
-                if (metadataLine.includes("skip_as_script = true")) {
-                    metadata.skip_as_script = true;
-                }
-                i++;
-            }
-            
-            // Collect cell code until next cell delimiter
-            const codeLines = [];
-            while (i < lines.length && !lines[i].startsWith(CELL_ID_DELIMITER)) {
-                codeLines.push(lines[i]);
-                i++;
-            }
-            
-            // Join code and clean up
-            let code = codeLines.join('\n');
-            
-            // Remove cell suffix if present  
-            if (code.endsWith(CELL_SUFFIX)) {
-                code = code.slice(0, -CELL_SUFFIX.length);
-            }
+            // Collect cell code
+            const { code: rawCode, endIndex } = collectCellCode(lines, i);
+            i = endIndex;
             
             // Handle disabled cells
-            const trimmedCode = code.trim();
+            let code = rawCode;
+            const trimmedCode = rawCode.trim();
             const isDisabledByWrapper = trimmedCode.startsWith(DISABLED_PREFIX.trim()) && trimmedCode.endsWith(DISABLED_SUFFIX.trim());
             if (isDisabledByWrapper) {
-                code = code.slice(code.indexOf(DISABLED_PREFIX.trim()) + DISABLED_PREFIX.length, 
-                                  code.lastIndexOf(DISABLED_SUFFIX.trim()));
+                code = rawCode.slice(rawCode.indexOf(DISABLED_PREFIX.trim()) + DISABLED_PREFIX.length, 
+                                     rawCode.lastIndexOf(DISABLED_SUFFIX.trim()));
                 metadata.disabled = true;
                 // If there was no explicit disabled metadata, this is an implicit disabled cell
                 if (!hasExplicitDisabledMetadata) {
                     metadata._implicit_disabled = true;
                 }
             }
-            
-            // Trim trailing whitespace
-            code = code.trimEnd();
             
             // Create cell input data
             cellInputs[cellIdStr] = {
@@ -241,28 +281,7 @@ function parseCells(lines, startIndex) {
             };
             
             // Create corresponding cell result data
-            cellResults[cellIdStr] = {
-                cell_id: cellIdStr,
-                queued: false,
-                running: false,
-                errored: false,
-                runtime: null,
-                downstream_cells_map: {},
-                upstream_cells_map: {},
-                precedence_heuristic: null,
-                depends_on_disabled_cells: false,
-                depends_on_skipped_cells: false,
-                output: {
-                    body: "",
-                    persist_js_state: false,
-                    last_run_timestamp: 0,
-                    mime: "text/plain",
-                    rootassignee: null,
-                    has_pluto_hook_features: false,
-                },
-                logs: [],
-                published_object_keys: [],
-            };
+            cellResults[cellIdStr] = createDefaultCellResult(cellIdStr);
             
             // Track topological order
             topologicalOrder.push(cellIdStr);
@@ -337,6 +356,47 @@ function generateUUID() {
 }
 
 /**
+ * Generate @bind macro lines
+ * @returns {string[]} Array of lines for the @bind macro
+ */
+function generateBindMacro() {
+    return [
+        "",
+        "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).",
+        "macro bind(def, element)",
+        "    quote",
+        '        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end',
+        "        local el = $(esc(element))",
+        "        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)",
+        "        el",
+        "    end",
+        "end"
+    ];
+}
+
+/**
+ * Serialize cell metadata to lines
+ * @param {Object} metadata - Cell metadata object
+ * @returns {string[]} Array of metadata lines
+ */
+function serializeCellMetadata(metadata) {
+    const lines = [];
+    
+    // Only serialize non-default values
+    if (metadata.disabled && !metadata._implicit_disabled) {
+        lines.push(CELL_METADATA_PREFIX + "disabled = true");
+    }
+    if (metadata.show_logs !== undefined && metadata.show_logs !== DEFAULT_CELL_METADATA.show_logs) {
+        lines.push(CELL_METADATA_PREFIX + `show_logs = ${metadata.show_logs}`);
+    }
+    if (metadata.skip_as_script !== undefined && metadata.skip_as_script !== DEFAULT_CELL_METADATA.skip_as_script) {
+        lines.push(CELL_METADATA_PREFIX + `skip_as_script = ${metadata.skip_as_script}`);
+    }
+    
+    return lines;
+}
+
+/**
  * Serialize NotebookData back to Pluto notebook file format
  * @param {Object} notebookData - NotebookData structure
  * @returns {string} Notebook file content
@@ -361,20 +421,9 @@ function serializeNotebook(notebookData) {
     lines.push("using Markdown");
     lines.push("using InteractiveUtils");
     
-    // Check if we should add @bind macro
-    const hasBindMacro = notebookData._has_bind_macro || false;
-    
-    if (hasBindMacro) {
-        lines.push("");
-        lines.push("# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).");
-        lines.push("macro bind(def, element)");
-        lines.push("    quote");
-        lines.push('        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end');
-        lines.push("        local el = $(esc(element))");
-        lines.push("        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)");
-        lines.push("        el");
-        lines.push("    end");
-        lines.push("end");
+    // Add @bind macro if needed
+    if (notebookData._has_bind_macro) {
+        lines.push(...generateBindMacro());
     }
     
     lines.push("");
@@ -392,24 +441,8 @@ function serializeNotebook(notebookData) {
         
         // Cell metadata (if not default)
         const metadata = cellInput.metadata || {};
-        const hasNonDefaultMetadata = (
-            (metadata.disabled && !metadata._implicit_disabled) ||
-            metadata.show_logs !== DEFAULT_CELL_METADATA.show_logs ||
-            metadata.skip_as_script !== DEFAULT_CELL_METADATA.skip_as_script
-        );
-        
-        if (hasNonDefaultMetadata) {
-            // Simple metadata serialization (could be extended to full TOML)
-            if (metadata.disabled && !metadata._implicit_disabled) {
-                lines.push(CELL_METADATA_PREFIX + "disabled = true");
-            }
-            if (metadata.show_logs !== DEFAULT_CELL_METADATA.show_logs) {
-                lines.push(CELL_METADATA_PREFIX + `show_logs = ${metadata.show_logs}`);
-            }
-            if (metadata.skip_as_script !== DEFAULT_CELL_METADATA.skip_as_script) {
-                lines.push(CELL_METADATA_PREFIX + `skip_as_script = ${metadata.skip_as_script}`);
-            }
-        }
+        const metadataLines = serializeCellMetadata(metadata);
+        lines.push(...metadataLines);
         
         // Cell code
         let code = cellInput.code || "";
