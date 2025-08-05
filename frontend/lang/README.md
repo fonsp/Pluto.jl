@@ -52,10 +52,14 @@ You use the `_one`, `_other`, `_zero`, `_two`, `_few`, `_many`, and `_other` suf
 
 ## How to contribute
 
+Initial setup:
 1. Fork the Pluto.jl repository
 2. Clone your fork, we recommend GitHub Desktop. Let's say that you cloned it to `~/Desktop/Pluto.jl`
 3. Create a new branch for your contribution
-4. You can edit the JSON files in this directory to add translations.
+
+How to contribute:
+4. Run `julia update_languages.jl` to synchonize the JSON files with the English file. This will add new keys to the JSON files as empty strings, which you can then fill in.
+4. You can **edit the JSON files in this directory** to add translations. 🌟
 5. When you are done, commit, push, and submit a pull request to the main Pluto.jl repository.
 
 

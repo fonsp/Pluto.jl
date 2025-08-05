@@ -245,7 +245,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     if (CustomRecent == null) {
         return html`
-            <h2>${t("t_My work")}</h2>
+            <h2>${t("t_my_work")}</h2>
             <ul id="recent" class="show_scrollbar">
                 <li class="new">
                     <a

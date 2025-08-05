@@ -11,6 +11,10 @@ import english from "../lang/english.json" with { type: "json" }
 import nederlands from "../lang/nederlands.json" with { type: "json" }
 
 
+const without_empty_keys = (obj) => {
+    return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
+}
+
 i18next
   .use(LanguageDetector)
   .init({
@@ -18,10 +22,10 @@ i18next
     fallbackLng: "en",
     resources: {
       en: {
-        translation: english,
+        translation: without_empty_keys(english),
       },
       nl: {
-        translation: nederlands,
+        translation: without_empty_keys(nederlands),
       },
     },
     // supportedLngs: ["en", "nl"],
