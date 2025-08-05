@@ -63,8 +63,8 @@ export const shutdownCurrentNotebook = async (page) => {
 
 export const setupPlutoBrowser = async () => {
     const browser = await puppeteer.launch({
-        headless: process.env.HEADLESS !== "false",
-        args: ["--no-sandbox"],
+        headless: process.env.HEADLESS !== "false" ? "new" : false,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
         devtools: false,
     })
 
@@ -92,7 +92,7 @@ export const createNewNotebook = async (page) => {
     const newNotebookSelector = 'a[href="new"]'
     await page.waitForSelector(newNotebookSelector)
     await clickAndWaitForNavigation(page, newNotebookSelector)
-    await page.waitForTimeout(1000)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     await waitForPlutoToCalmDown(page)
     await page.waitForSelector("pluto-input", { visible: true })
 }
@@ -124,7 +124,7 @@ export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRun
     await clickAndWaitForNavigation(page, openFileButton)
     // Give permission to run code in this notebook
     if (permissionToRunCode) await restartProcess(page)
-    await page.waitForTimeout(1000)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     await waitForPlutoToCalmDown(page, { polling: "raf", timeout })
 }
 
@@ -151,7 +151,7 @@ export const restartProcess = async (page) => {
  * @param {boolean} iWantBusiness
  */
 const waitForPlutoBusy = async (page, iWantBusiness, options) => {
-    await page.waitForTimeout(1)
+    await new Promise((resolve) => setTimeout(resolve, 1))
     try {
         await page.waitForFunction(
             (iWantBusiness) => {
@@ -194,10 +194,13 @@ const waitForPlutoBusy = async (page, iWantBusiness, options) => {
 
         throw e
     }
-    await page.waitForTimeout(1)
+    await new Promise((resolve) => setTimeout(resolve, 1))
 }
 
-export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page, /** @type {{ polling: string | number; timeout?: number; }} */ options) => {
+export const waitForPlutoToCalmDown = async (
+    /** @type {import("puppeteer").Page} */ page,
+    /** @type {{ polling: string | number; timeout?: number; }} */ options
+) => {
     await waitForPlutoBusy(page, false, options)
 }
 
@@ -226,7 +229,7 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
 }
 
 export const waitForNoUpdateOngoing = async (page, options = {}) => {
-    await page.waitForTimeout(1000)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     return await page.waitForFunction(
         () =>
             //@ts-ignore
@@ -293,14 +296,14 @@ export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text
 export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) => {
     const currentLineText = await getTextContent(page, `${plutoInputSelector} .cm-line`)
     await page.focus(`${plutoInputSelector} .cm-content`)
-    await page.waitForTimeout(500)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     // Move to end of the input
     await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
     await page.keyboard.press("ArrowDown")
     await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
     // Press the key we care about
     await page.keyboard.press(key)
-    await page.waitForTimeout(500)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     // Wait for CodeMirror to process the input and display the text
     return waitForContentToChange(page, `${plutoInputSelector} .cm-line`, currentLineText)
 }
@@ -313,7 +316,7 @@ export const clearPlutoInput = async (page, plutoInputSelector) => {
     await page.waitForSelector(`${plutoInputSelector} .cm-editor:not(.cm-ssr-fake)`)
     if ((await page.$(`${plutoInputSelector} .cm-placeholder`)) == null) {
         await page.focus(`${plutoInputSelector} .cm-content`)
-        await page.waitForTimeout(500)
+        await new Promise((resolve) => setTimeout(resolve, 500))
         // Move to end of the input
         await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
         await page.keyboard.press("KeyA")
