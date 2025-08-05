@@ -39,7 +39,7 @@
     "t_show_hide_code": "Show/hide code",
     "t_cell_disabled_in_file_tooltip": "This cell is directly flagged as disabled in file. Click to know more!",
     "t_cell_indirectly_disabled_tooltip": "This cell is indirectly flagged as disabled in file. Click to know more!",
-    "t_cell_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />Use the context menu to enable it again",
+    "t_cell_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />Use the context menu to enable it again.",
     "t_cell_indirectly_disabled_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable {{upstreamLink}} to affect this cell.",
     
     "t_language_picker_description": "Change the language of the interface",
@@ -59,7 +59,10 @@
     "t_stack_trace": "Stack trace",
     "t_here_is_what_happened_the_most_recent_locations_are_first": "Here is what happened, the most recent locations are first:",
     "t_show_stack_trace": "Show stack trace...",
-    "t_stack_trace_waiting_to_view": "Stack trace waiting to view",
+    "t_stack_frame_location": "from",
+    "t_stack_frame_this_cell": "This cell",
+    "t_stack_frame_other_cell": "This cell",
+    "t_stack_frame_line": "line",
     "t_show_more": "Show more...",
     "t_motivational_words_be_creative_and_write_as_many_as_you_want": [
         "Don't panic!",

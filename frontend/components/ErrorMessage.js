@@ -78,7 +78,9 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${noline(line) ? null : html`:${nbsp}<em>line${nbsp}${line}</em>`}
+            ${(frame_cell_id == cell_id ? t("t_stack_frame_this_cell") : t("t_stack_frame_other_cell")).replaceAll(" ", "\xa0")}${noline(line)
+                ? null
+                : html`:${nbsp}<em>${t("t_stack_frame_line")}${nbsp}${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
@@ -93,7 +95,7 @@ const StackFrameFilename = ({ frame, cell_id }) => {
     }
 }
 
-const at = html`<span> from${nbsp}</span>`
+const at = html`<span> ${t("t_stack_frame_location")}${nbsp}</span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
@@ -516,7 +518,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
             ? null
             : stacktrace_waiting_to_view
             ? html`<section class="stacktrace-waiting-to-view">
-                  <button onClick=${() => set_stacktrace_waiting_to_view(false)}>Show stack trace...</button>
+                  <button onClick=${() => set_stacktrace_waiting_to_view(false)}>${t("t_show_stack_trace")}</button>
               </section>`
             : html`<section>
                   <div class="stacktrace-header">
