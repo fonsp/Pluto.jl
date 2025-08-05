@@ -38,9 +38,9 @@
     "t_drag_to_move_cell": "Drag to move cell",
     "t_show_hide_code": "Show/hide code",
     "t_cell_disabled_in_file_tooltip": "This cell is directly flagged as disabled in file. Click to know more!",
-    "t_cell_indirectly_disabled_tooltip": "This cell is indirectly flagged as disabled in file. Click to know more!",
+    "t_cell_indirectly_disabled_in_file_tooltip": "This cell is indirectly flagged as disabled in file. Click to know more!",
     "t_cell_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />Use the context menu to enable it again.",
-    "t_cell_indirectly_disabled_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable {{upstreamLink}} to affect this cell.",
+    "t_cell_indirectly_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable {{upstreamLink}} to affect this cell.",
     
     "t_language_picker_description": "Change the language of the interface",
     "t_refresh_to_see_language_change_confirm": "Language changed! Would you like to refresh the page to see the changes?",
@@ -221,6 +221,8 @@
     
     "t_navigate_to_previous_page": "Go back",
     
+    "t_bonds_static_warning": "You are viewing a static document. {{run_notebook_action}} to enable interactivity.",
+    "t_bonds_static_warning_inner": "Run this notebook",
     
     "t_edit_or_run_this_notebook": "<strong>Edit</strong> or <strong>run</strong> this notebook",
     "t_edit_or_run_description_1": "To be able to edit code and run cells, you need to run the notebook yourself.",

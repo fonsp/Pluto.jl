@@ -403,12 +403,12 @@ export const Cell = ({
                 : depends_on_skipped_cells
                 ? html`<div
                       class="depends_on_skipped_marker"
-                      title=${t("t_cell_indirectly_disabled_tooltip")}
+                      title=${t("t_cell_indirectly_disabled_in_file_tooltip")}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
-                              body: th("t_cell_indirectly_disabled_explanation", {
+                              body: th("t_cell_indirectly_disabled_in_file_explanation", {
                                   upstreamLink: html`<span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline">
                                       the upstream one</span
                                   >`,
