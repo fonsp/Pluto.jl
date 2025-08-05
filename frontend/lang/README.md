@@ -63,13 +63,19 @@ How to contribute:
 5. When you are done, commit, push, and submit a pull request to the main Pluto.jl repository.
 
 
+
 To see your translations in action while you are working on them:
 1. In Julia, run `] dev ~/Desktop/Pluto.jl`. You now added your local copy of Pluto as a development package to your global Pkg environment. _(When you are done, you can run `] add Pluto` to go back to the normal Pluto installation.)_
 2. Start Pluto as usual. It should say `"It looks like your are developing the Pluto package, using the unbundled frontend."` in the terminal.
 3. Every time that you refresh the Pluto window, it will use your new translations!
 
 
-
+### Tips for writing translations
+Here is some advice for writing good translations:
+- Open `english.json` and your target language JSON file side by side, so you can see the original text and your translation at the same time.
+- If you want to see where a translation is used, you can search for the key in the Pluto codebase. This shows the place in our code where it is used. Don't try to understand the code, just try to figure out where it is used in the Pluto frontend.
+- If you are not sure about a translation, you can ask the Pluto developers for help.
+- Microsoft provides a repository with translation strings from their products: https://learn.microsoft.com/en-us/globalization/reference/microsoft-language-resources?utm_source=chatgpt.com#ui-strings
 
 ### New languages
 If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how "nederlands" (`nl`) is set up, and copy the structure.
