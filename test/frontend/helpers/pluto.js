@@ -68,6 +68,10 @@ export const setupPlutoBrowser = async () => {
         devtools: false,
     })
 
+    // Log Chrome version information
+    const version = await browser.version()
+    console.log(`🌐 Browser version: ${version}`)
+
     await prewarmPluto(browser)
 
     return browser
