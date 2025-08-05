@@ -55,7 +55,7 @@ describe("slideControls", () => {
         expect(await slide_1_title.isIntersectingViewport()).toBe(true)
 
         await page.click(`.toggle_export[title="Export..."]`)
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
         await page.waitForSelector(".toggle_presentation", { visible: true })
         await page.click(".toggle_presentation")
 

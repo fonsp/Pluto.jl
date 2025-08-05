@@ -47,12 +47,12 @@ describe("PlutoAutocomplete", () => {
         // Add a new cell
         let lastPlutoCellId = lastElement(importedCellIds)
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "my_su")
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         // Wait for the autocomplete suggestions to appear by itself
         await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 10 * 1000 }).catch(async () => {
@@ -78,7 +78,7 @@ describe("PlutoAutocomplete", () => {
         // Add a new cell
         let lastPlutoCellId = lastElement(importedCellIds)
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))

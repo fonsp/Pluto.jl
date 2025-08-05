@@ -28,7 +28,7 @@ describe("wind_directions", () => {
         await gotoPlutoMainMenu(page)
 
         await importNotebook(page, "wind_directions.jl", { permissionToRunCode: true, timeout: 180 * 1000 })
-        await page.waitForTimeout(1000)
+        await new Promise(resolve => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
     })
     beforeEach(async () => {})

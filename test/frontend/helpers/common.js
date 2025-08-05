@@ -42,9 +42,9 @@ class InflightRequests {
   inflightRequests() { return Array.from([...this._requests.entries()].flatMap(([k,v]) => v > 0 ? [k] : [])); }  
 
   dispose() {
-    this._page.removeListener('request', this._onStarted);
-    this._page.removeListener('requestfinished', this._onFinished);
-    this._page.removeListener('requestfailed', this._onFinished);
+    this._page.off('request', this._onStarted);
+    this._page.off('requestfinished', this._onFinished);
+    this._page.off('requestfailed', this._onFinished);
   }
 }
 

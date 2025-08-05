@@ -104,7 +104,7 @@ Hello
             expect(dmsg.toLowerCase()).toContain("danger")
             expect(dmsg.toLowerCase()).toContain("are you sure")
 
-            await page.waitForTimeout(1000)
+            await new Promise(resolve => setTimeout(resolve, 1000))
             await waitForPlutoToCalmDown(page)
             await expect_safe_preview(page)
         }
@@ -138,7 +138,7 @@ Hello
 
         // Run it again
         await clickAndWaitForNavigation(page, `a[title="${path}"]`)
-        await page.waitForTimeout(1000)
+        await new Promise(resolve => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
 
         await expect_safe_preview(page)
@@ -169,7 +169,7 @@ Hello
             }),
             page.click(`a#restart-process-button`),
         ])
-        await page.waitForTimeout(1000)
+        await new Promise(resolve => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
 
         // Nice
@@ -188,7 +188,7 @@ Hello
         await page.click(`a#restart-process-button`)
 
         // If there was a dialog, we would stall right now and the test would fail.
-        await page.waitForTimeout(1000)
+        await new Promise(resolve => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
         expect((await getAllCellOutputs(page))[0]).toBe("2")
     })

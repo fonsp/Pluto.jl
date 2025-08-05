@@ -58,7 +58,7 @@ describe("PlutoImportNotebook", () => {
         await waitForCellOutput(page, lastPlutoCellId)
 
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         // Use the previously defined sum function in the new cell
         lastPlutoCellId = lastElement(await getCellIds(page))

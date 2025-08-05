@@ -9,7 +9,7 @@
     "babel-jest": "^29.7.0",
     "jest": "^29.7.0",
     "lodash": "^4.17.21",
-    "puppeteer": "^16.2.0"
+    "puppeteer": "^24.15.0"
   },
   "scripts": {
     "test": "jest --verbose --runInBand"

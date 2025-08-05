@@ -114,7 +114,7 @@ describe("JavaScript API", () => {
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
         await waitForContentToBecome(page, `pluto-cell:nth-child(2) pluto-output`, "emitter")
-        page.waitForTimeout(2000)
+        new Promise(resolve => setTimeout(resolve, 2000))
 
         // Send a custom event to increment value
         // Due to various optimizations this will take its time

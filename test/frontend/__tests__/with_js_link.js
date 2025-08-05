@@ -146,7 +146,7 @@ describe("with_js_link", () => {
         await submit_ev_input("c1", "cc1")
         await submit_ev_input("c2", "cc2")
 
-        await page.waitForTimeout(4000)
+        await new Promise(resolve => setTimeout(resolve, 4000))
 
         // NOT
         // they dont run in parallel so right now only cc1 should be finished
@@ -166,12 +166,12 @@ describe("with_js_link", () => {
     }
     it("js errors", async () => {
         await waitForPlutoToCalmDown(page)
-        await page.waitForTimeout(100)
+        await new Promise(resolve => setTimeout(resolve, 100))
         await expect_jslog("hello!")
         await page.click("#jslogbtn")
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
         await page.click("#jslogbtn")
-        await page.waitForTimeout(100)
+        await new Promise(resolve => setTimeout(resolve, 100))
 
         // We clicked twice, but sometimes it only registers one click for some reason. I don't care, so let's check for either.
         let prefix = await Promise.race([
@@ -186,7 +186,7 @@ describe("with_js_link", () => {
         await expect_jslog(`${prefix}hello!clicknee exception in Julia callback:ErrorException("bad")`)
 
         await page.click("#jslogbtn")
-        await page.waitForTimeout(500)
+        await new Promise(resolve => setTimeout(resolve, 500))
 
         await page.click(`pluto-cell[id="${yolotriggerid}"] .runcell`)
 
