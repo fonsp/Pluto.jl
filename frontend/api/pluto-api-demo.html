@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pluto Notebook API Demo</title>
+        <style>
+            body {
+                font-family: "JuliaMono", "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", monospace;
+                margin: 20px;
+                background: #f8f9fa;
+                color: #333;
+            }
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+                border-bottom: 2px solid #e9ecef;
+            }
+            .status {
+                display: inline-block;
+                padding: 4px 12px;
+                border-radius: 16px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-left: 10px;
+            }
+            .status.connected {
+                background: #d4edda;
+                color: #155724;
+            }
+            .status.disconnected {
+                background: #f8d7da;
+                color: #721c24;
+            }
+            .status.connecting {
+                background: #fff3cd;
+                color: #856404;
+            }
+
+            .notebook-info {
+                background: #f8f9fa;
+                padding: 15px;
+                border-radius: 6px;
+                margin: 20px 0;
+            }
+            .notebook-info h3 {
+                margin: 0 0 10px 0;
+                color: #495057;
+            }
+            .info-row {
+                display: flex;
+                justify-content: space-between;
+                margin: 8px 0;
+                font-size: 14px;
+            }
+            .info-label {
+                font-weight: bold;
+                color: #666;
+            }
+
+            .cell-container {
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                margin: 20px 0;
+                background: white;
+            }
+            .cell-header {
+                background: #e9ecef;
+                padding: 8px 16px;
+                border-bottom: 1px solid #dee2e6;
+                font-size: 12px;
+                color: #666;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .cell-id {
+                font-family: monospace;
+                font-size: 11px;
+            }
+            .cell-status {
+                display: flex;
+                gap: 10px;
+            }
+            .cell-status span {
+                padding: 2px 8px;
+                border-radius: 12px;
+                font-size: 10px;
+                font-weight: bold;
+            }
+            .running {
+                background: #fff3cd;
+                color: #856404;
+            }
+            .queued {
+                background: #cce7ff;
+                color: #0056b3;
+            }
+            .errored {
+                background: #f8d7da;
+                color: #721c24;
+            }
+            .ready {
+                background: #d4edda;
+                color: #155724;
+            }
+
+            .cell-code {
+                padding: 0;
+                margin: 0;
+            }
+            .cell-code textarea {
+                width: 100%;
+                border: none;
+                padding: 16px;
+                font-family: "JuliaMono", monospace;
+                font-size: 14px;
+                line-height: 1.5;
+                resize: vertical;
+                min-height: 120px;
+                outline: none;
+                background: #fafafa;
+            }
+            .cell-code textarea:focus {
+                background: white;
+            }
+
+            .cell-output {
+                border-top: 1px solid #dee2e6;
+                background: #f8f9fa;
+                padding: 16px;
+                white-space: pre-wrap;
+                font-family: monospace;
+                font-size: 13px;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+            .cell-output.empty {
+                color: #999;
+                font-style: italic;
+            }
+
+            .controls {
+                margin: 20px 0;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            .btn {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            .btn.primary {
+                background: #007bff;
+                color: white;
+            }
+            .btn.primary:hover:not(:disabled) {
+                background: #0056b3;
+            }
+            .btn.secondary {
+                background: #6c757d;
+                color: white;
+            }
+            .btn.danger {
+                background: #dc3545;
+                color: white;
+            }
+            .btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            .log {
+                background: #f1f3f4;
+                padding: 15px;
+                border-radius: 6px;
+                margin: 20px 0;
+                font-family: monospace;
+                font-size: 12px;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+            .log-entry {
+                margin: 4px 0;
+                padding: 2px 0;
+            }
+            .log-entry.error {
+                color: #dc3545;
+            }
+            .log-entry.warn {
+                color: #fd7e14;
+            }
+            .log-entry.info {
+                color: #17a2b8;
+            }
+
+            .error {
+                background: #f8d7da;
+                color: #721c24;
+                padding: 15px;
+                border-radius: 6px;
+                margin: 20px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🎈 Pluto Notebook API Demo</h1>
+                <span id="connectionStatus" class="status connecting">Connecting...</span>
+            </div>
+
+            <div id="errorContainer" class="error" style="display: none"></div>
+
+            <div class="notebook-info">
+                <h3>Notebook Information</h3>
+                <div class="info-row">
+                    <span class="info-label">Notebook ID:</span>
+                    <span id="notebookId">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Path:</span>
+                    <span id="notebookPath">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Cell Count:</span>
+                    <span id="cellCount">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Process Status:</span>
+                    <span id="processStatus">-</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="runBtn" class="btn primary" disabled>Run Cell</button>
+                <button id="interruptBtn" class="btn danger" disabled>Interrupt</button>
+                <button id="refreshBtn" class="btn secondary" disabled>Refresh</button>
+                <label> <input type="checkbox" id="autoRun" /> Auto-run on change </label>
+            </div>
+
+            <div id="cellContainer">
+                <div class="cell-container">
+                    <div class="cell-header">
+                        <div>
+                            <span>First Cell</span>
+                            <span class="cell-id" id="cellId">No cells found</span>
+                        </div>
+                        <div class="cell-status" id="cellStatusContainer"></div>
+                    </div>
+                    <div class="cell-code">
+                        <textarea id="cellCodeInput" placeholder="No cell found or loading..." disabled></textarea>
+                    </div>
+                    <div id="cellOutput" class="cell-output empty">No output</div>
+                </div>
+            </div>
+
+            <div class="log">
+                <strong>Event Log:</strong>
+                <div id="eventLog"></div>
+            </div>
+        </div>
+
+        <script type="module">
+            import { PlutoNotebookAPI } from "./PlutoNotebookAPI.js"
+
+            class PlutoAPIDemo {
+                constructor() {
+                    this.api = null
+                    this.currentCellId = null
+                    this.isUpdating = false
+                    this.autoRunEnabled = false
+
+                    // Get notebook ID from URL parameter
+                    const urlParams = new URLSearchParams(window.location.search)
+                    this.notebookId = urlParams.get("notebook_id") || urlParams.get("id")
+
+                    // DOM elements
+                    this.elements = {
+                        connectionStatus: document.getElementById("connectionStatus"),
+                        errorContainer: document.getElementById("errorContainer"),
+                        notebookId: document.getElementById("notebookId"),
+                        notebookPath: document.getElementById("notebookPath"),
+                        cellCount: document.getElementById("cellCount"),
+                        processStatus: document.getElementById("processStatus"),
+                        cellId: document.getElementById("cellId"),
+                        cellStatusContainer: document.getElementById("cellStatusContainer"),
+                        cellCodeInput: document.getElementById("cellCodeInput"),
+                        cellOutput: document.getElementById("cellOutput"),
+                        eventLog: document.getElementById("eventLog"),
+                        runBtn: document.getElementById("runBtn"),
+                        interruptBtn: document.getElementById("interruptBtn"),
+                        refreshBtn: document.getElementById("refreshBtn"),
+                        autoRun: document.getElementById("autoRun"),
+                    }
+
+                    this.setupEventHandlers()
+                    this.init()
+                }
+
+                async init() {
+                    try {
+                        this.showError("")
+
+                        if (!this.notebookId) {
+                            throw new Error("No notebook_id provided in URL parameters. Add ?notebook_id=your-notebook-id to the URL.")
+                        }
+
+                        this.elements.notebookId.textContent = this.notebookId
+                        this.log("info", `Connecting to notebook: ${this.notebookId}`)
+
+                        // Create API instance
+                        this.api = new PlutoNotebookAPI({
+                            notebook_id: this.notebookId,
+                            auto_connect: true,
+                        })
+                        window.api = this.api
+
+                        // Setup API event handlers
+                        this.api.onConnectionStatus(this.handleConnectionStatus.bind(this))
+                        this.api.onStateChange(this.handleStateChange.bind(this))
+                    } catch (error) {
+                        this.showError(error.message)
+                        this.log("error", error.message)
+                    }
+                }
+
+                setupEventHandlers() {
+                    // Cell code changes
+                    this.elements.cellCodeInput.addEventListener("input", this.handleCodeChange.bind(this))
+
+                    // Button handlers
+                    this.elements.runBtn.addEventListener("click", this.runCell.bind(this))
+                    this.elements.interruptBtn.addEventListener("click", this.interrupt.bind(this))
+                    this.elements.refreshBtn.addEventListener("click", this.refresh.bind(this))
+
+                    // Auto-run checkbox
+                    this.elements.autoRun.addEventListener("change", (e) => {
+                        this.autoRunEnabled = e.target.checked
+                        this.log("info", `Auto-run ${this.autoRunEnabled ? "enabled" : "disabled"}`)
+                    })
+                }
+
+                handleConnectionStatus({ connected, hopeless }) {
+                    if (connected) {
+                        this.elements.connectionStatus.className = "status connected"
+                        this.elements.connectionStatus.textContent = "Connected"
+                        this.elements.runBtn.disabled = false
+                        this.elements.interruptBtn.disabled = false
+                        this.elements.refreshBtn.disabled = false
+                        this.log("info", "Connected to Pluto backend")
+                        this.updateDisplay()
+                    } else if (hopeless) {
+                        this.elements.connectionStatus.className = "status disconnected"
+                        this.elements.connectionStatus.textContent = "Connection Lost"
+                        this.disableControls()
+                        this.log("error", "Connection lost - server may have restarted")
+                        this.showError("Connection lost. The server may have restarted. Please refresh the page.")
+                    } else {
+                        this.elements.connectionStatus.className = "status connecting"
+                        this.elements.connectionStatus.textContent = "Reconnecting..."
+                        this.disableControls()
+                        this.log("warn", "Connection lost, attempting to reconnect...")
+                    }
+                }
+
+                handleStateChange(event) {
+                    this.log("info", `State change: ${event.type}`)
+                    console.log({ what: "State change", type: event.type }, event)
+                    switch (event.type) {
+                        case "notebook_updated":
+                            this.updateDisplay()
+                            break
+                        case "cell_local_update":
+                            if (event.data.cell_id === this.currentCellId && this.autoRunEnabled && !this.isUpdating) {
+                                this.log("info", "Auto-running cell due to code change")
+                                setTimeout(() => this.runCell(), 1000) // Debounce
+                            }
+                            break
+                        case "cells_updated":
+                            this.log("info", `Cell execution completed`)
+                            this.updateDisplay()
+                            break
+                    }
+                }
+
+                handleCodeChange() {
+                    if (!this.currentCellId || this.isUpdating) return
+
+                    const code = this.elements.cellCodeInput.value
+                    this.api.setLocalCellCode(this.currentCellId, code)
+                    this.log("info", "Cell code updated locally")
+                }
+
+                async runCell() {
+                    if (!this.api || !this.currentCellId) return
+
+                    try {
+                        this.log("info", "Running cell...")
+                        await this.api.setCellsAndRun([this.currentCellId])
+                        this.log("info", "Cell execution started")
+                    } catch (error) {
+                        this.log("error", `Failed to run cell: ${error.message}`)
+                        this.showError(`Failed to run cell: ${error.message}`)
+                    }
+                }
+
+                async interrupt() {
+                    if (!this.api) return
+
+                    try {
+                        this.log("info", "Interrupting notebook...")
+                        await this.api.interrupt()
+                        this.log("info", "Interrupt signal sent")
+                    } catch (error) {
+                        this.log("error", `Failed to interrupt: ${error.message}`)
+                    }
+                }
+
+                async refresh() {
+                    this.log("info", "Refreshing display...")
+                    this.updateDisplay()
+                }
+
+                updateDisplay() {
+                    if (!this.api || !this.api.connected) return
+
+                    const notebookState = this.api.getNotebookState()
+                    if (!notebookState) return
+
+                    this.isUpdating = true
+
+                    try {
+                        // Update notebook info
+                        this.elements.notebookPath.textContent = notebookState.shortpath || notebookState.path || "Unknown"
+                        this.elements.cellCount.textContent = notebookState.cell_order ? notebookState.cell_order.length.toString() : "0"
+                        this.elements.processStatus.textContent = notebookState.process_status || "Unknown"
+
+                        // Get first cell
+                        const cells = this.api.getCells()
+                        if (cells.length > 0) {
+                            const firstCell = cells[0]
+                            this.currentCellId = firstCell.cell_id
+
+                            // Update cell display
+                            this.elements.cellId.textContent = firstCell.cell_id.slice(0, 8) + "..."
+
+                            // Update cell code
+                            const currentCode = firstCell.local?.code || firstCell.input?.code || ""
+                            if (this.elements.cellCodeInput.value !== currentCode) {
+                                this.elements.cellCodeInput.value = currentCode
+                            }
+                            this.elements.cellCodeInput.disabled = false
+                            this.elements.cellCodeInput.placeholder = "Enter Julia code here..."
+
+                            // Update cell status
+                            this.updateCellStatus(firstCell.result)
+
+                            // Update cell output
+                            this.updateCellOutput(firstCell.result)
+                        } else {
+                            this.currentCellId = null
+                            this.elements.cellId.textContent = "No cells found"
+                            this.elements.cellCodeInput.value = ""
+                            this.elements.cellCodeInput.disabled = true
+                            this.elements.cellCodeInput.placeholder = "No cells found"
+                            this.elements.cellStatusContainer.innerHTML = ""
+                            this.elements.cellOutput.textContent = "No cells in notebook"
+                            this.elements.cellOutput.className = "cell-output empty"
+                        }
+                    } finally {
+                        this.isUpdating = false
+                    }
+                }
+
+                updateCellStatus(result) {
+                    this.elements.cellStatusContainer.innerHTML = ""
+
+                    if (!result) return
+
+                    if (result.running) {
+                        const span = document.createElement("span")
+                        span.className = "running"
+                        span.textContent = "Running"
+                        this.elements.cellStatusContainer.appendChild(span)
+                    } else if (result.queued) {
+                        const span = document.createElement("span")
+                        span.className = "queued"
+                        span.textContent = "Queued"
+                        this.elements.cellStatusContainer.appendChild(span)
+                    } else if (result.errored) {
+                        const span = document.createElement("span")
+                        span.className = "errored"
+                        span.textContent = "Error"
+                        this.elements.cellStatusContainer.appendChild(span)
+                    } else {
+                        const span = document.createElement("span")
+                        span.className = "ready"
+                        span.textContent = "Ready"
+                        this.elements.cellStatusContainer.appendChild(span)
+                    }
+
+                    if (result.runtime) {
+                        const span = document.createElement("span")
+                        span.textContent = `${Math.round(result.runtime)}ms`
+                        span.style.fontSize = "10px"
+                        span.style.color = "#666"
+                        this.elements.cellStatusContainer.appendChild(span)
+                    }
+                }
+
+                updateCellOutput(result) {
+                    if (!result || !result.output) {
+                        this.elements.cellOutput.textContent = "No output"
+                        this.elements.cellOutput.className = "cell-output empty"
+                        return
+                    }
+
+                    const output = result.output.body
+                    if (typeof output === "string" && output.trim()) {
+                        this.elements.cellOutput.textContent = output
+                        this.elements.cellOutput.className = "cell-output"
+                    } else {
+                        this.elements.cellOutput.textContent = "No output"
+                        this.elements.cellOutput.className = "cell-output empty"
+                    }
+                }
+
+                disableControls() {
+                    this.elements.runBtn.disabled = true
+                    this.elements.interruptBtn.disabled = true
+                    this.elements.refreshBtn.disabled = true
+                    this.elements.cellCodeInput.disabled = true
+                }
+
+                showError(message) {
+                    if (message) {
+                        this.elements.errorContainer.textContent = message
+                        this.elements.errorContainer.style.display = "block"
+                    } else {
+                        this.elements.errorContainer.style.display = "none"
+                    }
+                }
+
+                log(level, message) {
+                    const timestamp = new Date().toLocaleTimeString()
+                    const logEntry = document.createElement("div")
+                    logEntry.className = `log-entry ${level}`
+                    logEntry.textContent = `[${timestamp}] ${message}`
+
+                    this.elements.eventLog.appendChild(logEntry)
+                    this.elements.eventLog.scrollTop = this.elements.eventLog.scrollHeight
+
+                    // Limit log entries
+                    while (this.elements.eventLog.children.length > 100) {
+                        this.elements.eventLog.removeChild(this.elements.eventLog.firstChild)
+                    }
+                }
+            }
+
+            // Initialize the demo when page loads
+            document.addEventListener("DOMContentLoaded", () => {
+                new PlutoAPIDemo()
+            })
+        </script>
+    </body>
+</html>

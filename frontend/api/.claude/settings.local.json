@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx -p typescript tsc:*)",
+      "Bash(npm install)",
+      "Bash(ls:*)",
+      "Bash(npm run type-check:*)"
+    ],
+    "deny": []
+  }
+}
