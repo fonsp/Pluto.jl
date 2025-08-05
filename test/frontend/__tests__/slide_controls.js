@@ -18,10 +18,10 @@ describe("slideControls", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
 
     beforeAll(async () => {
@@ -55,7 +55,7 @@ describe("slideControls", () => {
         expect(await slide_1_title.isIntersectingViewport()).toBe(true)
 
         await page.click(`.toggle_export[title="Export..."]`)
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 500))
         await page.waitForSelector(".toggle_presentation", { visible: true })
         await page.click(".toggle_presentation")
 
