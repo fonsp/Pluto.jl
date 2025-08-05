@@ -1,3 +1,4 @@
+"use strict";
 /**
  * @fileoverview PlutoNotebookAPI - Programmatic Interface for Pluto Notebooks
  *
@@ -43,11 +44,11 @@
  * @author Pluto.jl Team
  * @version 1.0.0
  */
-
-import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
-import { empty_notebook_state } from "../editor.js"
-import { applyPatches, produceWithPatches } from "../imports/immer.js"
-
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.PlutoNotebook = exports.Pluto = void 0;
+const PlutoConnection_js_1 = require("../common/PlutoConnection.js");
+const editor_js_1 = require("../editor.js");
+const immer_js_1 = require("../imports/immer.js");
 /**
  * @typedef CellData
  * @type {{
@@ -55,19 +56,15 @@ import { applyPatches, produceWithPatches } from "../imports/immer.js"
  *  results: import("../components/Editor.js").CellResultData,
  * }}
  */
-
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
 const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
     skip_as_script: false,
-}
-
+};
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
-const uuidv4 = () =>
-    "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
-
+const uuidv4 = () => "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
 /**
  * Pluto - Main class for connecting to a Pluto server and managing notebooks
  *
@@ -81,20 +78,19 @@ const uuidv4 = () =>
  * const notebooks = await pluto.getRunningNotebooks();
  * const notebook = await pluto.createNotebook(``);
  */
-export class Pluto {
+class Pluto {
     /**
      * Create a new Pluto instance
      * @param {string} [server_url="http://localhost:1234"] - Pluto server URL
      */
     constructor(server_url = "http://localhost:1234") {
         /** @type {string} */
-        this.server_url = server_url
+        this.server_url = server_url;
         /** @type {string} */
-        this.ws_address = ws_address_from_base(server_url)
+        this.ws_address = (0, PlutoConnection_js_1.ws_address_from_base)(server_url);
         /** @type {Map<string, PlutoNotebook>} */
-        this._notebooks = new Map()
+        this._notebooks = new Map();
     }
-
     /**
      * Get list of currently running notebooks on the server
      * @returns {Promise<Array<PlutoNotebook>>} Array of notebook information objects
@@ -103,24 +99,22 @@ export class Pluto {
     async getRunningNotebooks() {
         try {
             // Create a temporary connection to get server info
-            const temp_client = await create_pluto_connection({
+            const temp_client = await (0, PlutoConnection_js_1.create_pluto_connection)({
                 ws_address: this.ws_address,
-                on_unrequested_update: () => {},
-                on_connection_status: () => {},
+                on_unrequested_update: () => { },
+                on_connection_status: () => { },
                 on_reconnect: async () => true,
-            })
-
+            });
             // Request server status to get running notebooks
-            const response = await temp_client.send("get_all_notebooks", {}, {}, false)
-            temp_client.kill()
-
-            return response.message?.notebooks || []
-        } catch (error) {
-            console.error("Failed to get running notebooks:", error)
-            return []
+            const response = await temp_client.send("get_all_notebooks", {}, {}, false);
+            temp_client.kill();
+            return response.message?.notebooks || [];
+        }
+        catch (error) {
+            console.error("Failed to get running notebooks:", error);
+            return [];
         }
     }
-
     /**
      * Get or create a PlutoNotebook instance for the given notebook ID
      *
@@ -132,11 +126,10 @@ export class Pluto {
      */
     notebook(notebook_id) {
         if (!this._notebooks.has(notebook_id)) {
-            this._notebooks.set(notebook_id, new PlutoNotebook(this.ws_address, notebook_id))
+            this._notebooks.set(notebook_id, new PlutoNotebook(this.ws_address, notebook_id));
         }
-        return this._notebooks.get(notebook_id)
+        return this._notebooks.get(notebook_id);
     }
-
     /**
      * Create a new notebook from text content
      *
@@ -162,36 +155,30 @@ export class Pluto {
             const response = await fetch(`${this.server_url}/notebookupload`, {
                 method: "POST",
                 body: notebook_text,
-            })
-
+            });
             if (!response.ok) {
-                throw new Error(`Failed to upload notebook: ${response.status} ${response.statusText}`)
+                throw new Error(`Failed to upload notebook: ${response.status} ${response.statusText}`);
             }
-
             // Get the notebook ID from the response
-            const notebook_id = await response.text()
-
+            const notebook_id = await response.text();
             // Create and connect to the new notebook
-            const notebook = this.notebook(notebook_id)
+            const notebook = this.notebook(notebook_id);
             if (!notebook) {
-                throw new Error(`Notebook ${notebook_id} could not be created properly`)
+                throw new Error(`Notebook ${notebook_id} could not be created properly`);
             }
-            const connected = await notebook.connect()
-
+            const connected = await notebook.connect();
             if (!connected) {
-                throw new Error("Failed to connect to newly created notebook")
+                throw new Error("Failed to connect to newly created notebook");
             }
-
             // Restart the notebook to ensure proper initialization
-            await notebook.restart()
-
-            return notebook
-        } catch (error) {
-            console.error("Failed to create notebook:", error)
-            throw error
+            await notebook.restart();
+            return notebook;
+        }
+        catch (error) {
+            console.error("Failed to create notebook:", error);
+            throw error;
         }
     }
-
     /**
      * Remove a notebook instance from memory
      *
@@ -202,10 +189,10 @@ export class Pluto {
      * @private
      */
     _removeNotebook(notebook_id) {
-        this._notebooks.delete(notebook_id)
+        this._notebooks.delete(notebook_id);
     }
 }
-
+exports.Pluto = Pluto;
 /**
  * PlutoNotebook - A programmatic interface to interact with a specific Pluto notebook
  * without the full Editor UI component.
@@ -236,7 +223,7 @@ export class Pluto {
  *   console.log("Notebook updated:", event);
  * });
  */
-export class PlutoNotebook {
+class PlutoNotebook {
     /**
      * Create a new PlutoNotebook instance
      *
@@ -248,45 +235,39 @@ export class PlutoNotebook {
      */
     constructor(ws_address, notebook_id) {
         /** @type {string} */
-        this.ws_address = ws_address
+        this.ws_address = ws_address;
         /** @type {string} */
-        this.notebook_id = notebook_id
+        this.notebook_id = notebook_id;
         /** @type {boolean} */
-        this.connected = false
+        this.connected = false;
         /** @type {boolean} */
-        this.initializing = true
+        this.initializing = true;
         /** @type {*} */
-        this.notebook_status = null
-
+        this.notebook_status = null;
         /** @type {Record<string, import("../components/Editor.js").CellInputData>} */
-        this.cell_inputs_local = {}
-
+        this.cell_inputs_local = {};
         /** @type {import("../components/Editor.js").NotebookData*/
-        this.notebook_state = empty_notebook_state({
+        this.notebook_state = (0, editor_js_1.empty_notebook_state)({
             notebook_id: this.notebook_id,
-        })
-
+        });
         /** @type {number} */
-        this.last_update_time = 0
+        this.last_update_time = 0;
         /** @type {number} */
-        this.pending_local_updates = 0
+        this.pending_local_updates = 0;
         /** @type {number} */
-        this.last_update_counter = -1
+        this.last_update_counter = -1;
         /** @type {import("../common/PlutoConnection.js").PlutoConnection | null} */
-        this.client = null
-
+        this.client = null;
         /** @type {Set<Function>} */
-        this._update_handlers = new Set()
+        this._update_handlers = new Set();
         /** @type {Set<Function>} */
-        this._connection_status_handlers = new Set()
+        this._connection_status_handlers = new Set();
         /** @type {Promise<void>} */
-        this._update_queue_promise = Promise.resolve()
-
+        this._update_queue_promise = Promise.resolve();
         // Initialize notebook state
-        this.cell_inputs_local = {}
-        this.last_update_time = 0
+        this.cell_inputs_local = {};
+        this.last_update_time = 0;
     }
-
     /**
      * Connect to the Pluto backend WebSocket for this notebook
      *
@@ -298,67 +279,59 @@ export class PlutoNotebook {
      */
     async connect() {
         if (this.connected) {
-            return true
+            return true;
         }
-
         try {
-            this.client = await create_pluto_connection({
+            this.client = await (0, PlutoConnection_js_1.create_pluto_connection)({
                 ws_address: this.ws_address,
                 on_unrequested_update: this._handle_update.bind(this),
                 on_connection_status: this._handle_connection_status.bind(this),
                 on_reconnect: this._handle_reconnect.bind(this),
                 connect_metadata: { notebook_id: this.notebook_id },
-            })
-
+            });
             // Initialize notebook state
             if (this.client.notebook_exists) {
-                this.notebook_state = empty_notebook_state({
+                this.notebook_state = (0, editor_js_1.empty_notebook_state)({
                     notebook_id: this.notebook_id,
-                })
-
+                });
                 // Ensure required structures exist for patches
                 if (!this.notebook_state.cell_results) {
-                    this.notebook_state.cell_results = {}
+                    this.notebook_state.cell_results = {};
                 }
                 if (!this.notebook_state.status_tree) {
-                    this.notebook_state.status_tree = { subtasks: {}, finished_at: 0, name: "noop", started_at: Date.now(), success: true, timing: "local" }
+                    this.notebook_state.status_tree = { subtasks: {}, finished_at: 0, name: "noop", started_at: Date.now(), success: true, timing: "local" };
                 }
             }
-
             if (!this.client.notebook_exists) {
-                console.error("Notebook does not exist. Not connecting.")
-                return false
+                console.error("Notebook does not exist. Not connecting.");
+                return false;
             }
-
             // Send initial update_notebook request to sync state
-            console.debug("Sending update_notebook request...")
-            const response = await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.notebook_id }, false)
-            console.debug({ response })
-            console.debug("Received update_notebook request")
-
-            this.initializing = false
-
-            return true
-        } catch (error) {
-            console.error("Failed to connect to Pluto backend:", error)
-            return false
+            console.debug("Sending update_notebook request...");
+            const response = await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.notebook_id }, false);
+            console.debug({ response });
+            console.debug("Received update_notebook request");
+            this.initializing = false;
+            return true;
+        }
+        catch (error) {
+            console.error("Failed to connect to Pluto backend:", error);
+            return false;
         }
     }
-
     /**
      * Close the connection to this notebook
      */
     close() {
         if (this.client && this.client.kill) {
-            this.client.kill()
+            this.client.kill();
         }
-        this.connected = false
-        this.client = null
-        this.notebook_state = empty_notebook_state()
-        this._update_handlers.clear()
-        this._connection_status_handlers.clear()
+        this.connected = false;
+        this.client = null;
+        this.notebook_state = (0, editor_js_1.empty_notebook_state)();
+        this._update_handlers.clear();
+        this._connection_status_handlers.clear();
     }
-
     /**
      * Shutdown the running notebook on the server
      *
@@ -370,23 +343,20 @@ export class PlutoNotebook {
      */
     async shutdown() {
         if (!this.client) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
         try {
             // Send shutdown command to the server
-            await this.client.send("shutdown_notebook", {}, { notebook_id: this.notebook_id }, false)
-
+            await this.client.send("shutdown_notebook", {}, { notebook_id: this.notebook_id }, false);
             // Close the local connection
-            this.close()
-
-            return true
-        } catch (error) {
-            console.error("Failed to shutdown notebook:", error)
-            return false
+            this.close();
+            return true;
+        }
+        catch (error) {
+            console.error("Failed to shutdown notebook:", error);
+            return false;
         }
     }
-
     /**
      * Restart the notebook process
      *
@@ -399,36 +369,29 @@ export class PlutoNotebook {
      */
     async restart(maybe_confirm = false) {
         if (!this.client || !this.notebook_state) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
         try {
             // Clear risky file metadata if present
             await this._update_notebook_state((nb) => {
                 if (nb.metadata?.risky_file_source) {
-                    delete nb.metadata.risky_file_source
+                    delete nb.metadata.risky_file_source;
                 }
-            })
-
+            });
             // Send restart command to server
             // Awaiting this is futile, I think (@pankgeorg, 2/8/2025)
-            this.client.send(
-                "restart_process",
-                {},
-                {
-                    notebook_id: this.notebook_id,
-                }
-            )
-
+            this.client.send("restart_process", {}, {
+                notebook_id: this.notebook_id,
+            });
             this._notify_update("notebook_restarted", {
                 notebook_id: this.notebook_id,
-            })
-        } catch (error) {
-            console.error("Failed to restart notebook:", error)
-            throw error
+            });
+        }
+        catch (error) {
+            console.error("Failed to restart notebook:", error);
+            throw error;
         }
     }
-
     /**
      * Execute a function within the Julia context
      *
@@ -438,10 +401,10 @@ export class PlutoNotebook {
      * @throws {Error} Not implemented
      */
     async execute(input) {
-        const cell_id = "00000000-0000-0208-1991-000000000000"
+        const cell_id = "00000000-0000-0208-1991-000000000000";
         try {
             if (!this.notebook_state.cell_results[cell_id]) {
-                console.log()
+                console.log();
                 throw new Error(`
 # REPL cell not installed. Try including the following cell, with id "00000000-0000-0208-1991-000000000000"
 begin
@@ -452,26 +415,22 @@ begin
 	end
 	AbstractPlutoDingetjes.Display.with_js_link(eval_in_pluto)
 end
-`)
+`);
             }
-            const link_id = this.notebook_state.cell_results[cell_id].output.body.split('", "')[1].substr(0, 16)
+            const link_id = this.notebook_state.cell_results[cell_id].output.body.split('", "')[1].substr(0, 16);
             return this.client
-                .send(
-                    "request_js_link_response",
-                    {
-                        cell_id,
-                        link_id,
-                        input,
-                    },
-                    { notebook_id: this.notebook_id }
-                )
-                .then((r) => r.message)
-        } catch (ex) {
-            console.error(ex)
-            throw ex
+                .send("request_js_link_response", {
+                cell_id,
+                link_id,
+                input,
+            }, { notebook_id: this.notebook_id })
+                .then((r) => r.message);
+        }
+        catch (ex) {
+            console.error(ex);
+            throw ex;
         }
     }
-
     /**
      * Get the current notebook state (equivalent to Editor.js this.state.notebook)
      *
@@ -482,9 +441,8 @@ end
      * @returns {NotebookData|null} Current notebook state, or null if not connected
      */
     getNotebookState() {
-        return this.notebook_state
+        return this.notebook_state;
     }
-
     /**
      * Get specific cell data
      *
@@ -492,14 +450,13 @@ end
      * @returns {CellData|null} Cell data object with input, result, and local state
      */
     getCell(cell_id) {
-        if (!this.notebook_state) return null
-
+        if (!this.notebook_state)
+            return null;
         return {
             input: this.notebook_state.cell_inputs?.[cell_id],
             result: this.notebook_state.cell_results?.[cell_id],
-        }
+        };
     }
-
     /**
      * Get all cells in order
      *
@@ -509,14 +466,13 @@ end
      * @returns {Array<{cell_id: string} & CellData>} Array of cell data objects in execution order
      */
     getCells() {
-        if (!this.notebook_state || !this.notebook_state.cell_order) return []
-
+        if (!this.notebook_state || !this.notebook_state.cell_order)
+            return [];
         return this.notebook_state.cell_order.map((cell_id) => ({
             cell_id,
             ...this.getCell(cell_id),
-        }))
+        }));
     }
-
     /**
      * Update cell code and optionally run it
      *
@@ -532,18 +488,15 @@ end
      */
     async updateCellCode(cell_id, code, run = true, metadata = {}) {
         if (!this.client || !this.notebook_state) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
         // Update local state
-        this.cell_inputs_local[cell_id] = { ...this.cell_inputs_local[cell_id], code, metadata: { ...this.cell_inputs_local[cell_id]?.metadata, ...metadata } }
-        this._notify_update("cell_local_update", { cell_id, code })
-
+        this.cell_inputs_local[cell_id] = { ...this.cell_inputs_local[cell_id], code, metadata: { ...this.cell_inputs_local[cell_id]?.metadata, ...metadata } };
+        this._notify_update("cell_local_update", { cell_id, code });
         if (run) {
-            return await this.setCellsAndRun([cell_id], { cell_id: metadata })
+            return await this.setCellsAndRun([cell_id], { cell_id: metadata });
         }
     }
-
     /**
      * Submit local cell changes to backend and run cells
      * @param {Array<string>} cell_ids - Array of cell UUIDs to update and run
@@ -552,68 +505,56 @@ end
      */
     async setCellsAndRun(cell_ids, metadata_record) {
         if (!this.client || !this.notebook_state) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
         if (cell_ids.length === 0) {
-            return { disabled_cells: {} }
+            return { disabled_cells: {} };
         }
-
         const new_task = this._update_queue_promise.then(async () => {
             // Create patches for the cell code changes
-            const [new_notebook, changes] = produceWithPatches(this.notebook_state, (notebook) => {
+            const [new_notebook, changes] = (0, immer_js_1.produceWithPatches)(this.notebook_state, (notebook) => {
                 for (let cell_id of cell_ids) {
                     if (this.cell_inputs_local[cell_id]) {
                         notebook.cell_inputs[cell_id] = {
                             ...notebook.cell_inputs[cell_id],
                             code: this.cell_inputs_local[cell_id].code,
                             metadata: { ...notebook.cell_inputs[cell_id].metadata, ...metadata_record[cell_id] },
-                        }
+                        };
                     }
                 }
-            })
-
+            });
             if (changes.length === 0) {
-                return { disabled_cells: {} }
+                return { disabled_cells: {} };
             }
-
-            this.pending_local_updates++
-
+            this.pending_local_updates++;
             try {
                 // Send the update to the backend
-                const response = await this.client.send("update_notebook", { updates: changes }, { notebook_id: this.notebook_id }, false)
-
+                const response = await this.client.send("update_notebook", { updates: changes }, { notebook_id: this.notebook_id }, false);
                 if (response.message?.response?.update_went_well === "👎") {
-                    throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
+                    throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`);
                 }
-
                 // Update local state
-                this.notebook_state = new_notebook
-                this.last_update_time = Date.now()
-
+                this.notebook_state = new_notebook;
+                this.last_update_time = Date.now();
                 // Clear local changes for updated cells
                 for (let cell_id of cell_ids) {
-                    delete this.cell_inputs_local[cell_id]
+                    delete this.cell_inputs_local[cell_id];
                 }
-
                 // Run the cells
-                const run_response = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.notebook_id })
-
+                const run_response = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.notebook_id });
                 this._notify_update("cells_updated", {
                     cell_ids,
                     response: run_response,
-                })
-
-                return run_response.message
-            } finally {
-                this.pending_local_updates--
+                });
+                return run_response.message;
             }
-        })
-
-        this._update_queue_promise = new_task.catch(console.error)
-        return await new_task
+            finally {
+                this.pending_local_updates--;
+            }
+        });
+        this._update_queue_promise = new_task.catch(console.error);
+        return await new_task;
     }
-
     /**
      * Add a new cell to the notebook
      *
@@ -632,33 +573,26 @@ end
      */
     async addCell(index = 0, code = "", metadata = {}) {
         if (!this.client || !this.notebook_state) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
-        const cell_id = uuidv4()
+        const cell_id = uuidv4();
         await this._update_notebook_state((notebook) => {
             notebook.cell_inputs[cell_id] = {
                 cell_id: cell_id,
                 code,
                 code_folded: false,
                 metadata: { ...DEFAULT_CELL_METADATA, ...metadata },
-            }
-
+            };
             // Add to cell_order
-            notebook.cell_order = [...notebook.cell_order.slice(0, index), cell_id, ...notebook.cell_order.slice(index, Infinity)]
-        })
-
+            notebook.cell_order = [...notebook.cell_order.slice(0, index), cell_id, ...notebook.cell_order.slice(index, Infinity)];
+        });
         // Wait for the server to confirm the cell addition
-        await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.notebook_id })
-
+        await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.notebook_id });
         // Update local state to match server response
         // this.notebook_state = new_notebook;
-
-        this._notify_update("cell_added", { cell_id, index })
-
-        return cell_id
+        this._notify_update("cell_added", { cell_id, index });
+        return cell_id;
     }
-
     /**
      * Delete cells from the notebook
      * @param {Array<string>} cell_ids - Array of cell UUIDs to delete
@@ -666,39 +600,32 @@ end
      */
     async deleteCells(cell_ids) {
         if (!this.client || !this.notebook_state) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
         await this._update_notebook_state((notebook) => {
             for (let cell_id of cell_ids) {
-                delete notebook.cell_inputs[cell_id]
+                delete notebook.cell_inputs[cell_id];
             }
-            notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
-        })
-
+            notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id));
+        });
         // Clear local state for deleted cells
         for (let cell_id of cell_ids) {
-            delete this.cell_inputs_local[cell_id]
+            delete this.cell_inputs_local[cell_id];
         }
-
         // Run empty cells array to trigger dependency updates
-        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.notebook_id })
-
-        this._notify_update("cells_deleted", { cell_ids })
+        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.notebook_id });
+        this._notify_update("cells_deleted", { cell_ids });
     }
-
     /**
      * Interrupt notebook execution
      * @returns {Promise<void>}
      */
     async interrupt() {
         if (!this.client) {
-            throw new Error("Not connected to notebook")
+            throw new Error("Not connected to notebook");
         }
-
-        await this.client.send("interrupt_all", {}, { notebook_id: this.notebook_id }, false)
+        await this.client.send("interrupt_all", {}, { notebook_id: this.notebook_id }, false);
     }
-
     /**
      * Register a callback for updates from the WebSocket
      *
@@ -719,20 +646,18 @@ end
      * unsubscribe();
      */
     onUpdate(callback) {
-        this._update_handlers.add(callback)
-        return () => this._update_handlers.delete(callback)
+        this._update_handlers.add(callback);
+        return () => this._update_handlers.delete(callback);
     }
-
     /**
      * Register a handler for connection status changes
      * @param {Function} handler - Function to call on connection status changes
      * @returns {function(): void} Unsubscribe function
      */
     onConnectionStatus(handler) {
-        this._connection_status_handlers.add(handler)
-        return () => this._connection_status_handlers.delete(handler)
+        this._connection_status_handlers.add(handler);
+        return () => this._connection_status_handlers.delete(handler);
     }
-
     /**
      * Check if notebook is currently idle (not running any cells)
      *
@@ -743,13 +668,11 @@ end
      * @returns {boolean} True if notebook is idle
      */
     isIdle() {
-        if (!this.notebook_state) return true
-
-        return !(this.pending_local_updates > 0 || Object.values(this.notebook_state.cell_results).some((cell) => cell.running || cell.queued))
+        if (!this.notebook_state)
+            return true;
+        return !(this.pending_local_updates > 0 || Object.values(this.notebook_state.cell_results).some((cell) => cell.running || cell.queued));
     }
-
     // Private methods
-
     /**
      * Handle update from WebSocket
      * @param {Object} update - Update object from server
@@ -758,18 +681,17 @@ end
      */
     _handle_update(update, by_me) {
         if (this.notebook_state?.notebook_id === update.notebook_id) {
-            const message = update.message
+            const message = update.message;
             switch (update.type) {
                 case "notebook_diff":
-                    this._handle_notebook_diff(message)
-                    break
+                    this._handle_notebook_diff(message);
+                    break;
                 default:
-                    console.warn("Received unknown update type!", update)
-                    break
+                    console.warn("Received unknown update type!", update);
+                    break;
             }
         }
     }
-
     /**
      * Handle notebook diff message
      * @param {Object} message - Notebook diff message
@@ -778,17 +700,15 @@ end
     _handle_notebook_diff(message) {
         if (message?.counter != null) {
             if (message.counter <= this.last_update_counter) {
-                console.error("State update out of order", message.counter, this.last_update_counter)
-                return
+                console.error("State update out of order", message.counter, this.last_update_counter);
+                return;
             }
-            this.last_update_counter = message.counter
+            this.last_update_counter = message.counter;
         }
-
         if (message.patches && message.patches.length > 0) {
-            this._apply_patches(message.patches)
+            this._apply_patches(message.patches);
         }
     }
-
     /**
      * Apply patches to notebook state
      * @param {Array} patches - Array of patches to apply
@@ -798,38 +718,33 @@ end
         try {
             // Ensure we have a valid notebook state before applying patches
             if (!this.notebook_state) {
-                console.warn("No notebook state available, skipping patch application")
-                return
+                console.warn("No notebook state available, skipping patch application");
+                return;
             }
-
             // Validate patches before applying
             if (!Array.isArray(patches) || patches.length === 0) {
-                console.warn("Invalid or empty patches, skipping application")
-                return
+                console.warn("Invalid or empty patches, skipping application");
+                return;
             }
-
-            let new_notebook = applyPatches(this.notebook_state, patches)
-
-            this.notebook_state = new_notebook
-            this.last_update_time = Date.now()
-
+            let new_notebook = (0, immer_js_1.applyPatches)(this.notebook_state, patches);
+            this.notebook_state = new_notebook;
+            this.last_update_time = Date.now();
             this._notify_update("notebook_updated", {
                 patches,
                 notebook: new_notebook,
-            })
-        } catch (exception) {
-            console.error("Failed to apply patches:", exception)
-            console.error("Notebook state:", this.notebook_state)
-            console.error("Patches:", patches)
-
+            });
+        }
+        catch (exception) {
+            console.error("Failed to apply patches:", exception);
+            console.error("Notebook state:", this.notebook_state);
+            console.error("Patches:", patches);
             // Request state reset from server
             if (this.client && this.connected) {
-                console.info("Resetting state")
-                this.client.send("reset_shared_state", {}, { notebook_id: this.notebook_id }, false)
+                console.info("Resetting state");
+                this.client.send("reset_shared_state", {}, { notebook_id: this.notebook_id }, false);
             }
         }
     }
-
     /**
      * Handle connection status change
      * @param {boolean} connected - Whether connection is active
@@ -837,25 +752,21 @@ end
      * @private
      */
     _handle_connection_status(connected, hopeless) {
-        this.connected = connected
-        this._notify_connection_status_change(connected, hopeless)
+        this.connected = connected;
+        this._notify_connection_status_change(connected, hopeless);
     }
-
     /**
      * Handle reconnect event
      * @returns {Promise<boolean>} Whether reconnect was successful
      * @private
      */
     async _handle_reconnect() {
-        console.warn("Reconnected! Checking states")
-
+        console.warn("Reconnected! Checking states");
         if (this.client) {
-            await this.client.send("reset_shared_state", {}, { notebook_id: this.notebook_id }, false)
+            await this.client.send("reset_shared_state", {}, { notebook_id: this.notebook_id }, false);
         }
-
-        return true
+        return true;
     }
-
     /**
      * Update notebook state using a mutate function
      * @param {Function} mutate_fn - Function to mutate the notebook state
@@ -863,32 +774,29 @@ end
      * @private
      */
     async _update_notebook_state(mutate_fn) {
-        if (!this.notebook_state) return
-
-        const [notebook, changes] = produceWithPatches(this.notebook_state, (notebook) => {
-            mutate_fn(notebook)
-        })
-
-        if (changes.length === 0) return
-
-        this.pending_local_updates++
-
+        if (!this.notebook_state)
+            return;
+        const [notebook, changes] = (0, immer_js_1.produceWithPatches)(this.notebook_state, (notebook) => {
+            mutate_fn(notebook);
+        });
+        if (changes.length === 0)
+            return;
+        this.pending_local_updates++;
         try {
             // The changes to be sent should already exist locally
             // because patches are going to be diffed against that
-            this.notebook_state = notebook
-            const response = await this.client.send("update_notebook", { updates: changes }, { notebook_id: this.notebook_id }, false)
-
+            this.notebook_state = notebook;
+            const response = await this.client.send("update_notebook", { updates: changes }, { notebook_id: this.notebook_id }, false);
             if (response.message?.response?.update_went_well === "👎") {
-                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
+                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`);
             }
-            this.last_update_time = Date.now()
-            console.log({ state: notebook })
-        } finally {
-            this.pending_local_updates--
+            this.last_update_time = Date.now();
+            console.log({ state: notebook });
+        }
+        finally {
+            this.pending_local_updates--;
         }
     }
-
     /**
      * Notify update handlers
      * @param {string} event_type - Type of event
@@ -898,13 +806,13 @@ end
     _notify_update(event_type, data) {
         this._update_handlers.forEach((handler) => {
             try {
-                handler({ type: event_type, data, timestamp: Date.now(), notebook: this.notebook_state })
-            } catch (error) {
-                console.error("Error in update handler:", error)
+                handler({ type: event_type, data, timestamp: Date.now(), notebook: this.notebook_state });
             }
-        })
+            catch (error) {
+                console.error("Error in update handler:", error);
+            }
+        });
     }
-
     /**
      * Notify connection status handlers
      * @param {boolean} connected - Whether connection is active
@@ -914,10 +822,12 @@ end
     _notify_connection_status_change(connected, hopeless) {
         this._connection_status_handlers.forEach((handler) => {
             try {
-                handler({ connected, hopeless, timestamp: Date.now() })
-            } catch (error) {
-                console.error("Error in connection status handler:", error)
+                handler({ connected, hopeless, timestamp: Date.now() });
             }
-        })
+            catch (error) {
+                console.error("Error in connection status handler:", error);
+            }
+        });
     }
 }
+exports.PlutoNotebook = PlutoNotebook;

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PlutoNotebookAPI Test Interface</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      h2 {
+        color: #555;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+      }
+
+      button {
+        background: #007acc;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+        font-size: 14px;
+      }
+
+      button:hover {
+        background: #005a9e;
+      }
+
+      button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+      }
+
+      .success {
+        background: #28a745;
+      }
+
+      .danger {
+        background: #dc3545;
+      }
+
+      input,
+      textarea,
+      select {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin: 5px;
+        font-family: monospace;
+      }
+
+      input[type="text"] {
+        width: 300px;
+      }
+
+      textarea {
+        width: 100%;
+        height: 120px;
+        resize: vertical;
+      }
+
+      .log {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        padding: 15px;
+        height: 300px;
+        overflow-y: auto;
+        font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+
+      .status {
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+
+      .status.connected {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .status.disconnected {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .cell-info {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 5px 0;
+        font-family: monospace;
+        font-size: 12px;
+      }
+
+      .notebook-info {
+        background: #e7f3ff;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      // Import Preact from CDN (bundleless version)
+      import { render, h } from "https://esm.sh/preact@10.19.3";
+      import {
+        useState,
+        useEffect,
+        useCallback,
+      } from "https://esm.sh/preact@10.19.3/hooks";
+
+      // Import the PlutoNotebookAPI
+      import { Pluto, PlutoNotebook } from "../PlutoNotebookAPI.js";
+      window.Pluto = Pluto;
+      window.PlutoNotebook = PlutoNotebook;
+      // Global state - we'll use component state instead
+      let globalState = {
+        plutoInstance: null,
+        currentNotebook: null,
+        updateUnsubscribe: null,
+        serverUrl: "http://localhost:1234",
+        notebookId: "",
+        cellCode: "1+1",
+        cellId: "",
+        logs: "",
+        runningNotebooks: [],
+        cells: [],
+        notebookContent: `### A Pluto.jl notebook ###
+# v0.19.40
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ 7c7c5b40-f5c1-11eb-2c1e-c54e5c3b4c8d
+md"# Test Notebook"
+
+# ╔═╡ a1b2c3d4-f5c1-11eb-1234-567890abcdef
+x = 42
+
+# ╔═╡ Cell order:
+# ╠═7c7c5b40-f5c1-11eb-2c1e-c54e5c3b4c8d
+# ╠═a1b2c3d4-f5c1-11eb-1234-567890abcdef`,
+      };
+
+      // State update callbacks - components will register here
+      let stateUpdateCallbacks = [];
+      let updateScheduled = false;
+
+      // Utility functions
+      function updateState(updates) {
+        // Selectively clone objects to ensure they're extensible for Preact
+        // but preserve class instances like Pluto and PlutoNotebook
+        const clonedUpdates = {};
+        for (const [key, value] of Object.entries(updates)) {
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            // Don't clone class instances (they have constructors)
+            if (value.constructor && value.constructor !== Object) {
+              clonedUpdates[key] = value; // Keep class instances as-is
+            } else {
+              clonedUpdates[key] = JSON.parse(JSON.stringify(value)); // Clone plain objects
+            }
+          } else if (Array.isArray(value)) {
+            clonedUpdates[key] = value.map((item) =>
+              item && typeof item === "object" && item.constructor === Object
+                ? JSON.parse(JSON.stringify(item))
+                : item
+            );
+          } else {
+            clonedUpdates[key] = value;
+          }
+        }
+        Object.assign(globalState, clonedUpdates);
+
+        // Batch updates to prevent excessive re-renders
+        if (!updateScheduled) {
+          updateScheduled = true;
+          requestAnimationFrame(() => {
+            updateScheduled = false;
+            stateUpdateCallbacks.forEach((callback) => {
+              try {
+                callback();
+              } catch (error) {
+                console.error("Error in state update callback:", error);
+              }
+            });
+          });
+        }
+      }
+
+      function log(message, type = "info") {
+        const timestamp = new Date().toLocaleTimeString();
+        const prefix =
+          type === "error"
+            ? "❌"
+            : type === "success"
+            ? "✅"
+            : type === "warning"
+            ? "⚠️"
+            : "ℹ️";
+        updateState({
+          logs: globalState.logs + `[${timestamp}] ${prefix} ${message}\n`,
+        });
+      }
+
+      function clearLog() {
+        updateState({ logs: "" });
+      }
+
+      // Generate UUID helper
+      function generateUUID() {
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+          /[xy]/g,
+          function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          }
+        );
+      }
+
+      // API functions
+      async function createPlutoInstance() {
+        console.log("createPlutoInstance called!"); // Debug log
+        try {
+          log(`Creating Pluto instance for ${globalState.serverUrl}`);
+          const instance = new Pluto(globalState.serverUrl);
+          console.log("Pluto instance created:", instance);
+          console.log(
+            "Available methods:",
+            Object.getOwnPropertyNames(Object.getPrototypeOf(instance))
+          );
+          updateState({ plutoInstance: instance });
+          log("Pluto instance created successfully", "success");
+        } catch (error) {
+          log(`Error creating Pluto instance: ${error.message}`, "error");
+          updateState({ plutoInstance: null });
+        }
+      }
+
+      async function getRunningNotebooks() {
+        console.log(
+          "getRunningNotebooks called, plutoInstance:",
+          globalState.plutoInstance
+        );
+        if (!globalState.plutoInstance) {
+          console.log("No pluto instance available");
+          return;
+        }
+
+        try {
+          console.log("plutoInstance type:", typeof globalState.plutoInstance);
+          console.log(
+            "plutoInstance methods:",
+            Object.getOwnPropertyNames(
+              Object.getPrototypeOf(globalState.plutoInstance)
+            )
+          );
+          console.log(
+            "getRunningNotebooks method:",
+            globalState.plutoInstance.getRunningNotebooks
+          );
+
+          log("Getting running notebooks...");
+          const notebooks =
+            await globalState.plutoInstance.getRunningNotebooks();
+          log(`Found ${notebooks.length} running notebooks`, "success");
+          updateState({ runningNotebooks: notebooks });
+        } catch (error) {
+          log(`Error getting notebooks: ${error.message}`, "error");
+        }
+      }
+
+      function selectNotebook(id) {
+        updateState({ notebookId: id });
+        log(`Selected notebook: ${id}`);
+      }
+
+      async function createNewNotebook() {
+        if (!globalState.plutoInstance) return;
+
+        try {
+          log("Creating new empty notebook...");
+
+          const simpleNotebook = `### A Pluto.jl notebook ###
+# v0.19.40
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ ${generateUUID()}
+md"# New Notebook"
+
+# ╔═╡ Cell order:
+# ╠═${generateUUID()}`;
+
+          const notebook = await globalState.plutoInstance.createNotebook(
+            simpleNotebook
+          );
+          log(
+            `New notebook created with ID: ${notebook.notebook_id}`,
+            "success"
+          );
+
+          updateState({
+            notebookId: notebook.notebook_id,
+            currentNotebook: notebook,
+          });
+          setupUpdateCallback();
+        } catch (error) {
+          log(`Error creating notebook: ${error.message}`, "error");
+        }
+      }
+
+      async function createNotebookFromContent() {
+        if (!globalState.plutoInstance) return;
+
+        try {
+          log("Creating notebook from provided content...");
+
+          const notebook = await globalState.plutoInstance.createNotebook(
+            globalState.notebookContent
+          );
+          log(
+            `Notebook created from content with ID: ${notebook.notebook_id}`,
+            "success"
+          );
+
+          updateState({
+            notebookId: notebook.notebook_id,
+            currentNotebook: notebook,
+          });
+          setupUpdateCallback();
+        } catch (error) {
+          log(
+            `Error creating notebook from content: ${error.message}`,
+            "error"
+          );
+        }
+      }
+
+      async function connectToNotebook() {
+        if (!globalState.plutoInstance) return;
+
+        try {
+          if (!globalState.notebookId) {
+            log("Please enter a notebook ID", "warning");
+            return;
+          }
+
+          log(`Connecting to notebook: ${globalState.notebookId}`);
+          const notebook = globalState.plutoInstance.notebook(
+            globalState.notebookId
+          );
+
+          const connected = await notebook.connect();
+          if (connected) {
+            log("Connected to notebook successfully", "success");
+            updateState({ currentNotebook: notebook });
+            setupUpdateCallback();
+          } else {
+            log("Failed to connect to notebook", "error");
+            updateState({ currentNotebook: null });
+          }
+        } catch (error) {
+          log(`Error connecting to notebook: ${error.message}`, "error");
+          updateState({ currentNotebook: null });
+        }
+      }
+
+      function setupUpdateCallback() {
+        if (globalState.updateUnsubscribe) {
+          globalState.updateUnsubscribe();
+        }
+
+        if (globalState.currentNotebook) {
+          const unsubscribe = globalState.currentNotebook.onUpdate((update) => {
+            log(
+              `📡 Update received: ${update.type} - ${JSON.stringify(
+                update.data
+              )}`,
+              "info"
+            );
+          });
+          updateState({ updateUnsubscribe: unsubscribe });
+        }
+      }
+
+      async function getNotebookState() {
+        if (!globalState.currentNotebook) return;
+
+        try {
+          const state = globalState.currentNotebook.getNotebookState();
+          log(`Notebook state retrieved`, "success");
+          log(`State: ${JSON.stringify(state, null, 2)}`, "info");
+        } catch (error) {
+          log(`Error getting notebook state: ${error.message}`, "error");
+        }
+      }
+
+      async function restartNotebook() {
+        if (!globalState.currentNotebook) return;
+
+        try {
+          log("Restarting notebook...");
+          await globalState.currentNotebook.restart();
+          log("Notebook restarted successfully", "success");
+        } catch (error) {
+          log(`Error restarting notebook: ${error.message}`, "error");
+        }
+      }
+
+      async function shutdownNotebook() {
+        if (!globalState.currentNotebook) return;
+
+        if (
+          !confirm(
+            "Are you sure you want to shutdown this notebook? This will terminate the notebook process."
+          )
+        ) {
+          return;
+        }
+
+        try {
+          log("Shutting down notebook...");
+          const success = await globalState.currentNotebook.shutdown();
+          log(
+            `Notebook shutdown ${success ? "successful" : "failed"}`,
+            success ? "success" : "error"
+          );
+
+          if (success) {
+            if (globalState.updateUnsubscribe) {
+              globalState.updateUnsubscribe();
+            }
+            updateState({
+              currentNotebook: null,
+              updateUnsubscribe: null,
+            });
+          }
+        } catch (error) {
+          log(`Error shutting down notebook: ${error.message}`, "error");
+        }
+      }
+
+      async function closeNotebook() {
+        if (!globalState.currentNotebook) return;
+
+        try {
+          log("Closing notebook connection...");
+          globalState.currentNotebook.close();
+
+          if (globalState.updateUnsubscribe) {
+            globalState.updateUnsubscribe();
+          }
+
+          updateState({
+            currentNotebook: null,
+            updateUnsubscribe: null,
+          });
+
+          log("Notebook connection closed", "success");
+        } catch (error) {
+          log(`Error closing notebook: ${error.message}`, "error");
+        }
+      }
+
+      async function addCell() {
+        if (!globalState.currentNotebook) return;
+
+        try {
+          log(`Adding cell with code: ${globalState.cellCode}`);
+
+          const id = await globalState.currentNotebook.addCell(
+            0,
+            globalState.cellCode
+          );
+          log(`Cell added with ID: ${id}`, "success");
+
+          // Debug: Check the notebook state immediately after adding
+          const currentState = globalState.currentNotebook.getNotebookState();
+          console.log("Notebook state after addCell:", {
+            cell_order: currentState.cell_order,
+            cell_inputs_keys: Object.keys(currentState.cell_inputs || {}),
+            cell_exists_in_inputs: !!(
+              currentState.cell_inputs && currentState.cell_inputs[id]
+            ),
+          });
+
+          updateState({ cellId: id });
+
+          // Wait a moment then get updated cells
+          setTimeout(getCells, 1000);
+        } catch (error) {
+          log(`Error adding cell: ${error.message}`, "error");
+        }
+      }
+
+      async function updateCellCode() {
+        if (!globalState.currentNotebook) return;
+
+        try {
+          if (!globalState.cellId) {
+            log("Please enter a cell ID", "warning");
+            return;
+          }
+
+          log(
+            `Updating cell ${globalState.cellId} with code: ${globalState.cellCode}`
+          );
+          await globalState.currentNotebook.updateCellCode(
+            globalState.cellId,
+            globalState.cellCode
+          );
+          log("Cell code updated successfully", "success");
+
+          // Wait a moment then get updated cells
+          setTimeout(getCells, 1000);
+        } catch (error) {
+          log(`Error updating cell code: ${error.message}`, "error");
+        }
+      }
+
+      async function getCells() {
+        if (!globalState.currentNotebook) return;
+
+        try {
+          const cellsData = globalState.currentNotebook.getCells();
+          log(`Retrieved ${cellsData.length} cells`, "success");
+          updateState({ cells: cellsData });
+        } catch (error) {
+          log(`Error getting cells: ${error.message}`, "error");
+        }
+      }
+
+      function selectCell(id) {
+        updateState({ cellId: id });
+        log(`Selected cell: ${id}`);
+      }
+
+      // Custom hook for global state
+      const useGlobalState = () => {
+        const [, forceUpdate] = useState({});
+
+        useEffect(() => {
+          // Register for state updates with unique key to avoid duplicates
+          const updateCallback = () => {
+            // Use a new object each time to ensure re-render
+            forceUpdate(Math.random());
+          };
+          stateUpdateCallbacks.push(updateCallback);
+
+          // Cleanup on unmount
+          return () => {
+            const index = stateUpdateCallbacks.indexOf(updateCallback);
+            if (index > -1) stateUpdateCallbacks.splice(index, 1);
+          };
+        }, []);
+
+        // Return a shallow copy of state to ensure it's always extensible
+        return { ...globalState };
+      };
+
+      // Preact Components
+      const ServerConfig = () => {
+        const state = useGlobalState();
+        const isConnected = !!state.plutoInstance;
+
+        return h("div", { className: "container" }, [
+          h("h2", null, "Server Configuration"),
+          h("label", null, [
+            "Server URL: ",
+            h("input", {
+              type: "text",
+              value: state.serverUrl,
+              onInput: (e) => updateState({ serverUrl: e.target.value }),
+            }),
+          ]),
+          h(
+            "button",
+            {
+              onClick: () => {
+                console.log("Button clicked!");
+                createPlutoInstance();
+              },
+            },
+            "Connect to Server"
+          ),
+          h(
+            "div",
+            {
+              className: `status ${isConnected ? "connected" : "disconnected"}`,
+            },
+            isConnected ? "Connected to Pluto server" : "Not connected"
+          ),
+        ]);
+      };
+
+      const ServerOperations = () => {
+        const state = useGlobalState();
+        const isConnected = !!state.plutoInstance;
+
+        return h("div", { className: "container" }, [
+          h("h2", null, "Server Operations"),
+          h(
+            "button",
+            {
+              onClick: getRunningNotebooks,
+              disabled: !isConnected,
+            },
+            "Get Running Notebooks"
+          ),
+          h(
+            "button",
+            {
+              onClick: createNewNotebook,
+              disabled: !isConnected,
+            },
+            "Create New Notebook"
+          ),
+          h("div", null, [
+            state.runningNotebooks.length > 0 &&
+              h("h3", null, "Running Notebooks:"),
+            state.runningNotebooks.length === 0 &&
+              isConnected &&
+              h("p", null, "No notebooks currently running"),
+            ...state.runningNotebooks.map((nb) =>
+              h("div", { className: "cell-info", key: nb.notebook_id }, [
+                h("strong", null, "ID: "),
+                nb.notebook_id,
+                h("br"),
+                h("strong", null, "Path: "),
+                nb.path || "N/A",
+                h("br"),
+                h(
+                  "button",
+                  { onClick: () => selectNotebook(nb.notebook_id) },
+                  "Select"
+                ),
+              ])
+            ),
+          ]),
+        ]);
+      };
+
+      const NotebookOperations = () => {
+        const state = useGlobalState();
+        const isConnected = !!state.plutoInstance;
+        const isNotebookConnected = !!state.currentNotebook;
+
+        return h("div", { className: "container" }, [
+          h("h2", null, "Notebook Operations"),
+          h("label", null, [
+            "Notebook ID:",
+            h("input", {
+              type: "text",
+              value: state.notebookId,
+              placeholder: "Enter notebook ID or select from list",
+              onInput: (e) => updateState({ notebookId: e.target.value }),
+            }),
+          ]),
+          h("br"),
+          h(
+            "button",
+            {
+              onClick: connectToNotebook,
+              disabled: !isConnected || isNotebookConnected,
+            },
+            "Connect to Notebook"
+          ),
+          h(
+            "button",
+            {
+              onClick: getNotebookState,
+              disabled: !isNotebookConnected,
+            },
+            "Get Notebook State"
+          ),
+          h(
+            "button",
+            {
+              onClick: restartNotebook,
+              disabled: !isNotebookConnected,
+            },
+            "Restart Notebook"
+          ),
+          h(
+            "button",
+            {
+              onClick: shutdownNotebook,
+              disabled: !isNotebookConnected,
+              className: "danger",
+            },
+            "Shutdown Notebook"
+          ),
+          h(
+            "button",
+            {
+              onClick: closeNotebook,
+              disabled: !isNotebookConnected,
+            },
+            "Close Connection"
+          ),
+
+          isNotebookConnected &&
+            h("div", { className: "notebook-info" }, [
+              h("strong", null, "Notebook Status:"),
+              h(
+                "div",
+                null,
+                `Connected to notebook: ${state.currentNotebook?.notebook_id}`
+              ),
+            ]),
+        ]);
+      };
+
+      const CellOperations = () => {
+        const state = useGlobalState();
+        const isNotebookConnected = !!state.currentNotebook;
+
+        return h("div", { className: "container" }, [
+          h("h2", null, "Cell Operations"),
+          h("label", null, [
+            "Cell Code:",
+            h("textarea", {
+              value: state.cellCode,
+              placeholder: "Enter Julia code (e.g., 1+1)",
+              onInput: (e) => updateState({ cellCode: e.target.value }),
+            }),
+          ]),
+          h("br"),
+          h(
+            "button",
+            {
+              onClick: addCell,
+              disabled: !isNotebookConnected,
+            },
+            "Add Cell"
+          ),
+          h(
+            "button",
+            {
+              onClick: updateCellCode,
+              disabled: !isNotebookConnected,
+            },
+            "Update Cell Code"
+          ),
+          h(
+            "button",
+            {
+              onClick: getCells,
+              disabled: !isNotebookConnected,
+            },
+            "Get All Cells"
+          ),
+
+          h("label", null, [
+            "Cell ID for operations:",
+            h("input", {
+              type: "text",
+              value: state.cellId,
+              placeholder: "Cell ID (auto-filled when adding cells)",
+              onInput: (e) => updateState({ cellId: e.target.value }),
+            }),
+          ]),
+
+          h("div", null, [
+            state.cells.length > 0 && h("h3", null, "Cells:"),
+            state.cells.length === 0 &&
+              isNotebookConnected &&
+              h("p", null, "No cells in notebook"),
+            ...state.cells.map((cell) =>
+              h("div", { className: "cell-info", key: cell.cell_id }, [
+                h("strong", null, "ID: "),
+                cell.cell_id,
+                h("br"),
+                h("strong", null, "Code: "),
+                cell.input?.code || "N/A",
+                h("br"),
+                h("strong", null, "Result: "),
+                cell.result?.output || "No output",
+                h("br"),
+                h(
+                  "button",
+                  { onClick: () => selectCell(cell.cell_id) },
+                  "Select"
+                ),
+              ])
+            ),
+          ]),
+        ]);
+      };
+
+      const NotebookContent = () => {
+        const state = useGlobalState();
+        const isConnected = !!state.plutoInstance;
+
+        return h("div", { className: "container" }, [
+          h("h2", null, "Test Notebook Content"),
+          h("textarea", {
+            value: state.notebookContent,
+            onInput: (e) => updateState({ notebookContent: e.target.value }),
+          }),
+          h("br"),
+          h(
+            "button",
+            {
+              onClick: createNotebookFromContent,
+              disabled: !isConnected,
+            },
+            "Create Notebook from Content"
+          ),
+        ]);
+      };
+
+      const ActivityLog = () => {
+        const state = useGlobalState();
+
+        useEffect(() => {
+          const logElement = document.querySelector(".log");
+          if (logElement) {
+            logElement.scrollTop = logElement.scrollHeight;
+          }
+        }, [state.logs]);
+
+        return h("div", { className: "container" }, [
+          h("h2", null, "Activity Log"),
+          h("button", { onClick: clearLog }, "Clear Log"),
+          h("div", { className: "log" }, state.logs),
+        ]);
+      };
+
+      const App = () => {
+        return h("div", null, [
+          h("h1", null, "🧪 PlutoNotebookAPI Test Interface"),
+          h(ServerConfig),
+          h(ServerOperations),
+          h("div", { className: "grid" }, [
+            h(NotebookOperations),
+            h(CellOperations),
+          ]),
+          h(NotebookContent),
+          h(ActivityLog),
+        ]);
+      };
+
+      // Initialize
+      console.log("Script loaded, initializing...");
+      log("PlutoNotebookAPI Test Interface loaded", "success");
+      log('Enter server URL and click "Connect to Server" to begin', "info");
+
+      // Render the app
+      console.log("Rendering app...");
+      render(h(App), document.getElementById("app"));
+      console.log("App rendered!");
+    </script>
+  </body>
+</html>
