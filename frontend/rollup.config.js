@@ -14,7 +14,7 @@ export default [
         plugins: [
             typescript({
                 tsconfig: "./tsconfig.json",
-                declaration: false,
+                declaration: true,
                 declarationDir: undefined,
                 noEmitOnError: false,
                 compilerOptions: {
@@ -26,7 +26,7 @@ export default [
             resolve({
                 browser: true,
                 preferBuiltins: false,
-                extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
+                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
             }),
         ],
     },
@@ -43,7 +43,7 @@ export default [
         plugins: [
             typescript({
                 tsconfig: "./tsconfig.json",
-                declaration: false,
+                declaration: true,
                 declarationDir: undefined,
                 noEmitOnError: false,
                 compilerOptions: {
@@ -55,7 +55,7 @@ export default [
             resolve({
                 browser: true,
                 preferBuiltins: false,
-                extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
+                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
             }),
         ],
     },
