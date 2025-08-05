@@ -58,7 +58,7 @@ export const getAvailableLanguages = () => {
         
         return {
             code: lang,
-            name: t(`t_language_name`, { lng: lang }),
+            name: t(`t_language_name`, { lng: lang, fallbackLng: false, defaultValue: lang }),
             completeness: completeness
         }
     })
