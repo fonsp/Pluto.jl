@@ -54,9 +54,13 @@ describe("PlutoAutocomplete", () => {
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "my_su")
         await page.waitForTimeout(500)
 
-        // Trigger autocomplete suggestions
-        await page.keyboard.press("Tab")
-        await page.waitForSelector(".cm-tooltip-autocomplete")
+        // Wait for the autocomplete suggestions to appear by itself
+        await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 10 * 1000 }).catch(async () => {
+            // If the autocomplete suggestions don't appear, we need let's trigger it manually
+            await page.keyboard.press("Tab")
+            await page.waitForSelector(".cm-tooltip-autocomplete")
+        })
+
         // Get suggestions
         const suggestions = await page.evaluate(() =>
             Array.from(document.querySelectorAll(".cm-tooltip-autocomplete li")).map((suggestion) => suggestion.textContent)
