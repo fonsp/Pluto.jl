@@ -10,6 +10,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { SafePreviewOutput } from "./SafePreviewUI.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { t, th } from "../common/lang.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -229,7 +230,7 @@ export const Cell = ({
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const on_delete = useCallback(() => {
-        pluto_actions.confirm_delete_multiple("Delete", pluto_actions.get_selected_cells(cell_id, selected))
+        pluto_actions.confirm_delete_multiple(pluto_actions.get_selected_cells(cell_id, selected))
     }, [pluto_actions, selected, cell_id])
     const on_submit = useCallback(() => {
         if (!disable_input_ref.current) {
@@ -309,13 +310,13 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
-                title="Add cell (Ctrl + Enter)"
+                title=${t("t_add_cell", { key: "Ctrl + Enter" })}
                 tabindex=${is_first_cell ? undefined : "-1"}
             >
                 <span></span>
             </button>
-            <pluto-shoulder draggable="true" title="Drag to move cell">
-                <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
+            <pluto-shoulder draggable="true" title=${t("t_drag_to_move_cell")}>
+                <button onClick=${on_code_fold} class="foldcode" title=${t("t_show_hide_code")}>
                     <span></span>
                 </button>
             </pluto-shoulder>
@@ -383,37 +384,35 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 class="add_cell after"
-                title="Add cell (Ctrl + Enter)"
+                title=${t("t_add_cell", { key: "Ctrl + Enter" })}
             >
                 <span></span>
             </button>
             ${skip_as_script
                 ? html`<div
                       class="skip_as_script_marker"
-                      title=${`This cell is directly flagged as disabled in file. Click to know more!`}
+                      title=${t("t_cell_disabled_in_file_tooltip")}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
-                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
-                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  Use the context menu to enable it again`,
+                              body: th("t_cell_disabled_in_file_explanation"),
                           })
                       }}
                   ></div>`
                 : depends_on_skipped_cells
                 ? html`<div
                       class="depends_on_skipped_marker"
-                      title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
+                      title=${t("t_cell_indirectly_disabled_tooltip")}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
-                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
-                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
-                                  <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect
-                                  this cell.`,
+                              body: th("t_cell_indirectly_disabled_explanation", {
+                                  upstreamLink: html`<span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline">
+                                      the upstream one</span
+                                  >`,
+                              }),
                           })
                       }}
                   ></div>`

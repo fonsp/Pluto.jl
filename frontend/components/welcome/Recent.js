@@ -5,6 +5,7 @@ import * as preact from "../../imports/Preact.js"
 import { cl } from "../../common/ClassTable.js"
 import { link_edit, link_open_path } from "./Open.js"
 import { ProcessStatus } from "../../common/ProcessStatus.js"
+import { t, th } from "../../common/lang.js"
 
 /**
  * @typedef CombinedNotebook
@@ -141,7 +142,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
         const running = nb.entry != null
         if (running) {
             if (client == null) return
-            if (confirm(nb.entry?.process_status === ProcessStatus.waiting_for_permission ? "Close notebook session?" : "Shut down notebook process?")) {
+            if (
+                confirm(nb.entry?.process_status === ProcessStatus.waiting_for_permission ? t("t_close_notebook_session") : t("t_shut_down_notebook_process"))
+            ) {
                 set_notebook_state(nb.path, {
                     running: false,
                     transitioning: true,
@@ -189,7 +192,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     let recents =
         combined_notebooks == null
-            ? html`<li class="not_yet_ready"><em>Loading...</em></li>`
+            ? html`<li class="not_yet_ready"><em>${t("t_loading_ellipses")}</em></li>`
             : combined_notebooks.map((nb) => {
                   const running = nb.entry != null
                   return html`<li
@@ -204,9 +207,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                           onclick=${() => on_session_click(nb)}
                           title=${running
                               ? nb.entry?.process_status === ProcessStatus.waiting_for_permission
-                                  ? "Stop session"
-                                  : "Shut down notebook"
-                              : "Start notebook in background"}
+                                  ? t("t_stop_notebook_session")
+                                  : t("t_shut_down_notebook")
+                              : t("t_start_notebook_in_background")}
                       >
                           <span class="ionicon"></span>
                       </button>
@@ -231,10 +234,10 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                                     e.stopPropagation()
                                     on_clear_click(nb)
                                 }}
-                                title="Remove from recent notebooks. This does not delete the notebook file."
-                                aria-label="Remove from recent notebooks"
+                                title=${t("t_remove_from_recent_notebooks")}
+                                aria-label=${t("t_remove_from_recent_notebooks")}
                             >
-                                FORGET
+                                ${t("t_FORGET")}
                             </button>`
                           : null}
                   </li>`
@@ -242,7 +245,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     if (CustomRecent == null) {
         return html`
-            <h2>My work</h2>
+            <h2>${t("t_my_work")}</h2>
             <ul id="recent" class="show_scrollbar">
                 <li class="new">
                     <a
@@ -250,7 +253,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                         onClick=${(e) => {
                             on_start_navigation("new notebook")
                         }}
-                        ><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a
+                        ><button><span class="ionicon"></span></button>${th("t_newnotebook")}</a
                     >
                 </li>
                 ${recents}

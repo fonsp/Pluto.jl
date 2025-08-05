@@ -40,7 +40,7 @@ jobs:
       - id: setup-firefox
         uses: browser-actions/setup-firefox@v1
         with:
-          firefox-version: 'latest-esr'
+          firefox-version: 'latest'
 
       - id: setup-chrome
         uses: browser-actions/setup-chrome@v1

@@ -46,6 +46,8 @@ import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
+import { LanguagePicker } from "./LanguagePicker.js"
+import { t, th } from "../common/lang.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -582,10 +584,10 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
-            confirm_delete_multiple: async (verb, cell_ids) => {
-                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+            confirm_delete_multiple: async (cell_ids) => {
+                if (cell_ids.length <= 1 || confirm(t("t_confirm_delete_multiple_cells", { count: cell_ids.length }))) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                        if (confirm(t("t_confirm_delete_multiple_interrupt_notebook"))) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
@@ -845,7 +847,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                                 message.patches,
                                 empty_notebook_state({ notebook_id: this.state.notebook.notebook_id })
                             ).catch((e) => {
-                                alert("Oopsie!! please refresh your browser and everything will be alright!")
+                                alert(t("t_oopsie_pls_refresh"))
                                 throw e
                             })
                         } else if (message.patches.length !== 0) {
@@ -1186,7 +1188,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                if (!confirm(t("t_confirm_move_file", { old_path, new_path }))) {
                     throw new Error("Declined by user")
                 }
             }
@@ -1236,9 +1238,9 @@ all patches: ${JSON.stringify(patches, null, 1)}
             window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
-        this.delete_selected = (verb) => {
+        this.delete_selected = () => {
             if (this.state.selected_cells.length > 0) {
-                this.actions.confirm_delete_multiple(verb, this.state.selected_cells)
+                this.actions.confirm_delete_multiple(this.state.selected_cells)
                 return true
             }
         }
@@ -1318,7 +1320,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             } else if (["BracketLeft", "BracketRight"].includes(e.code) && (is_mac_keyboard ? e.altKey && e.metaKey : e.ctrlKey && e.shiftKey)) {
                 this.fold_selected(e.code === "BracketLeft")
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                if (this.delete_selected("Delete")) {
+                if (this.delete_selected()) {
                     e.preventDefault()
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
@@ -1334,31 +1336,33 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
                 const fold_prefix = is_mac_keyboard ? `⌥${and}⌘` : `Ctrl${and}Shift`
 
+                const or = t("t_key_or")
+
                 alert(
                     `
-⇧${and}Enter:   run cell
-${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
-${ctrl_or_cmd_name}${and}S:   submit all changes
-Delete or Backspace:   delete empty cell
+⇧${and}Enter:   ${t("t_key_run")}
+${ctrl_or_cmd_name}${and}Enter:   ${t("t_key_run_add")}
+${ctrl_or_cmd_name}${and}S:   ${t("t_key_submit_all_changes")}
+Delete ${or} Backspace:   ${t("t_key_delete_or_backspace")}
 
-PageUp or fn${and}↑:   jump to cell above
-PageDown or fn${and}↓:   jump to cell below
-${control_name}${and}click:   jump to definition
-${alt_or_options_name}${and}↑:   move line/cell up
-${alt_or_options_name}${and}↓:   move line/cell down
+PageUp ${or} fn${and}↑:   ${t("t_key_page_up")}
+PageDown ${or} fn${and}↓:   ${t("t_key_page_down")}
+${control_name}${and}click:   ${t("t_key_ctrl_click")}
+${alt_or_options_name}${and}↑:   ${t("t_key_alt_up")}
+${alt_or_options_name}${and}↓:   ${t("t_key_alt_down")}
 
-${control_name}${and}/:   toggle comment
-${control_name}${and}M:   toggle markdown
-${fold_prefix}${and}[:   hide cell code
-${fold_prefix}${and}]:   show cell code
-${ctrl_or_cmd_name}${and}Q:   interrupt notebook
+${control_name}${and}/:   ${t("t_key_ctrl_slash")}
+${control_name}${and}M:   ${t("t_key_ctrl_m")}
+${fold_prefix}${and}[:   ${t("t_key_ctrl_m")}
+${fold_prefix}${and}]:   ${t("t_key_ctrl_m")}
+${ctrl_or_cmd_name}${and}Q:   ${t("t_key_ctrl_q")}
 
-Select multiple cells by dragging a selection box from the space between cells.
-${ctrl_or_cmd_name}${and}C:   copy selected cells
-${ctrl_or_cmd_name}${and}X:   cut selected cells
-${ctrl_or_cmd_name}${and}V:   paste selected cells
+${t("t_key_selection_description")}
+${ctrl_or_cmd_name}${and}C:   ${t("t_key_ctrl_c")}
+${ctrl_or_cmd_name}${and}X:   ${t("t_key_ctrl_x")}
+${ctrl_or_cmd_name}${and}V:   ${t("t_key_ctrl_v")}
 
-The notebook file saves every time you run a cell.`
+${t("t_key_autosave_description")}`
                 )
                 e.preventDefault()
             } else if (e.key === "Escape") {
@@ -1556,7 +1560,9 @@ The notebook file saves every time you run a cell.`
                 !warn_about_untrusted_code ||
                 !maybe_confirm ||
                 source == null ||
-                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+                confirm(
+                    `${th("t_safe_preview_confirm_before_danger")} ${t("t_safe_preview_confirm_before")}\n\n${source}\n\n${t("t_safe_preview_confirm_after")}`
+                )
             ) {
                 await this.actions.update_notebook((notebook) => {
                     delete notebook.metadata.risky_file_source
@@ -1582,7 +1588,7 @@ The notebook file saves every time you run a cell.`
                     ${
                         status.static_preview && status.offer_local
                             ? html`<button
-                                  title="Go back"
+                                  title=${t("t_navigate_to_previous_page")}
                                   onClick=${() => {
                                       history.back()
                                   }}
@@ -1631,7 +1637,9 @@ The notebook file saves every time you run a cell.`
                             ${
                                 this.state.extended_components.CustomHeader == null &&
                                 (status.binder
-                                    ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    ? html`<pluto-filepicker
+                                          ><a href=${this.export_url("notebookfile")} target="_blank">${t("t_save_notebook_ellipsis")}</a></pluto-filepicker
+                                      >`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -1641,33 +1649,34 @@ The notebook file saves every time you run a cell.`
                                           suggest_new_file=${{
                                               base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                           }}
-                                          placeholder="Save notebook..."
-                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
+                                          placeholder=${t("t_save_notebook_ellipsis")}
+                                          button_label=${notebook.in_temp_dir
+                                              ? t("t_save_notebook_button_label_when_currently_not_saved")
+                                              : t("t_save_notebook_button_label_when_currently_saved")}
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
                             <div id="process_status">${
                                 status.binder && status.loading
-                                    ? "Loading binder..."
+                                    ? t("t_process_status_loading_binder")
                                     : statusval === "disconnected"
-                                    ? "Reconnecting..."
+                                    ? t("t_process_status_reconnecting")
                                     : statusval === "loading"
-                                    ? "Loading..."
+                                    ? t("t_process_status_loading")
                                     : statusval === "nbpkg_restart_required"
-                                    ? html`${restart_button("Restart notebook")}${" (required)"}`
+                                    ? th("t_process_restart_action_required", { restart_notebook: restart_button(t("t_process_restart_action")) })
                                     : statusval === "nbpkg_restart_recommended"
-                                    ? html`${restart_button("Restart notebook")}${" (recommended)"}`
+                                    ? th("t_process_restart_action_recommended", { restart_notebook: restart_button(t("t_process_restart_action")) })
                                     : statusval === "process_restarting"
-                                    ? "Process exited — restarting..."
+                                    ? th("t_process_restarting")
                                     : statusval === "process_dead"
-                                    ? html`${"Process exited — "}${restart_button("restart")}`
+                                    ? th("t_process_exited_restart_action", { restart_action_short: restart_button(t("t_process_restart_action_short")) })
                                     : statusval === "process_waiting_for_permission"
-                                    ? html`${restart_button("Run notebook code", true)}`
+                                    ? restart_button(t("t_process_give_permission_to_run_code"), true)
                                     : null
                             }</div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
+                            <button class="toggle_export" title=${t("t_export_action_ellipsis")} onClick=${() =>
+            this.setState({ export_menu_open: !export_menu_open })}><span></span></button>
                         </nav>
                     </header>
                     
@@ -1791,11 +1800,14 @@ The notebook file saves every time you run a cell.`
                     <${SlideControls} />
                     <footer>
                         <div id="info">
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                            <span style="flex: 1"></span>
+                            <${LanguagePicker} />
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
+                            <span style="flex: 1 1 0%; min-width: 5ch;"></span>
                             <form id="feedback" action="#" method="post">
-                                <label for="opinion">🙋 How can we make <a href="https://plutojl.org/" target="_blank">Pluto.jl</a> better?</label>
-                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
+                                <label for="opinion">${th("t_how_can_we_improve", {
+                                    pluto: html`<a href="https://plutojl.org/" target="_blank">Pluto.jl</a>`,
+                                })}</label>
+                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder=${t("t_instant_feedback_ellipsis")} />
                                 <button>Send</button>
                             </form>
                         </div>

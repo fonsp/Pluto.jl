@@ -9,6 +9,7 @@ import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
 import { get_environment } from "../../common/Environment.js"
 import default_featured_sources from "../../featured_sources.js"
+import { t, th } from "../../common/lang.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -130,14 +131,14 @@ export const Welcome = ({ launch_params }) => {
     if (block_screen_with_this_text != null) {
         return html`
             <div class="navigating-away-banner">
-                <h2>Loading ${block_screen_with_this_text}...</h2>
+                <h2>${th("t_loading_something", { text: block_screen_with_this_text })}</h2>
             </div>
         `
     }
 
     return html`
         <section id="title">
-            <h1>welcome to <img src=${url_logo_big} /></h1>
+            <h1>${th("t_welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })}</h1>
         </section>
         <section id="mywork">
             <div>
@@ -150,7 +151,7 @@ export const Welcome = ({ launch_params }) => {
                 />
             </div>
         </section>
-        <section id="open">
+        <section id="open_action">
             <div>
                 <${Open}
                     client=${client_ref.current}

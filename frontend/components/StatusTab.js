@@ -6,6 +6,7 @@ import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { NotifyWhenDone } from "./NotifyWhenDone.js"
 import { scroll_to_busy_cell } from "./ProgressBar.js"
+import { t } from "../common/lang.js"
 
 /**
  * @param {{
@@ -65,26 +66,8 @@ saving
 
 const blocklist = ["saving"]
 
-/** @type {Record<string,string>} */
-const descriptions = {
-    workspace: "Workspace setup",
-    create_process: "Start Julia",
-    init_process: "Initialize",
-    pkg: "Package management",
-    instantiate1: "instantiate",
-    instantiate2: "instantiate",
-    instantiate3: "instantiate",
-    run: "Evaluating cells",
-    evaluate: "Running code",
-    registry_update: "Updating package registry",
-    waiting_for_others: "Waiting for other notebooks to finish package operations",
-
-    backend_launch: "Connecting to backend",
-    backend_requesting: "Requesting a worker",
-    backend_created: "Starting Pluto server",
-    backend_responded: "Opening notebook file",
-    backend_notebook_running: "Switching to live editing",
-}
+const descriptions = /** @type {Record<string,string>} */ (t("t_status_names", { returnObjects: true }))
+console.log("descriptions", descriptions)
 
 export const friendly_name = (/** @type {string} */ task_name) => {
     const descr = descriptions[task_name]

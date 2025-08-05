@@ -3031,7 +3031,8 @@ footer form {
     opacity: 1;
     transition: opacity 5s;
     display: flex;
-    flex-wrap: wrap;
+    flex: 0 1 max-content;
+    min-width: 0;
 }
 
 footer form > * {
@@ -3045,6 +3046,10 @@ footer form > label {
 
 footer form > label {
     margin-right: 1em;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-wrap: nowrap;
 }
 
 footer form > a {
@@ -3055,10 +3060,11 @@ footer a {
     color: var(--footer-atag-color);
     opacity: 0.6;
     font-weight: 700;
+    flex: 0 0 auto;
 }
 
-@media (max-width: 650px) {
-    footer form > label {
+@media (max-width: 500px) {
+    footer form {
         display: none;
     }
 }
@@ -3093,12 +3099,44 @@ footer #info {
     margin: 0 auto;
     padding: 1rem;
     text-align: right;
-
     /* height: 1.5rem; */
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
     align-items: center;
+    justify-content: flex-end;
+}
+
+/* LANGUAGE PICKER */
+
+.language-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 1rem;
+    font-size: 0.75rem;
+    flex: 0 0 auto;
+}
+
+.language-picker label {
+    color: var(--footer-color);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.language-picker select {
+    background: var(--white);
+    border: 2px solid var(--footer-input-border-color);
+    border-radius: 3px;
+    padding: 2px 4px;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--footer-color);
+    cursor: pointer;
+}
+
+.language-picker select:focus {
+    outline: 2px solid var(--footer-filepicker-focus-color);
+    outline-offset: 1px;
 }
 
 /* UNDO DELETED CELL */

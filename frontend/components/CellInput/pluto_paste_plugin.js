@@ -24,7 +24,7 @@ export let pluto_paste_plugin = ({ pluto_actions, cell_id }) => {
             // (This also applies to pasting in an empty cell)
             if (view.state.selection.main.from === 0 && view.state.selection.main.to === view.state.doc.length) {
                 pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
-                pluto_actions.confirm_delete_multiple("This Should Never Be Visible", [cell_id])
+                pluto_actions.confirm_delete_multiple([cell_id])
                 return true
             }
 
