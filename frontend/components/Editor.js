@@ -1802,7 +1802,7 @@ ${t("t_key_autosave_description")}`
                         <div id="info">
                             <${LanguagePicker} />
                             <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
-                            <span style="flex: 1"></span>
+                            <span style="flex: 1 1 0%; min-width: 5ch;"></span>
                             <form id="feedback" action="#" method="post">
                                 <label for="opinion">${th("t_how_can_we_improve", {
                                     pluto: html`<a href="https://plutojl.org/" target="_blank">Pluto.jl</a>`,
