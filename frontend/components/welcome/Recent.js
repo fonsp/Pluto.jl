@@ -192,7 +192,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     let recents =
         combined_notebooks == null
-            ? html`<li class="not_yet_ready"><em>${t("t_loading")}</em></li>`
+            ? html`<li class="not_yet_ready"><em>${t("t_loading_ellipses")}</em></li>`
             : combined_notebooks.map((nb) => {
                   const running = nb.entry != null
                   return html`<li

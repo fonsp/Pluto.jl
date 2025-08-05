@@ -32,7 +32,7 @@
     "t_open_from_url_action": "Open from URL",
     "t_close_notebook_session": "Close notebook session?",
     "t_shut_down_notebook_process": "Shut down notebook process?",
-    "t_loading": "Loading...",
+    "t_loading_ellipses": "Loading...",
     "t_notebooks": "Notebooks",
     "t_add_cell": "Add cell ({{key}})",
     "t_drag_to_move_cell": "Drag to move cell",
@@ -116,6 +116,7 @@
     "t_process_exited_restart_action": "Process exited — {{restart_action_short}}",
     "t_process_restart_action_short": "restart",
     "t_process_give_permission_to_run_code": "Run notebook code",
+    "t_process_running_cells": "Running cells... ({{done}}/{{total}} done)",
     
     "t_safe_preview": "Safe preview",
     "t_safe_preview_not_executed": "Code not executed in <em>Safe preview</em>",
@@ -148,10 +149,18 @@
     "t_enable_in_file_action_description": "This cell is currently stored in the notebook file as a Julia comment. Click here to enable it.",
     "t_disable_in_file_action": "Disable in file",
     "t_disable_in_file_action_description": "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto.",
+    "t_interrupt_cell": "Interrupt (Ctrl + Q)",
+    "t_save_cell": "Save code without running",
+    "t_jump_cell": "This cell depends on a disabled cell",
+    "t_run_cell": "Run cell (Shift + Enter)",
+    
+    "t_cell_is_disabled": "This cell is disabled. {{link}} to run the code.",
+    "t_cell_is_disabled_link": "Enable this cell",
+    
+    
+    
     "t_ask_ai_action": "Ask AI",
     "t_ask_ai_action_description": "Ask AI about this cell",
-    
-    
     "t_ai_prompt_generator_title": "AI Prompt Generator",
     "t_ai_prompt_generator_intro": "You can copy this text into an AI chat to give it context from your notebook.",
     "t_ai_prompt_generator_question_input_placeholder": "Type your question here...",
@@ -258,7 +267,57 @@
     "t_pkg_is_installed": "{{package}} is installed in the notebook.",
     
     "t_pkg_not_found": "The package {{package}} could not be found in the registry. Did you make a typo?",
-    "t_pkg_will_be_installed_in_notebook": "{{package}} will be installed in the notebook when you run this cell."
+    "t_pkg_will_be_installed_in_notebook": "{{package}} will be installed in the notebook when you run this cell.",
     
+    "t_pkg_installation_can_take": "Installation can take {{time_install}}.<br/>Afterwards, it loads in {{time_load}}.",
+    "t_pkg_update_packages": "Update packages",
+    "t_pkg_update_packages_description": "Would you like to check for updates and install them? A backup of the notebook file will be created.",
+    "t_pkg_currently_busy": "Pkg is currently busy with other packages... come back later!",
+    "t_pkg_toggle_terminal": "Show/hide Pkg terminal output",
+    
+    "t_pkg_go_to_help": "Learn more about packages in Pluto",
+    
+    "t_save_all_changes": "<strong>Save all changes</strong> {{key}}",
+    "t_save_all_changes_description": "Save and run all changed cells",
+    "t_file_change_detected": "File change detected, <b>notebook updated</b>",
+    "t_file_saved": "Saved",
+    
+    "t_recording_ui_start_recording": "<strong>Start recording</strong>",
+    "t_recording_ui_start_recording_muted": "<strong>Start recording</strong> (no audio)",
+    "t_recording_ui_stop_recording": "<strong>Stop recording</strong>",
+    "t_recording_ui_back_to_recording": "Back to <strong>recording</strong> {{icon}}",
+    
+    "t_presentation_previous_slide": "Previous slide",
+    "t_presentation_next_slide": "Next slide",
+    
+    
+    "t_status_names": {
+        "workspace": "Workspace setup",
+        "create_process": "Start Julia",
+        "init_process": "Initialize",
+        "pkg": "Package management",
+        "instantiate1": "instantiate",
+        "instantiate2": "instantiate",
+        "instantiate3": "instantiate",
+        "run": "Evaluating cells",
+        "evaluate": "Running code",
+        "registry_update": "Updating package registry",
+        "waiting_for_others": "Waiting for other notebooks to finish package operations",
+        "backend_launch": "Connecting to backend",
+        "backend_requesting": "Requesting a worker",
+        "backend_created": "Starting Pluto server",
+        "backend_responded": "Opening notebook file",
+        "backend_notebook_running": "Switching to live editing"
+    },
+    
+    "t_tree_show_more_items": "more",
+    "t_table_no_columns": "This table has no columns",
+    "t_table_no_rows": "This table has no rows",
+    
+    "t_undo_delete_one": "Cell deleted",
+    "t_undo_delete_other": "{{count}} cells deleted",
+    "t_undo_delete_link": "UNDO",
+    "t_auto_disabled": "{{another_cell}} has been disabled because it also defined {{variable}}.",
+    "t_auto_disabled_link": "Another cell"
 }
         
