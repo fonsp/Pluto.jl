@@ -1,6 +1,6 @@
 {
   "name": "plutojl-rainbow",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "TypeScript/JavaScript API for programmatically interacting with Pluto notebooks",
   "type": "module",
   "main": "dist/standalone/index.js",
@@ -62,6 +62,7 @@
     "dompurify": "^3.2.3",
     "highlight.js": "^11.9.0",
     "htm": "^3.1.1",
+    "js-sha256": "github:JuliaPluto/js-sha256#pg/update-to-vite",
     "lodash-es": "^4.17.21",
     "msgpack-lite": "github:fonsp/msgpack-lite#0.1.27-es.1",
     "preact": "^10.13.2",
