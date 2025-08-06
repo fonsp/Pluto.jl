@@ -6,13 +6,10 @@
  */
 
 // Export main API classes from PlutoNotebookAPI.js
-export { Pluto, PlutoNotebook, type CellData } from "./PlutoNotebookAPI.js"
+export { Pluto, PlutoNotebook } from "./PlutoNotebookAPI.js"
 
 // Export notebook parser functions
 export { default as parseNotebook, serializeNotebook } from "./NotebookParser.js"
 
 // Export utility constants
 export { DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID } from "./NotebookParser.js"
-
-export type { NotebookData, CellDependencyData, CellResultData, CellDependencyGraph, CellInputData, CellMetaData } from "../components/Editor.js"
-export type { PlutoConnection, WebsocketConnection } from "../common/PlutoConnection.js"

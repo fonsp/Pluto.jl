@@ -16223,7 +16223,7 @@ class PlutoNotebook {
      *
      * @param {string} symbol - Function symbol to execute
      * @param {Array<any>} [arguments=[]] - Arguments to pass to the function
-     * @returns {Promise<any>} Function result
+     * @returns {Promise<[boolean, any]>} Function result
      * @throws {Error} Not implemented
      */
     async execute(input) {
@@ -16413,7 +16413,7 @@ end
      * @param {number} [index=0] - Position to insert the cell (0-based)
      * @param {string} [code=""] - Initial cell code
      * @param {Object} [metadata={}] - Additional cell metadata
-     * @returns {Promise<CellId>} UUID of the newly created cell
+     * @returns {Promise<string>} UUID of the newly created cell
      * @throws {Error} If not connected to notebook
      *
      * @example
