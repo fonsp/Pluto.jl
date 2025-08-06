@@ -1,5 +1,5 @@
 {
-  "name": "@plutojl/notebook-api",
+  "name": "@plutojl/client",
   "version": "0.1.0",
   "description": "TypeScript/JavaScript API for programmatically interacting with Pluto notebooks",
   "type": "module",
@@ -16,7 +16,7 @@
     "build:types": "mkdir -p dist/standalone && cp standalone/index.d.ts dist/standalone/index.d.ts && echo 'export * from \"./standalone/index\";' > dist/index.d.ts",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
-    "type-check": "tsc --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "pluto",
