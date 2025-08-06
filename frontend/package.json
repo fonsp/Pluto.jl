@@ -52,18 +52,9 @@
   },
   "dependencies": {
     "@observablehq/stdlib": "^3.3.1",
-    "@plutojl/codemirror-pluto-setup": "github:JuliaPluto/codemirror-pluto-setup#2001.0.0",
-    "@plutojl/rebel-tag-input": "github:fonsp/rebel-tag-input",
-    "ansi_up": "^5.1.0",
-    "dialog-polyfill": "^0.5.6",
-    "dompurify": "^3.2.3",
-    "highlight.js": "^11.9.0",
-    "htm": "^3.1.1",
     "immer": "^8.0.4",
-    "js-sha256": "github:JuliaPluto/js-sha256#pg/update-to-vite",
     "lodash-es": "^4.17.21",
     "msgpack-lite": "github:fonsp/msgpack-lite#0.1.27-es.1",
-    "preact": "^10.13.2",
     "requestidlecallback-polyfill": "^1.0.2",
     "seamless-scroll-polyfill": "^2.3.4",
     "vmsg": "^0.4.0"
