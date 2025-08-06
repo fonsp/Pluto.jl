@@ -56,6 +56,7 @@
   "dependencies": {
     "@observablehq/stdlib": "^3.3.1",
     "@plutojl/codemirror-pluto-setup": "github:JuliaPluto/codemirror-pluto-setup#2001.0.0",
+    "@plutojl/rebel-tag-input": "github:fonsp/rebel-tag-input",
     "ansi_up": "^5.1.0",
     "dialog-polyfill": "^0.5.6",
     "dompurify": "^3.2.3",

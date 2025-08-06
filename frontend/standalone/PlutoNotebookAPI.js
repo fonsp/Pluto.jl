@@ -45,8 +45,29 @@
  */
 
 import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
-import { empty_notebook_state } from "../editor.js"
+import { ProcessStatus } from "../common/ProcessStatus.js"
 import { applyPatches, produceWithPatches } from "../imports/immer.js"
+
+// vendored to drop unshakeable import
+export const empty_notebook_state = ({ notebook_id }) => ({
+    metadata: {},
+    notebook_id: notebook_id,
+    path: "",
+    shortpath: "",
+    in_temp_dir: true,
+    process_status: ProcessStatus.starting,
+    last_save_time: 0.0,
+    last_hot_reload_time: 0.0,
+    cell_inputs: {},
+    cell_results: {},
+    cell_dependencies: {},
+    cell_order: [],
+    cell_execution_order: [],
+    published_objects: {},
+    bonds: {},
+    nbpkg: null,
+    status_tree: null,
+})
 
 /**
  * @typedef CellData
