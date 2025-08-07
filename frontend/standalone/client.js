@@ -15,19 +15,19 @@
  * ## Basic Usage
  *
  * ```javascript
- * import { Pluto } from '@plutojl/rainbow';
+ * import { Host } from '@plutojl/rainbow';
  *
  * // Connect to Pluto server
- * const pluto = new Pluto("http://localhost:1234");
+ * const host = new Host("http://localhost:1234");
  *
  * // Create a new notebook
- * const notebook = await pluto.createNotebook("x = 1 + 1");
+ * const worker = await host.createWorker("x = 1 + 1");
  *
  * // Add and run cells
- * const cellId = await notebook.addCell(0, "println(x)");
+ * const cellId = await worker.addSnippet(0, "println(x)");
  *
  * // Listen for updates
- * notebook.onUpdate((event) => {
+ * worker.onUpdate((event) => {
  *   console.log("Update:", event.type, event.data);
  * });
  * ```
@@ -90,21 +90,21 @@ const uuidv4 = () =>
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
 /**
- * Pluto - Main class for connecting to a Pluto server and managing notebooks
+ * Host - Main class for connecting to a Pluto server and managing notebooks
  *
  * This class provides high-level operations for interacting with a Pluto server:
  * - Discovering running notebooks
  * - Creating new notebooks from text content
- * - Managing PlutoNotebook instances
+ * - Managing Worker instances
  *
  * @example
- * const pluto = new Pluto("http://localhost:1234");
- * const notebooks = await pluto.getRunningNotebooks();
- * const notebook = await pluto.createNotebook(``);
+ * const host = new Host("http://localhost:1234");
+ * const workers = await host.workers();
+ * const worker = await host.createWorker(``);
  */
 export class Host {
     /**
-     * Create a new Pluto instance
+     * Create a new Host instance
      * @param {string} [server_url="http://localhost:1234"] - Pluto server URL
      */
     constructor(server_url = "http://localhost:1234") {
@@ -118,7 +118,7 @@ export class Host {
 
     /**
      * Get list of currently running notebooks on the server
-     * @returns {Promise<Array<Worker>>} Array of notebook information objects
+     * @returns {Promise<Array<Worker>>} Array of worker information objects
      * @throws {Error} If connection to server fails
      */
     async workers() {
@@ -143,13 +143,13 @@ export class Host {
     }
 
     /**
-     * Get or create a PlutoNotebook instance for the given notebook ID
+     * Get or create a Worker instance for the given notebook ID
      *
      * This method implements a cache pattern - multiple calls with the same
-     * notebook_id will return the same PlutoNotebook instance.
+     * notebook_id will return the same Worker instance.
      *
      * @param {string} notebook_id - Notebook UUID
-     * @returns {Worker} PlutoNotebook instance (may be cached)
+     * @returns {Worker} Worker instance (may be cached)
      */
     worker(notebook_id) {
         if (!this._notebooks.has(notebook_id)) {
@@ -162,15 +162,15 @@ export class Host {
      * Create a new notebook from text content
      *
      * This method uploads notebook content to the server via /notebookupload,
-     * creates a PlutoNotebook instance, connects to it, and restarts it for
+     * creates a Worker instance, connects to it, and restarts it for
      * proper initialization.
      *
      * @param {string} notebook_text - Pluto notebook text content (.jl format)
-     * @returns {Promise<Worker>} Connected and initialized PlutoNotebook instance
+     * @returns {Promise<Worker>} Connected and initialized Worker instance
      * @throws {Error} If upload fails, connection fails, or restart fails
      *
      * @example
-     * const notebook = await pluto.createNotebook(`
+     * const worker = await host.createWorker(`
      *   ### A Pluto.jl notebook ###
      *   # v0.19.40
      *
@@ -215,7 +215,7 @@ export class Host {
 }
 
 /**
- * PlutoNotebook - A programmatic interface to interact with a specific Pluto notebook
+ * Worker - A programmatic interface to interact with a specific Pluto notebook
  * without the full Editor UI component.
  *
  * This class provides the core functionality of the Editor.js component:
@@ -230,17 +230,17 @@ export class Host {
  * - Maintains the same cell lifecycle
  *
  * @example
- * const notebook = pluto.notebook("notebook-uuid");
- * await notebook.connect();
+ * const worker = host.worker("notebook-uuid");
+ * await worker.connect();
  *
  * // Add and run a cell
- * const cellId = await notebook.addCell(0, "x = 1 + 1");
+ * const cellId = await worker.addSnippet(0, "x = 1 + 1");
  *
  * // Update cell code
- * await notebook.updateCellCode(cellId, "x = 2 + 2");
+ * await worker.updateSnippetCode(cellId, "x = 2 + 2");
  *
  * // Listen for updates
- * const unsubscribe = notebook.onUpdate((event) => {
+ * const unsubscribe = worker.onUpdate((event) => {
  *   console.log("Notebook updated:", event);
  * });
  */
@@ -636,7 +636,7 @@ end
      * @throws {Error} If not connected to notebook
      *
      * @example
-     * const cellId = await notebook.addCell(0, "println(\"Hello World\")");
+     * const cellId = await worker.addSnippet(0, "println(\"Hello World\")");
      */
     async addSnippet(index = 0, code = "", metadata = {}) {
         if (!this.client || !this.notebook_state) {
@@ -717,7 +717,7 @@ end
      * @returns {function(): void} Unsubscribe function to stop receiving updates
      *
      * @example
-     * const unsubscribe = notebook.onUpdate((event) => {
+     * const unsubscribe = worker.onUpdate((event) => {
      *   if (event.type === 'notebook_updated') {
      *     console.log('Notebook state changed');
      *   }

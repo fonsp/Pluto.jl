@@ -5,7 +5,7 @@
  * interacting with Pluto notebooks without requiring the full Editor UI.
  */
 
-// Export main API classes from PlutoNotebookAPI.js
+// Export main API classes from client.js
 export { Host, Worker } from "./client.js"
 
 // Export notebook parser functions
