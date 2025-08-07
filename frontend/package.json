@@ -1,5 +1,68 @@
 {
+  "name": "@plutojl/rainbow",
+  "version": "0.2.1",
+  "description": "TypeScript/JavaScript API for programmatically interacting with Pluto notebooks",
+  "type": "module",
+  "main": "dist/standalone/index.js",
+  "module": "dist/standalone/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "npm run clean && npm run build:js && npm run build:types",
+    "build:js": "rollup -c",
+    "build:types": "mkdir -p dist/standalone && cp standalone/index.d.ts dist/standalone/index.d.ts && echo 'export * from \"./standalone/index\";' > dist/index.d.ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "pluto",
+    "julia",
+    "notebook",
+    "api",
+    "typescript"
+  ],
+  "author": "Pluto.jl Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fonsp/Pluto.jl.git",
+    "directory": "frontend/api"
+  },
+  "targets": {
+    "pluto": {
+      "source": ["index.html", "editor.html", "error.jl.html"]
+    }
+  },
   "devDependencies": {
-    "@types/lodash-es": "^4.17.6"
+    "@parcel/transformer-typescript-types": "^2.12.0",
+    "@rollup/plugin-alias": "^5.1.1",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "@types/lodash-es": "^4.17.6",
+    "@types/node": "^20.11.0",
+    "rollup": "^4.9.6",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.esm.js"
+    }
+  },
+  "dependencies": {
+    "@observablehq/stdlib": "^3.3.1",
+    "immer": "^8.0.4",
+    "lodash-es": "^4.17.21",
+    "msgpack-lite": "github:fonsp/msgpack-lite#0.1.27-es.1",
+    "requestidlecallback-polyfill": "^1.0.2",
+    "seamless-scroll-polyfill": "^2.3.4",
+    "vmsg": "^0.4.0"
   }
 }
