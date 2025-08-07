@@ -6,10 +6,10 @@
 import { NotebookData } from "../components/Editor.js"
 
 // Export main API classes
-export { Pluto, PlutoNotebook } from "./client.js"
+export { Host, Worker } from "./client.js"
 
 // Export notebook parser functions
-export { default as parseNotebook, serializeNotebook } from "./parser.js"
+export { default as parse, serialize } from "./parser.js"
 
 // Export utility constants
 export { DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID } from "./parser.js"
