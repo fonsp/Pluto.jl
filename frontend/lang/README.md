@@ -2,7 +2,26 @@
 
 The files in this directory are used to translate the Pluto frontend. This means that any text in the Pluto browser app can be displayed in a user's preferred language, which can really help to make Pluto and Julia more accessible to a wider audience!
 
-Do you want to help translate Pluto? Awesome!! Here is **How it works**, and **How to contribute**:
+Do you want to help translate Pluto? Awesome!! Here is **How it works**, and **How to contribute**.
+
+
+
+## Why contribute?
+Translating Pluto is a great way to help the Julia community, because it makes Julia more accessible to a much wider audience. Pluto is used around the world, but Julia and Pluto are still hard to use for people who don't speak English.
+
+We also want to break the tradition that "programming is in English". Programming is for everyone, and we hope that computers can be used regardless of language and culture.
+
+This work is also an **open source** contribution! Because you contribute translations via git and github, you will be listed in the Pluto contributors list (https://github.com/fonsp/Pluto.jl), and in the Pluto release notes (https://github.com/fonsp/Pluto.jl/releases).
+
+
+
+## Collaboration
+The Pluto developers are really grateful for your help in translating Pluto! 🌟 And we are super excited to collaborate with you! 
+
+The ability to translate Pluto is quite new, and there will still be rough edges. Feel free to reach out whenever you want, and we will try to help you quickly! You can email us, open an issue, open a draft PR, whatever you prefer!
+
+We are really interested in a right-to-left language (like Arabic or Farsi). This might require some additional tweaking, so reach out if you are interested to contribute, and we can work together to support it!
+
 
 ## How it works
 
