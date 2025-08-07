@@ -41,7 +41,7 @@ const aliasEntries = [
 export default [
     // ES Module build
     {
-        input: "standalone/index.ts",
+        input: "standalone/index.js",
         output: {
             file: "dist/index.esm.js",
             format: "es",
@@ -72,7 +72,7 @@ export default [
     },
     // CommonJS build
     {
-        input: "standalone/index.ts",
+        input: "standalone/index.js",
         output: {
             file: "dist/index.js",
             format: "cjs",

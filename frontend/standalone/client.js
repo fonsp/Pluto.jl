@@ -1,5 +1,5 @@
 /**
- * @fileoverview PlutoNotebookAPI - Programmatic Interface for Pluto Notebooks
+ * @fileoverview client.js - Programmatic Interface for Pluto Notebooks
  *
  * This module provides a JavaScript API for interacting with Pluto notebooks
  * without requiring the full Editor UI. It's designed for:
@@ -15,7 +15,7 @@
  * ## Basic Usage
  *
  * ```javascript
- * import { Pluto } from './PlutoNotebookAPI.js';
+ * import { Pluto } from '@plutojl/rainbow';
  *
  * // Connect to Pluto server
  * const pluto = new Pluto("http://localhost:1234");
@@ -102,7 +102,7 @@ const uuidv4 = () =>
  * const notebooks = await pluto.getRunningNotebooks();
  * const notebook = await pluto.createNotebook(``);
  */
-export class Pluto {
+export class Host {
     /**
      * Create a new Pluto instance
      * @param {string} [server_url="http://localhost:1234"] - Pluto server URL
@@ -112,16 +112,16 @@ export class Pluto {
         this.server_url = server_url
         /** @type {string} */
         this.ws_address = ws_address_from_base(server_url)
-        /** @type {Map<string, PlutoNotebook>} */
+        /** @type {Map<string, Worker>} */
         this._notebooks = new Map()
     }
 
     /**
      * Get list of currently running notebooks on the server
-     * @returns {Promise<Array<PlutoNotebook>>} Array of notebook information objects
+     * @returns {Promise<Array<Worker>>} Array of notebook information objects
      * @throws {Error} If connection to server fails
      */
-    async getRunningNotebooks() {
+    async workers() {
         try {
             // Create a temporary connection to get server info
             const temp_client = await create_pluto_connection({
@@ -149,11 +149,11 @@ export class Pluto {
      * notebook_id will return the same PlutoNotebook instance.
      *
      * @param {string} notebook_id - Notebook UUID
-     * @returns {PlutoNotebook} PlutoNotebook instance (may be cached)
+     * @returns {Worker} PlutoNotebook instance (may be cached)
      */
-    notebook(notebook_id) {
+    worker(notebook_id) {
         if (!this._notebooks.has(notebook_id)) {
-            this._notebooks.set(notebook_id, new PlutoNotebook(this.ws_address, notebook_id))
+            this._notebooks.set(notebook_id, new Worker(this.ws_address, notebook_id))
         }
         return this._notebooks.get(notebook_id)
     }
@@ -166,7 +166,7 @@ export class Pluto {
      * proper initialization.
      *
      * @param {string} notebook_text - Pluto notebook text content (.jl format)
-     * @returns {Promise<PlutoNotebook>} Connected and initialized PlutoNotebook instance
+     * @returns {Promise<Worker>} Connected and initialized PlutoNotebook instance
      * @throws {Error} If upload fails, connection fails, or restart fails
      *
      * @example
@@ -177,7 +177,7 @@ export class Pluto {
      *   x = 1 + 1
      * `);
      */
-    async createNotebook(notebook_text) {
+    async createWorker(notebook_text) {
         try {
             // Upload notebook text to server using /notebookupload endpoint
             const response = await fetch(`${this.server_url}/notebookupload`, {
@@ -193,7 +193,7 @@ export class Pluto {
             const notebook_id = await response.text()
 
             // Create and connect to the new notebook
-            const notebook = this.notebook(notebook_id)
+            const notebook = this.worker(notebook_id)
             if (!notebook) {
                 throw new Error(`Notebook ${notebook_id} could not be created properly`)
             }
@@ -211,19 +211,6 @@ export class Pluto {
             console.error("Failed to create notebook:", error)
             throw error
         }
-    }
-
-    /**
-     * Remove a notebook instance from memory
-     *
-     * This is called internally when a notebook is shut down.
-     * You typically don't need to call this manually.
-     *
-     * @param {string} notebook_id - Notebook UUID
-     * @private
-     */
-    _removeNotebook(notebook_id) {
-        this._notebooks.delete(notebook_id)
     }
 }
 
@@ -257,9 +244,9 @@ export class Pluto {
  *   console.log("Notebook updated:", event);
  * });
  */
-export class PlutoNotebook {
+export class Worker {
     /**
-     * Create a new PlutoNotebook instance
+     * Create a new Worker instance
      *
      * Note: This constructor only creates the instance. You must call connect()
      * to establish the WebSocket connection and initialize the notebook state.
@@ -502,7 +489,7 @@ end
      *
      * @returns {NotebookData|null} Current notebook state, or null if not connected
      */
-    getNotebookState() {
+    getState() {
         return this.notebook_state
     }
 
@@ -512,7 +499,7 @@ end
      * @param {string} cell_id - Cell UUID
      * @returns {CellData|null} Cell data object with input, result, and local state
      */
-    getCell(cell_id) {
+    getSnippet(cell_id) {
         if (!this.notebook_state) return null
 
         return {
@@ -529,12 +516,12 @@ end
      *
      * @returns {Array<{cell_id: string} & CellData>} Array of cell data objects in execution order
      */
-    getCells() {
+    getSnippets() {
         if (!this.notebook_state || !this.notebook_state.cell_order) return []
 
         return this.notebook_state.cell_order.map((cell_id) => ({
             cell_id,
-            ...this.getCell(cell_id),
+            ...this.getSnippet(cell_id),
         }))
     }
 
@@ -551,7 +538,7 @@ end
      * @returns {Promise<Object|undefined>} Response from backend if run=true
      * @throws {Error} If not connected to notebook
      */
-    async updateCellCode(cell_id, code, run = true, metadata = {}) {
+    async updateSnippetCode(cell_id, code, run = true, metadata = {}) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }
@@ -561,7 +548,7 @@ end
         this._notify_update("cell_local_update", { cell_id, code })
 
         if (run) {
-            return await this.setCellsAndRun([cell_id], { cell_id: metadata })
+            return await this.setSnippetsAndRun([cell_id], { cell_id: metadata })
         }
     }
 
@@ -571,7 +558,7 @@ end
      * @param {Record<string, Object>} metadata_record - Metadata for each cell
      * @returns {Promise<Object>} - Response from backend
      */
-    async setCellsAndRun(cell_ids, metadata_record) {
+    async setSnippetsAndRun(cell_ids, metadata_record) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }
@@ -651,7 +638,7 @@ end
      * @example
      * const cellId = await notebook.addCell(0, "println(\"Hello World\")");
      */
-    async addCell(index = 0, code = "", metadata = {}) {
+    async addSnippet(index = 0, code = "", metadata = {}) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }
@@ -685,7 +672,7 @@ end
      * @param {Array<string>} cell_ids - Array of cell UUIDs to delete
      * @returns {Promise<void>}
      */
-    async deleteCells(cell_ids) {
+    async deleteSnippets(cell_ids) {
         if (!this.client || !this.notebook_state) {
             throw new Error("Not connected to notebook")
         }

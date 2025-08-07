@@ -32,7 +32,13 @@
     "url": "https://github.com/fonsp/Pluto.jl.git",
     "directory": "frontend/api"
   },
+  "targets": {
+    "pluto": {
+      "source": ["index.html", "editor.html", "error.jl.html"]
+    }
+  },
   "devDependencies": {
+    "@parcel/transformer-typescript-types": "^2.12.0",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",

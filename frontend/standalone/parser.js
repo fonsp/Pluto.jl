@@ -62,7 +62,7 @@ function parseNotebook(content, path = "") {
     const notebookId = generateUUID()
 
     // Create NotebookData structure
-    /** @type import("../components/Editor").NotebookData  */
+    /** @type import("../components/Editor.js").NotebookData  */
     const notebookData = {
         pluto_version: plutoVersion,
         notebook_id: notebookId,
