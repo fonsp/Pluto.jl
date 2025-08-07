@@ -31,9 +31,9 @@ const DEFAULT_CELL_METADATA = {
  * Parse a Pluto notebook file content and return NotebookData structure
  * @param {string} content - The raw content of the .jl notebook file
  * @param {string} [path=""] - The file path for the notebook
- * @returns {Object} NotebookData structure compatible with Pluto frontend
+ * @returns {import("../components/Editor.js").NotebookData} NotebookData structure compatible with Pluto frontend
  */
-function parseNotebook(content, path = "") {
+function parse(content, path = "") {
     const lines = content.split("\n")
 
     // Validate header
@@ -404,10 +404,10 @@ function serializeCellMetadata(metadata) {
 
 /**
  * Serialize NotebookData back to Pluto notebook file format
- * @param {Object} notebookData - NotebookData structure
+ * @param {import("../components/Editor.js").NotebookData} notebookData - NotebookData structure
  * @returns {string} Notebook file content
  */
-function serializeNotebook(notebookData) {
+function serialize(notebookData) {
     const lines = []
 
     // Header
@@ -500,4 +500,4 @@ function serializeNotebook(notebookData) {
 }
 
 // Export functions and constants
-export { parseNotebook as default, serializeNotebook, DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID }
+export { parse as default, serialize, DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID }

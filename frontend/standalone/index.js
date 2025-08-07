@@ -6,10 +6,10 @@
  */
 
 // Export main API classes from PlutoNotebookAPI.js
-export { Host as Pluto, Worker as PlutoNotebook } from "./client.js"
+export { Host, Worker } from "./client.js"
 
 // Export notebook parser functions
-export { default as parseNotebook, serializeNotebook } from "./parser.js"
+export { default as parse, serialize } from "./parser.js"
 
 // Export utility constants
 export { DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID } from "./parser.js"
