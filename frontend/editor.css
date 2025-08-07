@@ -1955,7 +1955,8 @@ pluto-input > .preview_hidden_code_info {
     margin-right: auto;
     margin-left: auto;
     height: 1.4rem;
-    width: 19ch;
+    width: max-content;
+    padding: 0em 1ch;
     font-style: italic;
     text-align: center;
     background: var(--jl-info-color);

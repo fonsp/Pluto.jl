@@ -251,7 +251,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                     <a
                         href="new"
                         onClick=${(e) => {
-                            on_start_navigation("new notebook")
+                            on_start_navigation(t("t_loading_something_new_notebook"))
                         }}
                         ><button><span class="ionicon"></span></button>${th("t_newnotebook")}</a
                     >

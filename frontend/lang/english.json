@@ -24,6 +24,8 @@
     "t_start_notebook_in_background": "Start notebook in background",
     "t_remove_from_recent_notebooks": "Remove from recent notebooks. This does not delete the notebook file.",
     "t_loading_something": "Loading {{text}}...",
+    "t_loading_something_notebook_from_clipboard": "notebook from clipboard",
+    "t_loading_something_new_notebook": "new notebook",
     "t_open_a_notebook_action": "Open a notebook",
     "t_enter_path_or_url": "Enter path or URL...",
     "t_open_file_action": "Open File",

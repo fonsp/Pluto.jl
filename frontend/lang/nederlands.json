@@ -19,6 +19,8 @@
     "t_start_notebook_in_background": "Notebook starten in de achtergrond",
     "t_remove_from_recent_notebooks": "Verwijder uit deze lijst. Dit verwijdert niet het notebook-bestand.",
     "t_loading_something": "{{text}} aan het laden...",
+    "t_loading_something_notebook_from_clipboard": "Notebook van klembord",
+    "t_loading_something_new_notebook": "Nieuwe notebook",
     "t_open_a_notebook_action": "Open een notebook",
     "t_enter_path_or_url": "Vul een pad of URL in...",
     "t_open_file_action": "Open bestand",
