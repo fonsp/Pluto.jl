@@ -9,6 +9,8 @@ import _ from "../imports/lodash.js"
 import english from "../lang/english.json" with { type: "json" }
 // @ts-ignore
 import nederlands from "../lang/nederlands.json" with { type: "json" }
+// @ts-ignore
+import ellinika from "../lang/ellinika.json" with { type: "json" }
 
 
 const without_empty_keys = (obj) => {
@@ -27,8 +29,11 @@ i18next
       nl: {
         translation: without_empty_keys(nederlands),
       },
+      el: {
+        translation: ellinika,
+      },
     },
-    // supportedLngs: ["en", "nl"],
+    // supportedLngs: ["en", "nl", "el"],
     detection: {
       // Disabled autodetection for now because we don't have enough translations yet.
       // order: ["localStorage", "navigator"],
