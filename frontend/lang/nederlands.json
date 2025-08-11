@@ -30,6 +30,7 @@
     "t_shut_down_notebook_process": "Notebook afsluiten?",
     "t_loading_ellipses": "Laden...",
     "t_notebooks": "Notebooks",
+    "t_cell_input_placeholder": "Code komt hier...",
     "t_add_cell": "Cel toevoegen ({{key}})",
     "t_drag_to_move_cell": "Sleep om de cel te verplaatsen",
     "t_show_hide_code": "Code tonen/verbergen",

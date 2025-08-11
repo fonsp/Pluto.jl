@@ -35,6 +35,7 @@
     "t_shut_down_notebook_process": "Shut down notebook process?",
     "t_loading_ellipses": "Loading...",
     "t_notebooks": "Notebooks",
+    "t_cell_input_placeholder": "Enter cell code...",
     "t_add_cell": "Add cell ({{key}})",
     "t_drag_to_move_cell": "Drag to move cell",
     "t_show_hide_code": "Show/hide code",
