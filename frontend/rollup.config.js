@@ -16,7 +16,7 @@ const aliasEntries = [
     { find: "https://esm.sh/preact@10.13.2?pin=v113&target=es2020", replacement: "preact" },
     { find: "https://esm.sh/preact@10.13.2/hooks?pin=v113&target=es2020", replacement: "preact/hooks" },
     { find: "https://esm.sh/htm@3.1.1?pin=v113&target=es2020", replacement: "htm" },
-    { find: "https://cdn.jsdelivr.net/npm/immer@8.0.0/dist/immer.esm.js", replacement: "immer" },
+    { find: "https://cdn.jsdelivr.net/npm/immer@10.1.1/dist/immer.production.mjs", replacement: "immer" },
     { find: "https://cdn.jsdelivr.net/npm/lodash-es@4.17.21/+esm", replacement: "lodash-es" },
     {
         find: "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@2001.0.0/dist/index.es.min.js",
