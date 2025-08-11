@@ -62,6 +62,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         title: null,
         description: null,
         date: null,
+        image: null,
         tags: [],
         author: [{}],
         ...frontmatter,
@@ -194,6 +195,7 @@ console.assert(
 const special_field_names = ["tags", "date", "license", "url", "color"]
 
 const field_type = (name) => {
+    if (name === "image") return "url"
     for (const t of special_field_names) {
         if (name === t || name.endsWith(`_${t}`)) {
             return t
