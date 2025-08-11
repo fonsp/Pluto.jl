@@ -13,9 +13,11 @@ export { resolveIncludes } from "./fs.js"
 
 // Export notebook parser functions
 export { default as parse, serialize } from "./parser.js"
+export { from_dyadgen as from_julia } from "./from_dyadgen.js"
 
 // Export utility constants
 export { DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID } from "./parser.js"
+export { EXECUTION_CELL_ID, MODULE_CELL_ID, PKG_CELL_ID } from "./from_dyadgen.js"
 
 export type { NotebookData, CellDependencyData, CellResultData, CellDependencyGraph, CellInputData, CellMetaData } from "../components/Editor.js"
 export type { PlutoConnection, WebsocketConnection } from "../common/PlutoConnection.js"
