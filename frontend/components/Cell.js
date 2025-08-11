@@ -101,6 +101,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  *  focus_after_creation: boolean,
  *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
+ *  inspecting_hidden_code: boolean,
  *  [key: string]: any,
  * }} props
  * */
@@ -120,6 +121,7 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
     is_first_cell,
+    inspecting_hidden_code,
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
@@ -209,8 +211,15 @@ export const Cell = ({
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
 
+    // When reading the code in a static HTML preview
+    const [inspecting_hidden_code_here, set_inspecting_hidden_code_here] = useState(false)
+    useEffect(() => {
+        if (!inspecting_hidden_code) set_inspecting_hidden_code_here(false)
+    }, [inspecting_hidden_code])
+
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
-    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded)
+    let show_input =
+        !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded || inspecting_hidden_code_here)
 
     const [line_heights, set_line_heights] = useState([15])
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
@@ -252,8 +261,12 @@ export const Cell = ({
         pluto_actions.add_remote_cell(cell_id, "after")
     }, [pluto_actions, cell_id, selected])
     const on_code_fold = useCallback(() => {
-        pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
-    }, [pluto_actions, cell_id, selected, code_folded])
+        if (inspecting_hidden_code) {
+            set_inspecting_hidden_code_here(!inspecting_hidden_code_here)
+        } else {
+            pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
+        }
+    }, [pluto_actions, cell_id, selected, code_folded, inspecting_hidden_code_here, inspecting_hidden_code])
     const on_run = useCallback(() => {
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
     }, [pluto_actions, cell_id, selected])
@@ -293,6 +306,7 @@ export const Cell = ({
                 selected,
                 code_differs: class_code_differs,
                 code_folded,
+                inspecting_hidden_code: code_folded && inspecting_hidden_code_here,
                 skip_as_script,
                 running_disabled,
                 depends_on_disabled_cells,

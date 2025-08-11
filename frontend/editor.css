@@ -1516,7 +1516,8 @@ pluto-editor.fullscreen pluto-shoulder {
     --shoulder-width: 2000px;
 }
 
-pluto-shoulder:hover {
+pluto-editor:not(.disable_ui) pluto-shoulder:hover {
+    /* pluto-shoulder:hover { */
     background: var(--shoulder-hover-bg-color);
     background-clip: padding-box;
 }
@@ -1542,7 +1543,7 @@ pluto-shoulder > button > span::after {
     filter: var(--image-filters);
 }
 
-pluto-cell.code_folded > pluto-shoulder > button > span::after {
+pluto-cell.code_folded:not(.inspecting_hidden_code) > pluto-shoulder > button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg");
     filter: var(--image-filters);
 }
@@ -1716,7 +1717,8 @@ pluto-input > button > span {
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell > pluto-runarea > button,
     pluto-cell:hover > pluto-shoulder > button,
-    pluto-cell:focus-within > pluto-shoulder > button {
+    pluto-cell:focus-within > pluto-shoulder > button,
+    :where(pluto-editor.inspecting_hidden_code) pluto-cell > pluto-shoulder > button {
         opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
@@ -1968,6 +1970,7 @@ pluto-input > .preview_hidden_code_info {
 }
 
 pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded > pluto-input > .preview_hidden_code_info,
+pluto-cell.inspecting_hidden_code > pluto-input > .preview_hidden_code_info,
 pluto-cell.code_folded:focus-within > pluto-input > .preview_hidden_code_info {
     display: block;
 }
