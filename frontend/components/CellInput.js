@@ -946,7 +946,7 @@ const InputContextMenu = ({
         if (cell_result == null) return false
 
         return (
-            (!cell_result.errored && cell_result.output.mime === "text/plain" && cell_result.output.body != null) ||
+            (!cell_result.errored && cell_result.output.mime === "text/plain" && !!cell_result.output.body) ||
             (cell_result.errored && cell_result.output.mime === "application/vnd.pluto.stacktrace+object")
         )
     }
