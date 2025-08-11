@@ -134,6 +134,7 @@
     "t_safe_preview_run_this_notebook_link": "run this notebook",
     
     "t_instant_feedback_ellipsis": "Instant feedback...",
+    "t_instant_feedback_send": "Send",
     "t_how_can_we_improve": "🙋 How can we make {{pluto}} better?",
     "t_FAQ": "FAQ",
 

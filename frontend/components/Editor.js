@@ -1808,7 +1808,7 @@ ${t("t_key_autosave_description")}`
                                     pluto: html`<a href="https://plutojl.org/" target="_blank">Pluto.jl</a>`,
                                 })}</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder=${t("t_instant_feedback_ellipsis")} />
-                                <button>Send</button>
+                                <button>${t("t_instant_feedback_send")}</button>
                             </form>
                         </div>
                     </footer>
