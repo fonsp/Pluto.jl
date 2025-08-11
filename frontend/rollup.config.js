@@ -1,6 +1,9 @@
 import typescript from "@rollup/plugin-typescript"
 import resolve from "@rollup/plugin-node-resolve"
 import alias from "@rollup/plugin-alias"
+import commonjs from "@rollup/plugin-commonjs"
+import json from "@rollup/plugin-json"
+import nodePolyfills from "rollup-plugin-node-polyfills"
 
 const external = []
 const aliasEntries = [
@@ -36,6 +39,8 @@ const aliasEntries = [
     },
     { find: "https://cdn.jsdelivr.net/npm/requestidlecallback-polyfill@1.0.2/index.js", replacement: "requestidlecallback-polyfill" },
     { find: "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js", replacement: "vmsg" },
+    { find: "fs", replacement: "memfs" },
+    { find: "path", replacement: "path-browserify" },
 ]
 
 export default [
@@ -49,9 +54,17 @@ export default [
         },
         external,
         plugins: [
+            nodePolyfills(),
             alias({
                 entries: aliasEntries,
             }),
+            resolve({
+                browser: true,
+                preferBuiltins: false,
+                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
+            }),
+            commonjs(),
+            json(),
             typescript({
                 tsconfig: "./tsconfig.json",
                 declaration: true,
@@ -62,11 +75,6 @@ export default [
                     checkJs: false,
                     noEmit: false,
                 },
-            }),
-            resolve({
-                browser: true,
-                preferBuiltins: false,
-                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
             }),
         ],
     },
@@ -81,9 +89,17 @@ export default [
         },
         external,
         plugins: [
+            nodePolyfills(),
             alias({
                 entries: aliasEntries,
             }),
+            resolve({
+                browser: true,
+                preferBuiltins: false,
+                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
+            }),
+            commonjs(),
+            json(),
             typescript({
                 tsconfig: "./tsconfig.json",
                 declaration: true,
@@ -94,11 +110,6 @@ export default [
                     checkJs: false,
                     noEmit: false,
                 },
-            }),
-            resolve({
-                browser: true,
-                preferBuiltins: false,
-                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
             }),
         ],
     },
