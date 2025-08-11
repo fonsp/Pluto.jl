@@ -44,12 +44,16 @@
   "devDependencies": {
     "@parcel/transformer-typescript-types": "^2.12.0",
     "@rollup/plugin-alias": "^5.1.1",
+    "@rollup/plugin-commonjs": "^28.0.6",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/lodash-es": "^4.17.6",
     "@types/node": "^20.11.0",
     "memfs": "^4.36.0",
+    "path-browserify": "^1.0.1",
     "rollup": "^4.9.6",
+    "rollup-plugin-node-polyfills": "^0.2.1",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3"
   },

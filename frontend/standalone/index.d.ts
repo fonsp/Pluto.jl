@@ -8,6 +8,9 @@ import { NotebookData } from "../components/Editor.js"
 // Export main API classes
 export { Host, Worker } from "./client.js"
 
+// Export resolver
+export { resolveIncludes } from "./fs.js"
+
 // Export notebook parser functions
 export { default as parse, serialize } from "./parser.js"
 
