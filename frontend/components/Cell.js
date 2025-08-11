@@ -209,8 +209,11 @@ export const Cell = ({
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
 
+    // When reading the code in a static HTML preview
+    const [show_hidden_code, set_show_hidden_code] = useState(Math.random() < 0.1)
+
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
-    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded)
+    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded || show_hidden_code)
 
     const [line_heights, set_line_heights] = useState([15])
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
@@ -293,6 +296,7 @@ export const Cell = ({
                 selected,
                 code_differs: class_code_differs,
                 code_folded,
+                showing_hidden_code: code_folded && show_hidden_code,
                 skip_as_script,
                 running_disabled,
                 depends_on_disabled_cells,

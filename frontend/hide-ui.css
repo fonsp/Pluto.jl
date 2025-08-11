@@ -9,8 +9,9 @@ pluto-editor.disable_ui header#pluto-nav,
 pluto-editor.disable_ui preamble > button,
 pluto-editor.disable_ui pluto-cell > button,
 pluto-editor.disable_ui pluto-input > button,
-pluto-editor.disable_ui pluto-shoulder,
-pluto-editor.disable_ui pluto-shoulder,
+/* pluto-editor.disable_ui pluto-shoulder, */
+/* pluto-editor.disable_ui pluto-shoulder, */
+
 pluto-editor.disable_ui footer,
 pluto-editor.disable_ui pluto-runarea,
 pluto-editor.disable_ui jlerror .doclink,
@@ -32,7 +33,6 @@ pluto-editor.disable_ui .fix-with-ai {
     pluto-editor preamble > button,
     pluto-editor pluto-cell > button,
     pluto-editor pluto-input > button,
-    pluto-editor pluto-shoulder,
     pluto-editor pluto-shoulder,
     pluto-editor footer,
     pluto-editor pluto-runarea,

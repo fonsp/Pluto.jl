@@ -40,7 +40,7 @@ import { IsolatedCell } from "./Cell.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
-import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
+import { ViewCodeOrLaunchBackendButtons } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
@@ -1706,7 +1706,7 @@ ${t("t_key_autosave_description")}`
                                 })
                             )}
                     />
-                    <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
+                    <${ViewCodeOrLaunchBackendButtons} editor=${this} launch_params=${launch_params} status=${status} />
                     <${FrontMatterInput}
                         filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 

@@ -1516,7 +1516,8 @@ pluto-editor.fullscreen pluto-shoulder {
     --shoulder-width: 2000px;
 }
 
-pluto-shoulder:hover {
+pluto-editor:not(.disable_ui) pluto-shoulder:hover {
+    /* pluto-shoulder:hover { */
     background: var(--shoulder-hover-bg-color);
     background-clip: padding-box;
 }
@@ -1968,6 +1969,7 @@ pluto-input > .preview_hidden_code_info {
 }
 
 pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded > pluto-input > .preview_hidden_code_info,
+pluto-cell.showing_hidden_code > pluto-input > .preview_hidden_code_info,
 pluto-cell.code_folded:focus-within > pluto-input > .preview_hidden_code_info {
     display: block;
 }

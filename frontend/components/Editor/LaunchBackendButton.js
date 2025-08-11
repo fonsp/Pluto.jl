@@ -5,7 +5,14 @@ import { start_local } from "../../common/RunLocal.js"
 import { BackendLaunchPhase, start_binder } from "../../common/Binder.js"
 import immer, { applyPatches, produceWithPatches } from "../../imports/immer.js"
 
-export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
+/**
+ * @param {{
+ *  editor: import("../Editor.js").Editor,
+ *  launch_params: import("../Editor.js").LaunchParameters,
+ *  status: Record<string, boolean>,
+ * }} props
+ */
+const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
     try {
         const EnvRun = useMemo(
             // @ts-ignore
@@ -44,4 +51,12 @@ export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => 
         />`
 
     return null
+}
+
+export const ViewCodeOrLaunchBackendButtons = ({ editor, launch_params, status }) => {
+    return html`<div class="edit_or_run">
+        <${EditorLaunchBackendButton} editor=${editor} launch_params=${launch_params} status=${status} />
+
+        <button title="Read hidden code">View code</button>
+    </div>`
 }

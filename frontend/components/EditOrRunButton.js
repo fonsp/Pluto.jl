@@ -10,17 +10,15 @@ export const RunLocalButton = ({ show, start_local }) => {
         start_local()
     }
 
-    return html`<div class="edit_or_run">
-        <button
-            onClick=${(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                start_local()
-            }}
-        >
-            ${th("t_edit_or_run_this_notebook")}
-        </button>
-    </div>`
+    return html`<button
+        onClick=${(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            start_local()
+        }}
+    >
+        ${th("t_edit_or_run_this_notebook")}
+    </button>`
 }
 
 /**
@@ -54,8 +52,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
     const recommend_download = notebookfile_ref.current.startsWith("data:")
     const runtime_str = expected_runtime_str(notebook)
 
-    return html`<div class="edit_or_run">
-        <button
+    return html`<button
             onClick=${(e) => {
                 toggleModal()
                 e.stopPropagation()
@@ -134,8 +131,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                           `}
                 </li>
             </ol>
-        </dialog>
-    </div>`
+        </dialog>`
 }
 
 const expected_runtime = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {
