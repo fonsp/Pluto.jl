@@ -1,17 +1,18 @@
 # Translations of Pluto
+We want to make Pluto and Julia more accessible to a wider audience! Since 0.20.14 (August 2025), Pluto has a *localization* system, which means that the Pluto UI interface can be used in a different language (English, Greek, etc). Because the Pluto developers only speak a couple of languages, we rely on **contributions from the community** to make Pluto available in more languages!
 
-The files in this directory are used to translate the Pluto frontend. This means that any text in the Pluto browser app can be displayed in a user's preferred language, which can really help to make Pluto and Julia more accessible to a wider audience!
+<img width="933" height="463" alt="Scherm­afbeelding 2025-08-11 om 22 56 30" src="https://github.com/user-attachments/assets/713bc887-2911-4faf-af07-2b33ef294c32" />
+
+_Here is a screenshot of Pluto in Greek! Also notice that one piece of text in the middle (`Enter cel code...`) has not been localized yet, so it uses English as a fallback._
 
 Do you want to help translate Pluto? Awesome!! Here is **How it works**, and **How to contribute**.
-
-
 
 ## Why contribute?
 Translating Pluto is a great way to help the Julia community, because it makes Julia more accessible to a much wider audience. Pluto is used around the world, but Julia and Pluto are still hard to use for people who don't speak English.
 
 We also want to break the tradition that "programming is in English". Programming is for everyone, and we hope that computers can be used regardless of language and culture.
 
-This work is also an **open source** contribution! Because you contribute translations via git and github, you will be listed in the Pluto contributors list (https://github.com/fonsp/Pluto.jl), and in the Pluto release notes (https://github.com/fonsp/Pluto.jl/releases).
+Your work is also an **open source** contribution! Because you contribute translations via git and github, you will be listed in the Pluto contributors list (https://github.com/fonsp/Pluto.jl), and in the Pluto release notes (https://github.com/fonsp/Pluto.jl/releases).
 
 
 
@@ -25,8 +26,23 @@ We are really interested in a right-to-left language (like Arabic or Farsi). Thi
 
 ## How it works
 
-The frontend of Pluto is uses [i18next](https://www.i18next.com/) to manage translations, with a standard JSON format for translations. 
+The frontend of Pluto is uses [i18next](https://www.i18next.com/) to manage translations, with a standard JSON format for translations. The JSON files are in this folder.
 
+For example, here is a part of `ellinika.json`, for the Greek language:
+
+```js
+    "t_edit_or_run_view_code_cancel": "{{icon}} Ακύρωση",
+    "t_edit_or_run_description_1": "Για να μπορέσετε να επεξεργαστείτε κώδικα και να εκτελέσετε κύτταρα, πρέπει να εκτελέσετε το σημειωματάριο μόνοι σας.",
+    "t_edit_or_run_description_2": "Πού θα θέλατε να εκτελέσετε το σημειωματάριο;",
+    "t_binder_help_text_title": "Στο cloud <em>(πειραματικό)</em>",
+```
+
+The Pluto UI uses these entries to display text, depending on the language. The right JSON file is picked for the user, and the text is taken from there. For each language, we have one JSON file.
+
+### Partial localization
+Important to know: partial localization is also welcome!! If the JSON file just has a couple of lines, then the language will be selected and those words are used, but English is used as a fallback. (We might make the fallback language customizable in the future!)
+
+### How it works in JavaScript
 Every piece of user-facing text in the Pluto frontend goes through the `t` function, which returns a string in the user's preferred language. For example, if we want to `confirm` to ask the user something, then we DON'T USE:
 
 ```js
@@ -48,8 +64,8 @@ The function `t` then returns the right string, taken from one of the JSON files
 By using `t` throughout Pluto's code, we can make any piece of text translatable!
 
 
-### Translation strings
-Take a look at some of the other translations to see the structure! Important to know:
+### Localization strings
+Take a look at some of the other localization files (JSON) to see the structure! Important to know:
 
 #### Interpolation
 Some strings include **interpolation**, like `"Welcome to {{pluto_logo}}"`. The frontend uses this to insert special content in these places. In your translation, be sure to include the exact same interpolation, but you can decide where it goes. For example, you can translate it to `"{{pluto_logo}} heet U welkom!"`.
@@ -71,6 +87,8 @@ You use the `_one`, `_other`, `_zero`, `_two`, `_few`, `_many`, and `_other` suf
 
 ## How to contribute
 
+Before you start, take a look at [the Issues and PRs labeled "language"](https://github.com/fonsp/Pluto.jl/issues?q=label%3Alanguage). Someone else might already be working on this language, and you could collaborate!
+
 Initial setup:
 1. Fork the Pluto.jl repository
 2. Clone your fork, we recommend GitHub Desktop. Let's say that you cloned it to `~/Desktop/Pluto.jl`
@@ -78,25 +96,36 @@ Initial setup:
 
 How to contribute:
 4. Run `julia update_languages.jl` to synchonize the JSON files with the English file. This will add new keys to the JSON files as empty strings, which you can then fill in.
-4. You can **edit the JSON files in this directory** to add translations. 🌟
+4. You can **edit the JSON files in this directory** to add text. 🌟
 5. When you are done, commit, push, and submit a pull request to the main Pluto.jl repository.
 
+Working on a larger porject? Make a "Draft PR" while you work, so that other can see that you are working, and maybe contribute!
 
 
-To see your translations in action while you are working on them:
+To see your language in action while you are working on it:
 1. In Julia, run `] dev ~/Desktop/Pluto.jl`. You now added your local copy of Pluto as a development package to your global Pkg environment. _(When you are done, you can run `] add Pluto` to go back to the normal Pluto installation.)_
 2. Start Pluto as usual. It should say `"It looks like your are developing the Pluto package, using the unbundled frontend."` in the terminal.
-3. Every time that you refresh the Pluto window, it will use your new translations!
+3. Every time that you refresh the Pluto window, it will use your new text!
 
 
-### Tips for writing translations
-Here is some advice for writing good translations:
-- Open `english.json` and your target language JSON file side by side, so you can see the original text and your translation at the same time.
-- If you want to see where a translation is used, you can search for the key in the Pluto codebase. This shows the place in our code where it is used. Don't try to understand the code, just try to figure out where it is used in the Pluto frontend.
-- If you are not sure about a translation, you can ask the Pluto developers for help.
-- Microsoft provides a repository with translation strings from their products: https://learn.microsoft.com/en-us/globalization/reference/microsoft-language-resources?utm_source=chatgpt.com#ui-strings
+### Writing tips
+Here is some advice for writing good localized text:
+- Open `english.json` and your target language JSON file side by side, so you can see the original text and your new text at the same time.
+- If you want to see where a localization is used, you can search for the key in the Pluto codebase. This shows the place in our code where it is used. Don't try to understand the code, just try to figure out where it is used in the Pluto frontend.
+- If you are not sure about a localization, you can ask the Pluto developers for help.
+- Microsoft provides a repository with localization strings from their products: https://learn.microsoft.com/en-us/globalization/reference/microsoft-language-resources#ui-strings
+
+#### Style guide
+Feel free to get creative! You don't need to match the English text exactly, just make sure that the idea gets conveyed clearly.
+
+With Pluto, we try to keep an **informal and clear style**, using simple and positive language. What would that look like in your language?
+
+### Modifying existing languages
+You are free to modify existing localization strings contributed by other people, if you see a way to improve! For large changes, we ask you to contact previous authors and find a consensus together.
 
 ### New languages
-If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how "nederlands" (`nl`) is set up, and copy the structure.
+If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how another language (like "nederlands" (`nl`)) is set up, and copy the structure.
 
-Your language might require additional support, like Right-To-Left or other typography features. Again, the Pluto developers are more than happy to work together with you to make this happen!
+**All languages and dialects are welcome!** Even if the language is not spoken by many people, or less represented in the scientific programming world, we would really like your contribution!
+
+Your language might require additional support, like Right-To-Left or other typography features. The Pluto developers are more than happy to work together with you to make this happen!
