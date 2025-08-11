@@ -34,7 +34,11 @@
   },
   "targets": {
     "pluto": {
-      "source": ["index.html", "editor.html", "error.jl.html"]
+      "source": [
+        "index.html",
+        "editor.html",
+        "error.jl.html"
+      ]
     }
   },
   "devDependencies": {
@@ -44,6 +48,7 @@
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/lodash-es": "^4.17.6",
     "@types/node": "^20.11.0",
+    "memfs": "^4.36.0",
     "rollup": "^4.9.6",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3"
@@ -58,7 +63,7 @@
   },
   "dependencies": {
     "@observablehq/stdlib": "^3.3.1",
-    "immer": "^8.0.4",
+    "immer": "^10.1.1",
     "lodash-es": "^4.17.21",
     "msgpack-lite": "github:fonsp/msgpack-lite#0.1.27-es.1",
     "requestidlecallback-polyfill": "^1.0.2",
