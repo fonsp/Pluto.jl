@@ -11,13 +11,14 @@ export const RunLocalButton = ({ show, start_local }) => {
     }
 
     return html`<button
+        class="edit_or_run_button"
         onClick=${(e) => {
             e.stopPropagation()
             e.preventDefault()
             start_local()
         }}
     >
-        ${th("t_edit_or_run_this_notebook")}
+        ${th("t_edit_or_run_this_notebook", { icon: html`<span></span>` })}
     </button>`
 }
 
@@ -53,13 +54,14 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
     const runtime_str = expected_runtime_str(notebook)
 
     return html`<button
+            class="edit_or_run_button"
             onClick=${(e) => {
                 toggleModal()
                 e.stopPropagation()
                 e.preventDefault()
             }}
         >
-            ${th("t_edit_or_run_this_notebook")}
+            ${th("t_edit_or_run_this_notebook", { icon: html`<span></span>` })}
         </button>
         <dialog ref=${dialog_ref} class="binder_help_text">
             <span onClick=${closeModal} class="close"></span>

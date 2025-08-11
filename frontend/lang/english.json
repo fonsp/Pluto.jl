@@ -225,7 +225,9 @@
     "t_bonds_static_warning": "You are viewing a static document. {{run_notebook_action}} to enable interactivity.",
     "t_bonds_static_warning_inner": "Run this notebook",
     
-    "t_edit_or_run_this_notebook": "<strong>Edit</strong> or <strong>run</strong> this notebook",
+    "t_edit_or_run_this_notebook": "{{icon}} <strong>Edit</strong> or <strong>run</strong> this notebook",
+    "t_edit_or_run_view_code": "{{icon}} View code",
+    "t_edit_or_run_view_code_cancel": "{{icon}} Cancel",
     "t_edit_or_run_description_1": "To be able to edit code and run cells, you need to run the notebook yourself.",
     "t_edit_or_run_description_2": "Where would you like to run the notebook?",
     "t_binder_help_text_title": "In the cloud <em>(experimental)</em>",

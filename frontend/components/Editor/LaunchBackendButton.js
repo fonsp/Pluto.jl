@@ -6,6 +6,7 @@ import { BackendLaunchPhase, start_binder } from "../../common/Binder.js"
 import immer, { applyPatches, produceWithPatches } from "../../imports/immer.js"
 import _ from "../../imports/lodash.js"
 import { open_pluto_popup } from "../../common/open_pluto_popup.js"
+import { th } from "../../common/lang.js"
 
 /**
  * @param {{
@@ -64,10 +65,36 @@ export const ViewCodeOrLaunchBackendButtons = ({ editor, launch_params, status }
     </div>`
 }
 
+/**
+ * @param {{
+ *  editor: import("../Editor.js").Editor,
+ *  launch_params: import("../Editor.js").LaunchParameters,
+ *  status: Record<string, boolean>,
+ * }} props
+ */
+const ViewCodeButton = ({ editor, launch_params, status }) => {
+    const current = editor.state.inspecting_hidden_code
+    return html`
+        <button
+            class=${current ? "view_hidden_code_cancel" : "view_hidden_code"}
+            title=${current ? "Cancel" : "Read hidden code"}
+            onClick=${(e) => {
+                editor.setState({ inspecting_hidden_code: !current })
+                if (!current) show_inspecting_code_info(e, editor)
+            }}
+        >
+            ${th(current ? "t_edit_or_run_view_code_cancel" : "t_edit_or_run_view_code", { icon: html`<span></span>` })}
+        </button>
+    `
+}
+
 const show_inspecting_code_info = (e, editor) => {
-    const all_buttons = [...e.target.closest("pluto-editor").querySelectorAll("pluto-cell.code_folded > pluto-shoulder > button")]
+    // Find the closest "show code" button, scroll to it, and open a popup with information.
 
     setTimeout(() => {
+        if (!editor.state.inspecting_hidden_code) return
+        const all_buttons = [...e.target.closest("pluto-editor").querySelectorAll("pluto-cell.code_folded > pluto-shoulder > button")]
+
         const viewportTop = 0
         const viewportBottom = window.innerHeight || document.documentElement.clientHeight
         const viewportCenter = (viewportTop + viewportBottom) / 2
@@ -80,11 +107,11 @@ const show_inspecting_code_info = (e, editor) => {
         })
 
         const closest = _.first(_.sortBy(vs, "distance"))
-        console.log(closest)
         if (closest == null) return
 
         closest.btn.closest("pluto-cell").scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" })
         setTimeout(() => {
+            if (!editor.state.inspecting_hidden_code) return
             open_pluto_popup({
                 type: "info",
                 body: html`← Click on this icon to read hidden code.`,
@@ -94,24 +121,3 @@ const show_inspecting_code_info = (e, editor) => {
         }, 600)
     }, 200)
 }
-
-/**
- * @param {{
- *  editor: import("../Editor.js").Editor,
- *  launch_params: import("../Editor.js").LaunchParameters,
- *  status: Record<string, boolean>,
- * }} props
- */
-const ViewCodeButton = ({ editor, launch_params, status }) => html`
-    <button
-        class="view_hidden_code"
-        title=${editor.state.inspecting_hidden_code ? "Cancel" : "Read hidden code"}
-        onClick=${(e) => {
-            const current = editor.state.inspecting_hidden_code
-            editor.setState({ inspecting_hidden_code: !current })
-            if (!current) show_inspecting_code_info(e, editor)
-        }}
-    >
-        ${editor.state.inspecting_hidden_code ? "Cancel" : "View code"}
-    </button>
-`

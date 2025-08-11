@@ -223,7 +223,9 @@
     "t_navigate_to_previous_page": "Επιστροφή",
     
     
-    "t_edit_or_run_this_notebook": "<strong>Επεξεργασία</strong> ή <strong>εκτέλεση</strong> αυτού του σημειωματαρίου",
+    "t_edit_or_run_this_notebook": "{{icon}} <strong>Επεξεργασία</strong> ή <strong>εκτέλεση</strong> αυτού του σημειωματαρίου",
+    "t_edit_or_run_view_code": "{{icon}} Προβολή κώδικα",
+    "t_edit_or_run_view_code_cancel": "{{icon}} Ακύρωση",
     "t_edit_or_run_description_1": "Για να μπορέσετε να επεξεργαστείτε κώδικα και να εκτελέσετε κύτταρα, πρέπει να εκτελέσετε το σημειωματάριο μόνοι σας.",
     "t_edit_or_run_description_2": "Πού θα θέλατε να εκτελέσετε το σημειωματάριο;",
     "t_binder_help_text_title": "Στο cloud <em>(πειραματικό)</em>",
