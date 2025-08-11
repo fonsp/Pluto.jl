@@ -95,6 +95,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
+    inspecting_hidden_code: state.inspecting_hidden_code,
     bonds_disabled: !(
         state.initializing ||
         // connected to regular pluto server
@@ -296,6 +297,7 @@ export const url_logo_small = get_included_external_source("pluto-logo-small")?.
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
+ * inspecting_hidden_code: boolean,
  * backend_launch_phase: ?number,
  * backend_launch_logs: ?string,
  * binder_session_url: ?string,
@@ -339,6 +341,7 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
+            inspecting_hidden_code: false,
             backend_launch_phase:
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
@@ -1730,6 +1733,7 @@ ${t("t_key_autosave_description")}`
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
+                            inspecting_hidden_code=${status.inspecting_hidden_code}
                             is_process_ready=${this.is_process_ready()}
                             process_waiting_for_permission=${status.process_waiting_for_permission}
                             sanitize_html=${status.sanitize_html}

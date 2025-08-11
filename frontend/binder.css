@@ -75,7 +75,7 @@ binder-spinner {
     display: block;
 }
 
-body.wiggle_binder .edit_or_run > button {
+body.wiggle_binder .edit_or_run > button:first-child {
     /* position: fixed; */
     animation: wiggle-binder-button 0.3s ease-in-out 0s 1;
 }
