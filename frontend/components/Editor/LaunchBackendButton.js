@@ -57,11 +57,10 @@ const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
 }
 
 export const ViewCodeOrLaunchBackendButtons = ({ editor, launch_params, status }) => {
-    const any_folded_cells = Object.values(editor.state.notebook.cell_inputs).some((cell) => cell.code_folded)
     return html`<div class="edit_or_run">
         <${EditorLaunchBackendButton} editor=${editor} launch_params=${launch_params} status=${status} />
 
-        ${!any_folded_cells ? null : html`<${ViewCodeButton} editor=${editor} launch_params=${launch_params} status=${status} />`}
+        <${ViewCodeButton} editor=${editor} launch_params=${launch_params} status=${status} />
     </div>`
 }
 
@@ -73,6 +72,23 @@ export const ViewCodeOrLaunchBackendButtons = ({ editor, launch_params, status }
  * }} props
  */
 const ViewCodeButton = ({ editor, launch_params, status }) => {
+    const enabled = (() => {
+        if (!status.static_preview) return false
+        const blf = editor.state.backend_launch_phase
+        if (blf != null && blf !== BackendLaunchPhase.wait_for_user) return false
+
+        const any_folded_cells = Object.values(editor.state.notebook.cell_inputs).some((cell) => cell.code_folded)
+        if (!any_folded_cells) return false
+
+        return true
+    })()
+
+    useEffect(() => {
+        if (!enabled) editor.setState({ inspecting_hidden_code: false })
+    }, [enabled])
+
+    if (!enabled) return null
+
     const current = editor.state.inspecting_hidden_code
     return html`
         <button
