@@ -316,8 +316,6 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
-console.log({ wot: t("t_multiple_definitions_for", { symbols: ["x", "y", "z"] }) })
-
 export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -576,7 +574,6 @@ const get_first_package = (limited_stacktrace) => {
 
 const motivational_word_probability = 0.1
 const motivational_words = /** @type {string[]} */ (t("t_motivational_words_be_creative_and_write_as_many_as_you_want", { returnObjects: true }))
-console.log("motivational_words", motivational_words)
 
 const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {

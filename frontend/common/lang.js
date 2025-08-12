@@ -20,7 +20,7 @@ const without_empty_keys = (obj) => {
 i18next
   .use(LanguageDetector)
   .init({
-    debug: true,
+    debug: false,
     fallbackLng: "en",
     resources: {
       en: {

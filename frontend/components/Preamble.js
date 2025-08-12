@@ -25,7 +25,6 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
     const clear_timeout = (x) => x && clearTimeout(x)
 
     useEffect(() => {
-        // console.log("code differs", any_code_differs)
         clear_timeout(timeout_ref?.current)
         if (any_code_differs) {
             set_state("ask_to_save")

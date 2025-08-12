@@ -80,7 +80,6 @@ export const AIContext = ({ cell_id, current_code }) => {
     useEventListener(formRef, "submit", (e) => {
         e.preventDefault()
         copyToClipboard()
-        console.log("submitted")
     })
 
     return html`

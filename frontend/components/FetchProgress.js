@@ -26,7 +26,6 @@ export const read_Uint8Array_with_progress = async (/** @type {Response} */ resp
                 const z = 1e6
                 on_progress(1.0 - z / (receivedLength - z))
             }
-            console.log({ receivedLength })
         }
 
         on_progress(1)
