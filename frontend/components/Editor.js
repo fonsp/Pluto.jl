@@ -1192,7 +1192,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm(t("t_confirm_move_file", { old_path, new_path }))) {
+                if (!confirm(t("t_confirm_move_file", { old_path, new_path, interpolation: { escapeValue: false } }))) {
                     throw new Error("Declined by user")
                 }
             }

@@ -287,7 +287,7 @@
     
     "t_pkg_go_to_help": "Learn more about packages in Pluto",
     
-    "t_save_all_changes": "<strong>Save all changes</strong> {{key}}",
+    "t_save_all_changes": "Save all changes",
     "t_save_all_changes_description": "Save and run all changed cells",
     "t_file_change_detected": "File change detected, <b>notebook updated</b>",
     "t_file_saved": "Saved",

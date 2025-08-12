@@ -250,7 +250,7 @@
     "t_pkg_currently_busy": "Pkg is even bezig met andere pakketten... probeer later nog eens!",
     "t_pkg_toggle_terminal": "Pkg terminal tonen/verbergen",
     "t_pkg_go_to_help": "Lees meer over pakketten in Pluto",
-    "t_save_all_changes": "<strong>Alles opslaan</strong> {{key}}",
+    "t_save_all_changes": "Alles opslaan",
     "t_save_all_changes_description": "Alle gewijzigde cellen opslaan en uitvoeren",
     "t_file_change_detected": "Bestandswijziging gevonden, <b>notebook gesynchroniseerd</b>",
     "t_file_saved": "Opgeslagen",

@@ -279,7 +279,7 @@
     
     "t_pkg_go_to_help": "Μάθετε περισσότερα για τα πακέτα στο Pluto",
     
-    "t_save_all_changes": "<strong>Αποθήκευση όλων των αλλαγών</strong> {{key}}",
+    "t_save_all_changes": "Αποθήκευση όλων των αλλαγών",
     "t_save_all_changes_description": "Αποθήκευση και εκτέλεση όλων των αλλαγμένων κελιών",
     "t_file_change_detected": "Ανιχνεύτηκε αλλαγή αρχείου, το <b>σημειωματάριο ενημερώθηκε</b>",
     "t_file_saved": "Αποθηκεύτηκε",

@@ -4,6 +4,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 import { t, th } from "../common/lang.js"
 
+const nbsp = "\u00A0"
 const await_focus = () =>
     document.visibilityState === "visible"
         ? Promise.resolve()
@@ -77,11 +78,9 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
                           class=${cl({ runallchanged: true })}
                           title=${t("t_save_all_changes_description")}
                       >
-                          <span class="only-on-hover"
-                              >${t("t_save_all_changes", {
-                                  key: is_mac_keyboard ? html`<kbd>⌘ S</kbd>` : html`<kbd>Ctrl</kbd>+<kbd>S</kbd>`,
-                              })}</span
-                          >
+                          <span class="only-on-hover"><strong>${t("t_save_all_changes")}</strong>${nbsp}</span>${is_mac_keyboard
+                              ? html`<kbd>⌘ S</kbd>`
+                              : html`<kbd>Ctrl</kbd>+<kbd>S</kbd>`}
                       </button>
                   </div>
               `
@@ -90,13 +89,13 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
             state === "saved" || state === "saving"
             ? html`
                   <div id="saveall-container" class="overlay-button ${state}">
-                      <span><span class="only-on-hover">${t("t_file_saved")} </span><span class="saved-icon pluto-icon"></span></span>
+                      <span><span class="only-on-hover">${t("t_file_saved")}${nbsp}</span><span class="saved-icon pluto-icon"></span></span>
                   </div>
               `
             : reload_state === "reloaded_from_file"
             ? html`
                   <div id="saveall-container" class="overlay-button ${state}">
-                      <span>${th("t_file_change_detected")} <span class="saved-icon pluto-icon"></span></span>
+                      <span>${th("t_file_change_detected")}${nbsp}<span class="saved-icon pluto-icon"></span></span>
                   </div>
               `
             : null}
