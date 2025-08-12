@@ -917,6 +917,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             this.setState({
                 initializing: false,
                 static_preview: false,
+                inspecting_hidden_code: false,
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
 
