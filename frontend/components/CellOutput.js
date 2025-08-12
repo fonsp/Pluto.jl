@@ -789,10 +789,11 @@ function apply_enhanced_markup_features(container, pluto_actions) {
         if (container.firstElementChild?.matches("div.markdown")) {
             container.querySelectorAll("pre > code").forEach((code_element) => {
                 const pre = code_element.parentElement
+                if (pre.closest("table, pluto-display, bond, pluto-tree")) return
                 generateCopyCodeButton(pre)
             })
             container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
-                if (header_element.closest("table, pluto-display, bond")) return
+                if (header_element.closest("table, pluto-display, bond, pluto-tree")) return
                 generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
             })
         }
