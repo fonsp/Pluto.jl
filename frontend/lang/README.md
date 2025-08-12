@@ -1,32 +1,32 @@
-# Translations of Pluto
+# Localization of Pluto
 We want to make Pluto and Julia more accessible to a wider audience! Since 0.20.14 (August 2025), Pluto has a *localization* system, which means that the Pluto UI interface can be used in a different language (English, Greek, etc). Because the Pluto developers only speak a couple of languages, we rely on **contributions from the community** to make Pluto available in more languages!
 
 <img width="933" height="463" alt="Scherm­afbeelding 2025-08-11 om 22 56 30" src="https://github.com/user-attachments/assets/713bc887-2911-4faf-af07-2b33ef294c32" />
 
 _Here is a screenshot of Pluto in Greek! Also notice that one piece of text in the middle (`Enter cel code...`) has not been localized yet, so it uses English as a fallback._
 
-Do you want to help translate Pluto? Awesome!! Here is **How it works**, and **How to contribute**.
+Do you want to help localize Pluto? Awesome!! Here is **How it works**, and **How to contribute**.
 
 ## Why contribute?
-Translating Pluto is a great way to help the Julia community, because it makes Julia more accessible to a much wider audience. Pluto is used around the world, but Julia and Pluto are still hard to use for people who don't speak English.
+Localizing Pluto is a great way to help the Julia community, because it makes Julia more accessible to a much wider audience. Pluto is used around the world, but Julia and Pluto are still hard to use for people who don't speak English.
 
 We also want to break the tradition that "programming is in English". Programming is for everyone, and we hope that computers can be used regardless of language and culture.
 
-Your work is also an **open source** contribution! Because you contribute translations via git and github, you will be listed in the Pluto contributors list (https://github.com/fonsp/Pluto.jl), and in the Pluto release notes (https://github.com/fonsp/Pluto.jl/releases).
+Your work is also an **open source** contribution! Because you contribute localizations via git and github, you will be listed in the Pluto contributors list (https://github.com/fonsp/Pluto.jl), and in the Pluto release notes (https://github.com/fonsp/Pluto.jl/releases).
 
 
 
 ## Collaboration
-The Pluto developers are really grateful for your help in translating Pluto! 🌟 And we are super excited to collaborate with you! 
+The Pluto developers are really grateful for your help in localizing Pluto! 🌟 And we are super excited to collaborate with you! 
 
-The ability to translate Pluto is quite new, and there will still be rough edges. Feel free to reach out whenever you want, and we will try to help you quickly! You can email us, open an issue, open a draft PR, whatever you prefer!
+The ability to localize Pluto is quite new, and there will still be rough edges. Feel free to reach out whenever you want, and we will try to help you quickly! You can email us, open an issue, open a draft PR, whatever you prefer!
 
 We are really interested in a right-to-left language (like Arabic or Farsi). This might require some additional tweaking, so reach out if you are interested to contribute, and we can work together to support it!
 
 
 ## How it works
 
-The frontend of Pluto is uses [i18next](https://www.i18next.com/) to manage translations, with a standard JSON format for translations. The JSON files are in this folder.
+The frontend of Pluto is uses [i18next](https://www.i18next.com/) to manage localizations, with a standard JSON format for localizations. The JSON files are in this folder.
 
 For example, here is a part of `ellinika.json`, for the Greek language:
 
