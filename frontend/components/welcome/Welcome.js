@@ -136,6 +136,8 @@ export const Welcome = ({ launch_params }) => {
         `
     }
 
+    // Changing this?
+    // Then also update index.html and the generate_index_html function.
     return html`
         <section id="title">
             <h1>${th("t_welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })}</h1>
@@ -151,7 +153,7 @@ export const Welcome = ({ launch_params }) => {
                 />
             </div>
         </section>
-        <section id="open_action">
+        <section id="open">
             <div>
                 <${Open}
                     client=${client_ref.current}
