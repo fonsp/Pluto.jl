@@ -392,7 +392,6 @@ export const CellInput = ({
             const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
-            console.table({ value, trimmed, offset })
             if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
                 // Markdown cell, change to code
                 let start, end
