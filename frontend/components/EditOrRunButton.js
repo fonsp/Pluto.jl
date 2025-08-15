@@ -11,7 +11,7 @@ export const RunLocalButton = ({ show, start_local }) => {
     }
 
     return html`<button
-        class="edit_or_run_button"
+        class="action edit_or_run_button"
         onClick=${(e) => {
             e.stopPropagation()
             e.preventDefault()
@@ -54,7 +54,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
     const runtime_str = expected_runtime_str(notebook)
 
     return html`<button
-            class="edit_or_run_button"
+            class="edit_or_run_button action"
             onClick=${(e) => {
                 toggleModal()
                 e.stopPropagation()

@@ -7,6 +7,17 @@ import immer, { applyPatches, produceWithPatches } from "../../imports/immer.js"
 import _ from "../../imports/lodash.js"
 import { open_pluto_popup } from "../../common/open_pluto_popup.js"
 import { th } from "../../common/lang.js"
+import { cl } from "../../common/ClassTable.js"
+
+export const ViewCodeOrLaunchBackendButtons = ({ editor, launch_params, status }) => {
+    return html`<div class="edit_or_run">
+        <button class="toggle_i_want_code">${th("t_i_want_code")}<span></span></button>
+
+        <${EditorLaunchBackendButton} editor=${editor} launch_params=${launch_params} status=${status} />
+
+        <${ViewCodeButton} editor=${editor} launch_params=${launch_params} status=${status} />
+    </div>`
+}
 
 /**
  * @param {{
@@ -56,14 +67,6 @@ const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
     return null
 }
 
-export const ViewCodeOrLaunchBackendButtons = ({ editor, launch_params, status }) => {
-    return html`<div class="edit_or_run">
-        <${EditorLaunchBackendButton} editor=${editor} launch_params=${launch_params} status=${status} />
-
-        <${ViewCodeButton} editor=${editor} launch_params=${launch_params} status=${status} />
-    </div>`
-}
-
 /**
  * @param {{
  *  editor: import("../Editor.js").Editor,
@@ -92,7 +95,11 @@ const ViewCodeButton = ({ editor, launch_params, status }) => {
     const current = editor.state.inspecting_hidden_code
     return html`
         <button
-            class=${current ? "view_hidden_code_cancel" : "view_hidden_code"}
+            class=${cl({
+                action: true,
+                view_hidden_code: true,
+                view_hidden_code_cancel: current,
+            })}
             title=${current ? "Cancel" : "Read hidden code"}
             onClick=${(e) => {
                 editor.setState({ inspecting_hidden_code: !current })
