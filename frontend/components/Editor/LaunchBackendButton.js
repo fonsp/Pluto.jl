@@ -99,7 +99,8 @@ const ViewCodeButton = ({ editor, launch_params, status }) => {
                 if (!current) show_inspecting_code_info(e, editor)
             }}
         >
-            ${th(current ? "t_edit_or_run_view_code_cancel" : "t_edit_or_run_view_code", { icon: html`<span></span>` })}
+            <span class="yayicon"></span>
+            <span class="text">${th(current ? "t_edit_or_run_view_code_cancel" : "t_edit_or_run_view_code")}</span>
         </button>
     `
 }

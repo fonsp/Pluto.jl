@@ -72,6 +72,8 @@ pluto-editor {
     flex-direction: column;
     align-items: center;
     min-width: 0;
+    container-type: inline-size;
+    container-name: editor;
 }
 
 main {
@@ -1957,7 +1959,7 @@ pluto-input > .preview_hidden_code_info {
     margin-right: auto;
     margin-left: auto;
     height: 1.4rem;
-    width: max-content;
+    max-width: max-content;
     padding: 0em 1ch;
     font-style: italic;
     text-align: center;
@@ -1967,6 +1969,9 @@ pluto-input > .preview_hidden_code_info {
     font-size: 0.9rem;
     z-index: 22;
     pointer-events: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded > pluto-input > .preview_hidden_code_info,

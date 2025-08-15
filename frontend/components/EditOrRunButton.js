@@ -18,7 +18,8 @@ export const RunLocalButton = ({ show, start_local }) => {
             start_local()
         }}
     >
-        ${th("t_edit_or_run_this_notebook", { icon: html`<span></span>` })}
+        <span class="yayicon"></span>
+        <span class="text">${th("t_edit_or_run_this_notebook")}</span>
     </button>`
 }
 
@@ -61,7 +62,8 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                 e.preventDefault()
             }}
         >
-            ${th("t_edit_or_run_this_notebook", { icon: html`<span></span>` })}
+            <span class="yayicon"></span>
+            <span class="text">${th("t_edit_or_run_this_notebook")}</span>
         </button>
         <dialog ref=${dialog_ref} class="binder_help_text">
             <span onClick=${closeModal} class="close"></span>
