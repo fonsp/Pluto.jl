@@ -7,7 +7,7 @@ import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { ansi_to_html } from "../imports/AnsiUp.js"
 import { FixWithAIButton } from "./FixWithAIButton.js"
-import { t, th } from "../common/lang.js"
+import { localized_list_htl, t, th } from "../common/lang.js"
 
 const nbsp = "\u00A0"
 
@@ -386,9 +386,13 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
                         let symbol_links = syms.map((what) => html`<a href="#${encodeURI(what)}">${what}</a>`)
 
-                        return html`<p>Cyclic references among${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                        const syms_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+
+                        return html`<p>${th("t_cyclic_references_among", { symbols: syms_interp })}</p>`
                     } else {
-                        return html`<p>${line}</p>`
+                        // This must be the hint.
+
+                        return html`<p>${th("t_cyclic_references_among_hint")}</p>`
                     }
                 }),
         },
@@ -412,9 +416,11 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                             return html`<a href="#" onclick=${onclick}>${what}</a>`
                         })
 
-                        return html`<p>${th("t_multiple_definitions_for", { symbols: symbol_links })}</p>`
+                        const syms_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+
+                        return html`<p>${th("t_multiple_definitions_for", { symbols: syms_interp })}</p>`
                     } else {
-                        return html`<p>${line}</p>`
+                        return html`<p>${th("t_cyclic_references_among_hint")}</p>`
                     }
                 }),
         },
@@ -454,7 +460,11 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 })
 
                 // const plural = symbol_links.length > 1
-                return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_links })}</em></p>`
+                console.log({ symbol_links })
+
+                const symbol_interp = localized_list_htl(symbol_links, Object.keys(erred_upstreams), { type: "disjunction" })
+
+                return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_interp })}</em></p>`
             },
             show_stacktrace: () => {
                 const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
@@ -588,6 +598,7 @@ const get_erred_upstreams = (
     /** @type {string} */ cell_id,
     /** @type {string[]} */ visited_edges = []
 ) => {
+    /** @type {Record<string, string>} */
     let erred_upstreams = {}
     if (notebook != null && notebook?.cell_results?.[cell_id]?.errored) {
         const referenced_variables = Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map)
