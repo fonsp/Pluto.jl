@@ -188,7 +188,7 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
     useLayoutEffect(() => {
         if (code_ref.current) {
-            code_ref.current.innerText = code
+            code_ref.current.textContent = code
             delete code_ref.current.dataset.highlighted
             highlight(code_ref.current, "julia")
         }
