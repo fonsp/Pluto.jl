@@ -49,7 +49,7 @@
     "t_error_message_from_package": "Foutmelding van {{package}}",
     "t_multiple_definitions_for": "Meerdere definities van {{symbols}}.",
     "t_cyclic_references_among": "De variabelen {{symbols}} zijn circulair gedefinieerd.",
-    "t_cyclic_references_among_hint": "Verzamel alle definities in één reactieve cel met een <code>begin ... end</code>-blok.",
+    "t_combine_cells_begin_block": "Verzamel alle definities in één reactieve cel met een <code>begin ... end</code>-blok.",
     "t_another_cell_defining_xs_contains_errors": "Een andere cel die {{symbols}} definieert, bevat fouten.",
     "t_error_message": "Foutmelding",
     "t_stack_trace": "Stack trace",

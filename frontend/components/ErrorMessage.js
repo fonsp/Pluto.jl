@@ -386,13 +386,13 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
                         let symbol_links = syms.map((what) => html`<a href="#${encodeURI(what)}">${what}</a>`)
 
-                        const syms_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+                        const symbol_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
 
-                        return html`<p>${th("t_cyclic_references_among", { symbols: syms_interp })}</p>`
+                        return html`<p>${th("t_cyclic_references_among", { symbols: symbol_interp })}</p>`
                     } else {
                         // This must be the hint.
 
-                        return html`<p>${th("t_cyclic_references_among_hint")}</p>`
+                        return html`<p>${th("t_combine_cells_begin_block")}</p>`
                     }
                 }),
         },
@@ -416,11 +416,11 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                             return html`<a href="#" onclick=${onclick}>${what}</a>`
                         })
 
-                        const syms_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+                        const symbol_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
 
-                        return html`<p>${th("t_multiple_definitions_for", { symbols: syms_interp })}</p>`
+                        return html`<p>${th("t_multiple_definitions_for", { symbols: symbol_interp })}</p>`
                     } else {
-                        return html`<p>${th("t_cyclic_references_among_hint")}</p>`
+                        return html`<p>${th("t_combine_cells_begin_block")}</p>`
                     }
                 }),
         },
@@ -458,9 +458,6 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                     }
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
-
-                // const plural = symbol_links.length > 1
-                console.log({ symbol_links })
 
                 const symbol_interp = localized_list_htl(symbol_links, Object.keys(erred_upstreams), { type: "disjunction" })
 
