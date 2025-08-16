@@ -4,6 +4,7 @@ import alias from "@rollup/plugin-alias"
 import commonjs from "@rollup/plugin-commonjs"
 import json from "@rollup/plugin-json"
 import nodePolyfills from "rollup-plugin-node-polyfills"
+import { copy } from "@web/rollup-plugin-copy"
 
 const external = []
 const aliasEntries = [
@@ -43,6 +44,32 @@ const aliasEntries = [
     { find: "path", replacement: "path-browserify" },
 ]
 
+const plugins = [
+    nodePolyfills(),
+    alias({
+        entries: aliasEntries,
+    }),
+    resolve({
+        browser: true,
+        preferBuiltins: false,
+        extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
+    }),
+    commonjs(),
+    json(),
+    typescript({
+        tsconfig: "./tsconfig.json",
+        declaration: true,
+        declarationDir: undefined,
+        noEmitOnError: false,
+        compilerOptions: {
+            allowJs: true,
+            checkJs: false,
+            noEmit: false,
+        },
+    }),
+    copy({ patterns: "standalone/integrations/node-polyfill.js" }),
+]
+
 export default [
     // ES Module build
     {
@@ -53,30 +80,7 @@ export default [
             sourcemap: true,
         },
         external,
-        plugins: [
-            nodePolyfills(),
-            alias({
-                entries: aliasEntries,
-            }),
-            resolve({
-                browser: true,
-                preferBuiltins: false,
-                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
-            }),
-            commonjs(),
-            json(),
-            typescript({
-                tsconfig: "./tsconfig.json",
-                declaration: true,
-                declarationDir: undefined,
-                noEmitOnError: false,
-                compilerOptions: {
-                    allowJs: true,
-                    checkJs: false,
-                    noEmit: false,
-                },
-            }),
-        ],
+        plugins,
     },
     // CommonJS build
     {
@@ -88,29 +92,6 @@ export default [
             exports: "named",
         },
         external,
-        plugins: [
-            nodePolyfills(),
-            alias({
-                entries: aliasEntries,
-            }),
-            resolve({
-                browser: true,
-                preferBuiltins: false,
-                extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
-            }),
-            commonjs(),
-            json(),
-            typescript({
-                tsconfig: "./tsconfig.json",
-                declaration: true,
-                declarationDir: undefined,
-                noEmitOnError: false,
-                compilerOptions: {
-                    allowJs: true,
-                    checkJs: false,
-                    noEmit: false,
-                },
-            }),
-        ],
+        plugins,
     },
 ]
