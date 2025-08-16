@@ -48,14 +48,20 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.6",
+    "@types/jsdom": "^21.1.7",
     "@types/lodash-es": "^4.17.6",
     "@types/node": "^20.11.0",
+    "@types/ws": "^8.18.1",
+    "@web/rollup-plugin-copy": "^0.5.1",
+    "jsdom": "^26.1.0",
     "memfs": "^4.36.0",
     "path-browserify": "^1.0.1",
     "rollup": "^4.9.6",
     "rollup-plugin-node-polyfills": "^0.2.1",
     "tslib": "^2.6.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "webcrypto": "^0.1.1",
+    "ws": "^8.18.3"
   },
   "exports": {
     ".": {
@@ -63,6 +69,9 @@
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js",
       "default": "./dist/index.esm.js"
+    },
+    "./node-polyfill": {
+      "default": "./standalone/integrations/node-polyfill.js"
     }
   },
   "dependencies": {
