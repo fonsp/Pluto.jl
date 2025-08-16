@@ -86,6 +86,7 @@ console.log("Current cells:", state.cell_order);
 **Worker Class**: Interface for individual notebook instances
 
 - `worker.connect()` - Establish WebSocket connection
+- `worker.execute()` - Execute code in the latest worker Module. Best for pure operations. Returns `[success:boolean, result:any]`. Only works for simple types.
 - `worker.addSnippet(index, code)` - Add new cell
 - `worker.updateSnippetCode(cell_id, code)` - Update cell code
 - `worker.getSnippets()` - Get all cells
