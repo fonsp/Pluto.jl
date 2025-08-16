@@ -1,5 +1,5 @@
 // @ts-nocheck
-import immer, { produceWithPatches, applyPatches, enablePatches, setAutoFreeze } from "https://cdn.jsdelivr.net/npm/immer@8.0.0/dist/immer.esm.js"
+import { Immer as immer, produceWithPatches, applyPatches, enablePatches, setAutoFreeze } from "https://cdn.jsdelivr.net/npm/immer@10.1.1/dist/immer.production.mjs"
 
 export { applyPatches, produceWithPatches }
 export default immer
