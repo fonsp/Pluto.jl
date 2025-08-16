@@ -7,3 +7,5 @@ export { default as english } from "../lang/english.json" with { type: "json" }
 export { default as nederlands } from "../lang/nederlands.json" with { type: "json" }
 // @ts-ignore
 export { default as ellinika } from "../lang/ellinika.json" with { type: "json" }
+// @ts-ignore
+export { default as polski } from "../lang/polski.json" with { type: "json" }
