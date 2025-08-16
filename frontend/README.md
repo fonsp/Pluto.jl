@@ -106,6 +106,22 @@ console.log("Current cells:", state.cell_order);
 - **Integration**: Embed Pluto functionality in other applications
 - **Analysis Tools**: Extract data and results from notebook executions
 
+# Integrations
+
+## Node.js integration
+
+To use from node.js, you need a special browser polyfill, based on jsdom:
+
+You need to import this (for its side-effects) first, as below:
+
+
+```
+import "@plutojl/rainbow/node-polyfill"
+import { Host, Worker } from "@plutojl/rainbow"
+// [...]
+```
+
+
 ## Development
 
 ### Building the Frontend
