@@ -6,7 +6,7 @@ import json from "@rollup/plugin-json"
 import nodePolyfills from "rollup-plugin-node-polyfills"
 import { copy } from "@web/rollup-plugin-copy"
 
-const external = []
+const external = ["react", "react-dom"]
 const aliasEntries = [
     { find: "https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/+esm", replacement: "@observablehq/stdlib" },
     {
@@ -68,6 +68,8 @@ const plugins = [
         },
     }),
     copy({ patterns: "standalone/integrations/node-polyfill.js" }),
+    copy({ patterns: "standalone/index.d.ts" }),
+    copy({ patterns: "standalone/integrations/react.d.ts" }),
 ]
 
 export default [
@@ -87,6 +89,28 @@ export default [
         input: "standalone/index.js",
         output: {
             file: "dist/index.js",
+            format: "cjs",
+            sourcemap: true,
+            exports: "named",
+        },
+        external,
+        plugins,
+    }, // ES Module build
+    {
+        input: "standalone/integrations/react.js",
+        output: {
+            file: "dist/react.esm.js",
+            format: "es",
+            sourcemap: true,
+        },
+        external,
+        plugins,
+    },
+    // CommonJS build
+    {
+        input: "standalone/integrations/react.js",
+        output: {
+            file: "dist/react.js",
             format: "cjs",
             sourcemap: true,
             exports: "named",

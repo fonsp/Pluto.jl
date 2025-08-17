@@ -1,6 +1,6 @@
 {
   "name": "@plutojl/rainbow",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "TypeScript/JavaScript API for programmatically interacting with Pluto notebooks",
   "type": "module",
   "main": "dist/standalone/index.js",
@@ -11,9 +11,8 @@
     "src"
   ],
   "scripts": {
-    "build": "npm run clean && npm run build:js && npm run build:types",
-    "build:js": "rollup -c",
-    "build:types": "mkdir -p dist/standalone && cp standalone/index.d.ts dist/standalone/index.d.ts && echo 'export * from \"./standalone/index\";' > dist/index.d.ts",
+    "build": "npm run clean && npm run rollup",
+    "rollup": "rollup -c",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
@@ -51,6 +50,7 @@
     "@types/jsdom": "^21.1.7",
     "@types/lodash-es": "^4.17.6",
     "@types/node": "^20.11.0",
+    "@types/react": "^19.1.10",
     "@types/ws": "^8.18.1",
     "@web/rollup-plugin-copy": "^0.5.1",
     "jsdom": "^26.1.0",
@@ -65,13 +65,19 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/standalone/index.d.ts",
       "import": "./dist/index.esm.js",
       "require": "./dist/index.js",
       "default": "./dist/index.esm.js"
     },
     "./node-polyfill": {
       "default": "./standalone/integrations/node-polyfill.js"
+    },
+    "./react": {
+      "types": "./dist/standalone/integrations/react.d.ts",
+      "import": "./dist/react.esm.js",
+      "require": "./dist/react.js",
+      "default": "./dist/react.esm.js"
     }
   },
   "dependencies": {
@@ -82,5 +88,17 @@
     "requestidlecallback-polyfill": "^1.0.2",
     "seamless-scroll-polyfill": "^2.3.4",
     "vmsg": "^0.4.0"
+  },
+  "peerDependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   }
 }
