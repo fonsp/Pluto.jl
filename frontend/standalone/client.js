@@ -433,7 +433,7 @@ export class Worker {
                 {},
                 {
                     notebook_id: this.notebook_id,
-                },
+                }
             )
 
             this._notify_update("notebook_restarted", {
@@ -479,7 +479,7 @@ end
                         link_id,
                         input,
                     },
-                    { notebook_id: this.notebook_id },
+                    { notebook_id: this.notebook_id }
                 )
                 .then((r) => r.message)
         } catch (ex) {
