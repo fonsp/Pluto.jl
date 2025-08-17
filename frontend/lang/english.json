@@ -172,6 +172,7 @@
     "t_ai_prompt_generator_title": "AI Prompt Generator",
     "t_ai_prompt_generator_intro": "You can copy this text into an AI chat to give it context from your notebook.",
     "t_ai_prompt_generator_question_input_placeholder": "Type your question here...",
+    "t_ai_prompt_generator_default_question_errored": "Why does this cell error?",
     "t_copy_action": "Copy",
     "t_copy_action_description": "Copy to clipboard",
     "t_copy_action_complete": "Copied!",
