@@ -678,6 +678,7 @@ end
      * @param {number} [index=0] - Position to insert the cell (0-based)
      * @param {string} [code=""] - Initial cell code
      * @param {Object} [metadata={}] - Additional cell metadata
+     * @param {string} [cell_id=uuidv4()] - Snippet's UUID, if you need to specifically set one
      * @returns {Promise<string>} UUID of the newly created cell
      * @throws {Error} If not connected to notebook
      *
@@ -758,7 +759,7 @@ end
      * This callback will be called every time a state update comes from the websocket.
      * Use this to react to cell execution results, notebook state changes, etc.
      *
-     * @param {function(UpdateEvent): void} callback - Function to call on updates
+     * @param {function(event: import("./index.js").UpdateEvent): void} callback - Function to call on updates
      * @returns {function(): void} Unsubscribe function to stop receiving updates
      *
      * @example
