@@ -121,6 +121,20 @@ import { Host, Worker } from "@plutojl/rainbow"
 // [...]
 ```
 
+## React integration
+
+We provide three react hooks: 
+
+```js
+import { Host, Worker } from "@plutojl/rainbow"
+import { RainbowProvider, usePlutoRainbow, useSnippetState, useSnippetLogs } from "@plutojl/rainbow/react"
+
+```
+
+- **RainbowProvider** provides a host and a worker context, along with setter and getter methods
+- **usePlutoRainbow** provides these valus
+- **useSnippetState** returns the state of the snippet of a worker, by id
+- **useSnippetLogs** returns the logs of the snippet of a worker, by id
 
 ## Development
 
