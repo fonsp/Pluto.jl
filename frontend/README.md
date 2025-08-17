@@ -87,7 +87,8 @@ console.log("Current cells:", state.cell_order);
 
 - `worker.connect()` - Establish WebSocket connection
 - `worker.execute()` - Execute code in the latest worker Module. Best for pure operations. Returns `[success:boolean, result:any]`. Only works for simple types.
-- `worker.addSnippet(index, code)` - Add new cell
+- `worker.waitSnippet(index, code)` - Add new snippet and wait for its result. Supports full Pluto output
+- `worker.addSnippet(index, code)` - Async version of the above, returns cell id when the server gets the request
 - `worker.updateSnippetCode(cell_id, code)` - Update cell code
 - `worker.getSnippets()` - Get all cells
 - `worker.onUpdate(callback)` - Listen for state changes
@@ -180,6 +181,7 @@ frontend/
 │   ├── index.js         # Main exports
 │   ├── client.js        # Host/Worker classes
 │   └── parser.js        # Notebook file parser
+│   └── ...
 └── themes/              # CSS themes (light/dark)
 ```
 
