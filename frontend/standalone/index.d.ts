@@ -24,7 +24,7 @@ export type { PlutoConnection, WebsocketConnection } from "../common/PlutoConnec
 
 // Type for update events
 export interface UpdateEvent {
-    type: string
+    type: "notebook_restarted" | "cell_local_update" | "cells_updated" | "cell_added" | "cells_deleted" | "notebook_updated" | string
     data: any
     timestamp: number
     notebook?: NotebookData

@@ -45,6 +45,7 @@ const aliasEntries = [
 ]
 
 const plugins = [
+    typescript(),
     nodePolyfills(),
     alias({
         entries: aliasEntries,
@@ -54,19 +55,8 @@ const plugins = [
         preferBuiltins: false,
         extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
     }),
-    commonjs(),
+    // commonjs(),
     json(),
-    typescript({
-        tsconfig: "./tsconfig.json",
-        declaration: true,
-        declarationDir: undefined,
-        noEmitOnError: false,
-        compilerOptions: {
-            allowJs: true,
-            checkJs: false,
-            noEmit: false,
-        },
-    }),
     copy({ patterns: "standalone/integrations/node-polyfill.js" }),
     copy({ patterns: "standalone/index.d.ts" }),
     copy({ patterns: "standalone/integrations/react.d.ts" }),

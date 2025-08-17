@@ -47,6 +47,7 @@
 import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { applyPatches, produceWithPatches } from "../imports/immer.js"
+import { getResult, getStatus } from "./getters.js"
 
 // vendored to drop unshakeable import
 export const empty_notebook_state = ({ notebook_id }) => ({
@@ -636,6 +637,37 @@ end
         return await new_task
     }
 
+    /**
+     * Add a new cell to the notebook and wait for its result.
+     *
+     * Creates a new cell with a generated UUID, inserts it at the specified
+     * position, and immediately runs it. The cell is added to both cell_inputs
+     * and cell_results with appropriate initial state. Waits
+     *
+     * @param {number} [index=0] - Position to insert the cell (0-based)
+     * @param {string} [code=""] - Initial cell code
+     * @param {Object} [metadata={}] - Additional cell metadata
+     * @param {string} [cell_id=uuidv4()] - Snippet's UUID, if you need to specifically set one     * @param {number} [timeout=-1] - Timeout to reject the results. defaults to -1 which disables the timeout
+     * @returns {Promise<CellData>} UUID of the newly created cell
+     * @throws {Error} If not connected to notebook
+     *
+     * @example
+     * const cellOutput = await worker.waitSnippet(0, "println(\"Hello World\")");
+     */
+
+    async waitSnippet(index = 0, code = "", metadata = {}, cell_id = uuidv4(), timeout = -1) {
+        await this.addSnippet(index, code, metadata, cell_id)
+        await new Promise((resolve, reject) => {
+            const timeout = timeout > 0 ? setTimeout(reject(null), timeout) : -1
+            const cleanup = this.onUpdate((v) => {
+                if (v.type === "notebook_updated" && getStatus(this, cell_id) === "done") {
+                    resolve(getResult(this, cell_id))
+                    cleanup()
+                    clearTimeout(timeout)
+                }
+            })
+        })
+    }
     /**
      * Add a new cell to the notebook
      *

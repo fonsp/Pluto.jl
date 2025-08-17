@@ -18,3 +18,5 @@ export { from_dyadgen as from_julia } from "./from_dyadgen.js"
 // Export utility constants
 export { DEFAULT_CELL_METADATA, PTOML_CELL_ID, MTOML_CELL_ID } from "./parser.js"
 export { EXECUTION_CELL_ID, MODULE_CELL_ID, PKG_CELL_ID } from "./from_dyadgen.js"
+
+export * from "./getters.ts"

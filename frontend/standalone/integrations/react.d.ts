@@ -3,15 +3,9 @@ import type { CellResultData } from "../index.js"
 import type { LogEntryData } from "../../components/Editor.js"
 import type { ReactNode, Context, ComponentType } from "react"
 
-export declare function useSnippetState(
-    worker: Worker,
-    cell_id: string
-): CellResultData | undefined
+export declare function useSnippetState(worker: Worker, cell_id: string): CellResultData | undefined
 
-export declare function useSnippetLogs(
-    worker: Worker,
-    cell_id: string
-): LogEntryData[] | undefined
+export declare function useSnippetLogs(worker: Worker, cell_id: string): LogEntryData[] | undefined
 
 export interface RainbowContextValue {
     url: string
