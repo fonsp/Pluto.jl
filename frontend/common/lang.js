@@ -13,17 +13,17 @@ i18next.use(LanguageDetector).init({
     debug: false,
     fallbackLng: "en",
     resources: {
+        de: {
+            translation: without_empty_keys(deutsch),
+        },
+        el: {
+            translation: ellinika,
+        },
         en: {
             translation: without_empty_keys(english),
         },
         nl: {
             translation: without_empty_keys(nederlands),
-        },
-        el: {
-            translation: ellinika,
-        },
-        de: {
-            translation: without_empty_keys(deutsch),
         },
     },
     // supportedLngs: ["en", "nl", "el", "de"],
