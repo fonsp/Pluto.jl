@@ -118,8 +118,8 @@ To add a new test:
     ```javascript
     runner.test("test description", () => {
         // Your test logic here
-        runner.assert(condition, "Error message");
-    });
+        runner.assert(condition, "Error message")
+    })
     ```
 
 ## Available Assertions
