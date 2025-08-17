@@ -18,33 +18,37 @@ test/
 ## Running Tests
 
 ### Local Development
+
 ```bash
 npm test
 ```
 
 ### CI/CD Integration
+
 The tests are designed to work in CI environments. They:
+
 - Exit with code 0 on success, 1 on failure
 - Provide clear console output with ✅/❌ indicators
 - Clean up temporary files automatically
 - Handle missing dependencies gracefully
 
 ### Example GitHub Actions Workflow
+
 ```yaml
 name: Test FileSystemResolver
 on: [push, pull_request]
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - name: Run tests
-        run: |
-          cd frontend/standalone
-          npm test
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: "18"
+            - name: Run tests
+              run: |
+                  cd frontend/standalone
+                  npm test
 ```
 
 ## Test Coverage
@@ -52,33 +56,39 @@ jobs:
 The test suite covers:
 
 ### ✅ Basic Include Resolution
+
 - Resolves `include("./file.jl")` statements
 - Adds clear markers showing include sources
 - Handles relative path resolution
 
-### ✅ Comment Handling  
+### ✅ Comment Handling
+
 - Ignores includes in commented lines (`# include(...)`)
 - Handles various comment formats:
-  - `# include("file.jl")`
-  - `    # include("file.jl")` (with leading spaces)
-  - `#include("file.jl")` (no space after #)
+    - `# include("file.jl")`
+    - `    # include("file.jl")` (with leading spaces)
+    - `#include("file.jl")` (no space after #)
 
 ### ✅ Nested Includes
+
 - Recursively resolves includes within included files
 - Maintains proper include hierarchy
 - Preserves original file structure
 
 ### ✅ Error Handling
+
 - Gracefully handles missing files
 - Continues processing after encountering errors
 - Provides clear error messages
 
 ### ✅ Circular Include Protection
+
 - Detects circular include dependencies
 - Prevents infinite loops
 - Provides clear warning messages
 
 ### ✅ File Structure Preservation
+
 - Maintains original formatting
 - Preserves comments and whitespace
 - Keeps module declarations intact
@@ -105,12 +115,12 @@ To add a new test:
 
 1. Add test data to `fixtures/` if needed
 2. Use the `runner.test()` method:
-   ```javascript
-   runner.test('test description', () => {
-       // Your test logic here
-       runner.assert(condition, 'Error message');
-   });
-   ```
+    ```javascript
+    runner.test("test description", () => {
+        // Your test logic here
+        runner.assert(condition, "Error message");
+    });
+    ```
 
 ## Available Assertions
 
