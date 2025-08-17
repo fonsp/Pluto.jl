@@ -5,6 +5,7 @@
     "lib": ["ES2021", "DOM"],
     "allowJs": true,
     "declaration": true,
+    "rootDir": ".",
     "outDir": "./dist",
     "declarationDir": "./dist",
     "skipLibCheck": true,
@@ -19,5 +20,5 @@
     ".",
     "standalone/**/*"
   ],
-  "exclude": ["node_modules", "dist", "api", "components/CellInput/mixedParsers.js"]
+  "exclude": ["node_modules", "dist", "components/CellInput/mixedParsers.js"]
 }
