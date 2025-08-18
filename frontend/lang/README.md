@@ -122,7 +122,7 @@ Feel free to get creative! You don't need to match the English text exactly, jus
 With Pluto, we try to keep an **informal and clear style**, using simple and positive language. What would that look like in your language?
 
 ## Using AI
-Feel free to use AI to help with writing the localization strings. But we do ask you to **check every localization string** yourself, and make sure that it is correct.
+Feel free to use AI to help with writing the localization strings. (For example, copy the complete JSON file into ChatGPT and ask kindly for a translation.) But we do ask you to **check every localization string** yourself, and make sure that it is correct.
 
 Also think about the **writing style**. Does the AI generate text in a style (formality, tone, etc) that you want? If not, try to tweak the prompt to get closer to the style you want.
 
