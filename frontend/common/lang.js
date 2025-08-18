@@ -69,6 +69,8 @@ export const getCurrentLanguage = () => {
     return i18next.language
 }
 
+document.documentElement.lang = getCurrentLanguage()
+
 /**
  * Like t, but you can interpolate Preact elements.
  * @param {string} key
