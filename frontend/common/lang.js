@@ -26,15 +26,11 @@ i18next.use(LanguageDetector).init({
             translation: without_empty_keys(nederlands),
         },
     },
-    // supportedLngs: ["de", "el", "en", "nl"],
     detection: {
-        // Disabled autodetection for now because we don't have enough translations yet.
-        // order: ["localStorage", "navigator"],
-        order: ["localStorage"],
+        order: ["localStorage", "navigator"],
         caches: ["localStorage"],
         lookupLocalStorage: "i18nextLng",
     },
-    // lng: "nl",
 })
 
 export const t = i18next.t

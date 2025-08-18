@@ -8,7 +8,7 @@ _Here is a screenshot of Pluto in Greek! Also notice that one piece of text in t
 Do you want to help localize Pluto? Awesome!! Here is **How it works**, and **How to contribute**.
 
 ## Why contribute?
-Localizing Pluto is a great way to help the Julia community, because it makes Julia more accessible to a much wider audience. Pluto is used around the world, but Julia and Pluto are still hard to use for people who don't speak English.
+Localizing Pluto is a great way to help the Julia community, because it makes Julia more accessible to a much wider audience. Pluto is used around the world, but Julia and Pluto can still be hard to use for people who don't speak English.
 
 We also want to break the tradition that "programming is in English". Programming is for everyone, and we hope that computers can be used regardless of language and culture.
 
@@ -89,18 +89,19 @@ You use the `_one`, `_other`, `_zero`, `_two`, `_few`, `_many`, and `_other` suf
 
 Before you start, take a look at [the Issues and PRs labeled "language"](https://github.com/fonsp/Pluto.jl/issues?q=label%3Alanguage). Someone else might already be working on this language, and you could collaborate!
 
-Initial setup:
+
+### Initial setup:
 1. Fork the Pluto.jl repository
 2. Clone your fork, we recommend GitHub Desktop. Let's say that you cloned it to `~/Desktop/Pluto.jl`
 3. Create a new branch for your contribution
 
-How to contribute:
+### How to contribute:
 4. Run `julia update_languages.jl` to synchonize the JSON files with the English file. This will add new keys to the JSON files as empty strings, which you can then fill in.
 4. You can **edit the JSON files in this directory** to add text. 🌟
 5. When you are done, commit, push, and submit a pull request to the main Pluto.jl repository.
 
-Working on a larger porject? Make a "Draft PR" while you work, so that other can see that you are working, and maybe contribute!
 
+### Test: try it in Pluto!
 
 To see your language in action while you are working on it:
 1. In Julia, run `] dev ~/Desktop/Pluto.jl`. You now added your local copy of Pluto as a development package to your global Pkg environment. _(When you are done, you can run `] add Pluto` to go back to the normal Pluto installation.)_
@@ -108,22 +109,34 @@ To see your language in action while you are working on it:
 3. Every time that you refresh the Pluto window, it will use your new text!
 
 
-### Writing tips
+## Writing tips
 Here is some advice for writing good localized text:
 - Open `english.json` and your target language JSON file side by side, so you can see the original text and your new text at the same time.
 - If you want to see where a localization is used, you can search for the key in the Pluto codebase. This shows the place in our code where it is used. Don't try to understand the code, just try to figure out where it is used in the Pluto frontend.
 - If you are not sure about a localization, you can ask the Pluto developers for help.
 - Microsoft provides a repository with localization strings from their products: https://learn.microsoft.com/en-us/globalization/reference/microsoft-language-resources#ui-strings
 
-#### Style guide
+### Style guide
 Feel free to get creative! You don't need to match the English text exactly, just make sure that the idea gets conveyed clearly.
 
 With Pluto, we try to keep an **informal and clear style**, using simple and positive language. What would that look like in your language?
 
-### Modifying existing languages
+## Using AI
+Feel free to use AI to help with writing the localization strings. But we do ask you to **check every localization string** yourself, and make sure that it is correct.
+
+Also think about the **writing style**. Does the AI generate text in a style (formality, tone, etc) that you want? If not, try to tweak the prompt to get closer to the style you want.
+
+> ### Previous experiences _(feel free to edit)_
+> @fonsp and @pankgeorg both used AI in different ways to help with their localization work. 
+> 
+> @fonsp used Cursor Tab (AI autocomplete), but found it only a bit useful. But he thinks that it was sometimes nicer and more fun to think of the text yourself. 
+> 
+> @pankgeorg used Claude Code to generate the full json file at once, and then tweaked it manually. He was pretty happy with the result.
+
+## Modifying existing languages
 You are free to modify existing localization strings contributed by other people, if you see a way to improve! For large changes, we ask you to contact previous authors and find a consensus together.
 
-### New languages
+## New languages
 If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how another language (like "nederlands" (`nl`)) is set up, and copy the structure.
 
 **All languages and dialects are welcome!** Even if the language is not spoken by many people, or less represented in the scientific programming world, we would really like your contribution!
