@@ -3,7 +3,7 @@ import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/d
 
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
-import { t, th } from "../common/lang.js"
+import { getCurrentLanguage, t, th } from "../common/lang.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -150,6 +150,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                             e.preventDefault()
                         }}
                         class="export_card"
+                        data-size=${getCurrentLanguage() === "el" ? "26" : getCurrentLanguage() === "de" ? "24" : null}
                     >
                         <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
                         <section>${th("t_export_card_record_description")}</section>
