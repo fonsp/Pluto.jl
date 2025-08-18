@@ -42,7 +42,7 @@ export const AIContext = ({ cell_id, current_code }) => {
 
     const notebook = /** @type{import("./Editor.js").NotebookData} */ (pluto_actions.get_notebook())
 
-    const default_question = notebook.cell_results[cell_id]?.errored === true ? "Why does this cell error?" : ""
+    const default_question = notebook.cell_results[cell_id]?.errored === true ? t("t_ai_prompt_generator_default_question_errored") : ""
     const [userQuestion, setUserQuestion] = useState(default_question)
 
     const recursive = true

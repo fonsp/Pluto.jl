@@ -47,7 +47,7 @@ import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
 import { LanguagePicker } from "./LanguagePicker.js"
-import { t, th } from "../common/lang.js"
+import { getCurrentLanguage, t, th } from "../common/lang.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -97,11 +97,14 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     static_preview: state.static_preview,
     inspecting_hidden_code: state.inspecting_hidden_code,
     bonds_disabled: !(
-        state.initializing ||
-        // connected to regular pluto server
-        state.connected ||
-        // connected to slider server
-        (launch_params.slider_server_url != null && (state.slider_server?.connecting || state.slider_server?.interactive))
+        // initializing, no answer yet
+        (
+            state.initializing ||
+            // connected to regular pluto server
+            state.connected ||
+            // connected to slider server
+            (launch_params.slider_server_url != null && (state.slider_server?.connecting || state.slider_server?.interactive))
+        )
     ),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,

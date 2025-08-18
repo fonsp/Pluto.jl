@@ -518,7 +518,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
             <!-- <p>This message was included with the error:</p> -->
         </div>
 
-        <header>${matched_rewriter.display(msg)}</header>
+        <header translate="yes">${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : stacktrace_waiting_to_view

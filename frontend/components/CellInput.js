@@ -1024,7 +1024,7 @@ const InputContextMenu = ({
         >
             ${open
                 ? html`<ul onMouseenter=${mouseenter}>
-                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+                      <${InputContextMenuItem} tag="delete" contents=${t("t_delete_cell_action")} title=${t("t_delete_cell_action")} onClick=${on_delete} setOpen=${setOpen} />
 
                       <${InputContextMenuItem}
                           title=${running_disabled ? t("t_enable_and_run_cell") : t("t_disable_this_cell_and_all_cells_that_depend_on_it")}
