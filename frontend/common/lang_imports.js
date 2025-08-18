@@ -12,4 +12,4 @@ export { default as nederlands } from "../lang/nederlands.json" with { type: "js
 // @ts-ignore
 export { default as nederlands } from "../lang/nederlands.json" with { type: "json" }
 // @ts-ignore
-export { default as norsk_bokmaal } from "../lang/norsk_bokmaal.json" with { type: "json" }
+export { default as norsk_bokmål } from "../lang/norsk_bokmaal.json" with { type: "json" }
