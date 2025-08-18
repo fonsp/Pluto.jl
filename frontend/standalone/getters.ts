@@ -1,7 +1,10 @@
 /** Utilities to work with NotebookData */
 import { Worker } from "./client.js";
 
-export type CellStatus = "queued" | "running" | "errored" | "done" | "pending";
+export const PROGRESS_LOG_LEVEL = "LogLevel(-1)"
+export const STDOUT_LOG_LEVEL = "LogLevel(-555)"
+
+export type CellStatus = "queued" | "running" | "errored" | "done" | "pending"
 
 export function getResult(worker: Worker, cell_id: string) {
     return worker.notebook_state.cell_results[cell_id];
@@ -14,7 +17,15 @@ export function getSnippetLogs(worker: Worker, cell_id: string) {
 export function getProgressLogs(worker: Worker, cell_id: string) {
     return (
         getSnippetLogs(worker, cell_id).filter((log) => {
-            return "group" in log && log.group === "ProgressLogging";
+            return log.level === PROGRESS_LOG_LEVEL
+        }) ?? []
+    )
+}
+
+export function getTerminalLogs(worker: Worker, cell_id: string) {
+    return (
+        getSnippetLogs(worker, cell_id).filter((log) => {
+            return log.level === STDOUT_LOG_LEVEL
         }) ?? []
     );
 }
