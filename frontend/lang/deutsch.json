@@ -12,7 +12,7 @@
     "t_live_docs_body": "<p>Willkommen bei der <b>Live-Dokumentation</b>! Lass dieses kleine Fenster offen, während du am Notebook arbeitest, und du erhältst Dokumentation zu allem, was du eingibst!</p><p>Du kannst auch eine Suchanfrage oben eingeben.</p><hr><p><em>Immer noch nicht weitergekommen? Hier sind <a target=\"_blank\" href=\"https://julialang.org/about/help/\">einige Tipps</a>.</em></p>",
     "t_panel_status": "Prozessstatus",
     "t_panel_status_short": "Status",
-    "t_panel_docs": "Live-Dokumentation",
+    "t_panel_docs": "Live Docs",
     "t_panel_status_progress": "Status {{progress}}",
     "t_panel_status_progress_inner": "({{done}}/{{total}})",
     "t_panel_close": "Panel schließen",
