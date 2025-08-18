@@ -13,6 +13,7 @@
     "t_panel_status": "Process status",
     "t_panel_status_short": "Status",
     "t_panel_docs": "Live docs",
+    "t_panel_docs_description": "Live Docs: Search for Julia documentation, and get live documentation of everything you type.",
     "t_panel_status_progress": "Status {{progress}}",
     "t_panel_status_progress_inner": "({{done}}/{{total}})",
     "t_panel_close": "Close panel",
