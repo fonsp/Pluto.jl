@@ -26,7 +26,7 @@ i18next.use(LanguageDetector).init({
             translation: without_empty_keys(nederlands),
         },
         nb: {
-            translation: without_empty_keys(norsk_bokmål),
+            translation: without_empty_keys(norsk_bokmaal),
         }
     },
     detection: {
