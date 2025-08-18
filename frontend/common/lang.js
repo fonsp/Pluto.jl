@@ -3,7 +3,7 @@ import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
 import { html } from "../imports/Preact.js"
 import _ from "../imports/lodash.js"
 
-import { english, nederlands, ellinika } from "./lang_imports.js"
+import { deutsch, ellinika, english, nederlands } from "./lang_imports.js"
 
 const without_empty_keys = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
@@ -13,14 +13,17 @@ i18next.use(LanguageDetector).init({
     debug: false,
     fallbackLng: "en",
     resources: {
+        de: {
+            translation: without_empty_keys(deutsch),
+        },
+        el: {
+            translation: ellinika,
+        },
         en: {
             translation: without_empty_keys(english),
         },
         nl: {
             translation: without_empty_keys(nederlands),
-        },
-        el: {
-            translation: ellinika,
         },
     },
     detection: {
