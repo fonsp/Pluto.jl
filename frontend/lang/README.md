@@ -34,7 +34,7 @@ For example, here is a part of `ellinika.json`, for the Greek language:
     "t_edit_or_run_view_code_cancel": "{{icon}} Ακύρωση",
     "t_edit_or_run_description_1": "Για να μπορέσετε να επεξεργαστείτε κώδικα και να εκτελέσετε κύτταρα, πρέπει να εκτελέσετε το σημειωματάριο μόνοι σας.",
     "t_edit_or_run_description_2": "Πού θα θέλατε να εκτελέσετε το σημειωματάριο;",
-    "t_binder_help_text_title": "Στο cloud <em>(πειραματικό)</em>",
+    "t_binder_help_text_title": "Στο cloud <em>(δοκιμαστικό)</em>",
 ```
 
 The Pluto UI uses these entries to display text, depending on the language. The right JSON file is picked for the user, and the text is taken from there. For each language, we have one JSON file.
