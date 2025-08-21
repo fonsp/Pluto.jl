@@ -263,6 +263,7 @@
     "t_frontmatter_cancel": "Cancel",
     "t_frontmatter_save": "Save",
     "t_frontmatter_preview": "Preview",
+    "t_frontmatter_language_placeholder": "en-US (enter a BCP 47 language tag)",
     
     
     "t_logs_truncated": "{{count}} logs not shown...",    

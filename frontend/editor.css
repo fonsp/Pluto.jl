@@ -3929,6 +3929,11 @@ pluto-cell.hooked_up > pluto-output {
     padding: 0.3em 0.5em;
 }
 
+.pluto-frontmatter input:invalid {
+    outline-color: red;
+    border-color: red;
+}
+
 .pluto-frontmatter rbl-tag-input {
     color: var(--black);
 }
