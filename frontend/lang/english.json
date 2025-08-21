@@ -162,6 +162,8 @@
     "t_save_cell": "Save code without running",
     "t_jump_cell": "This cell depends on a disabled cell",
     "t_run_cell": "Run cell (Shift + Enter)",
+    "t_help_about_tab_navigation_inside_cell": "Press <kbd>Esc</kbd> and then <kbd>Tab</kbd> to continue navigation.",
+
     
     "t_cell_is_disabled": "This cell is disabled. {{link}} to run the code.",
     "t_cell_is_disabled_link": "Enable this cell",
