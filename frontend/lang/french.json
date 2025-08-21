@@ -163,6 +163,8 @@
     "t_save_cell": "Sauvegarder ce code sans l'exécuter",
     "t_jump_cell": "Cette cellule dépend d'une cellule désactivée",
     "t_run_cell": "Exécuter la cellule (Shift + Entrée)",
+    "t_help_about_tab_navigation_inside_cell": "Presse <kbd>Esc</kbd> et puis <kbd>Tab</kbd> pour continuer la navigation.",
+
     
     "t_cell_is_disabled": "Cette cellule est désactivée. {{link}} pour exécuter le code.",
     "t_cell_is_disabled_link": "Activer cette cellule",
@@ -264,6 +266,7 @@
     "t_frontmatter_cancel": "Annuler",
     "t_frontmatter_save": "Sauvegarder",
     "t_frontmatter_preview": "Aperçu",
+    "t_frontmatter_language_placeholder": "fr-FR (entre un code de langue BCP 47)",
     
     
     "t_logs_truncated": "{{count}} logs non affichés...",    
