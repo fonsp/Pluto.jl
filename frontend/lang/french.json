@@ -4,7 +4,7 @@
     
     "t_my_work": "Mon travail",
     "t_newnotebook": "Créer un <strong>nouveau notebook</strong>",
-    "t_welcome_to_pluto": "bienvenue sur {{pluto}}",
+    "t_welcome_to_pluto": "bienvenue dans {{pluto}}",
     "t_confirmdeletencells": "Es-tu sûr·e de vouloir supprimer {{count}} cellules?",
     "t_FORGET": "OUBLIER",
     
@@ -12,7 +12,7 @@
     "t_live_docs_body": "<p>Bienvenue dans la <b>documentation en direct</b> ! Guarde cette petite fenêtre ouverte quand tu travailles sur le notebook, et tu auras de la documentation sur tout ce que tu tapes !</p><p>Tu peux aussi taper une recherche en haut.</p><hr><p><em>Toujours bloqué·e ? Voici <a target=\"_blank\" href=\"https://julialang.org/about/help/\">quelques astuces</a>.</em></p>",
     "t_panel_status": "Statut du processus",
     "t_panel_status_short": "Statut",
-    "t_panel_docs": "Live Docs",
+    "t_panel_docs": "Documentation",
     "t_panel_docs_description": "",
     "t_panel_status_progress": "Statut {{progress}}",
     "t_panel_status_progress_inner": "({{done}}/{{total}})",
@@ -20,8 +20,8 @@
     "t_panel_popout": "Décrocher le paneau",
     
     
-    "t_stop_notebook_session": "Arrêter la session",
-    "t_shut_down_notebook": "Éteindre le notebook",
+    "t_stop_notebook_session": "Fermer la session",
+    "t_shut_down_notebook": "Arrêter le notebook",
     "t_start_notebook_in_background": "Démarrer le notebook en arrière plan",
     "t_remove_from_recent_notebooks": "Supprimer des notebooks récents. Cela ne supprime pas le fichier du notebook.",
     "t_loading_something": "Chargement de {{text}}...",
@@ -36,7 +36,7 @@
     "t_shut_down_notebook_process": "Terminer le processus du notebook ?",
     "t_loading_ellipses": "Chargement...",
     "t_notebooks": "Notebooks",
-    "t_cell_input_placeholder": "",
+    "t_cell_input_placeholder": "Entrer du code...",
     "t_add_cell": "Ajouter une cellule ({{key}})",
     "t_drag_to_move_cell": "Glisser pour déplacer la cellule",
     "t_show_hide_code": "Afficher/masquer le code",
@@ -181,7 +181,7 @@
     "t_copy_header_id_action_description": "Clique pour copier l'URL dans cet en-tête",
     
     "t_ai_permission_prompt_title": "Utiliser l'IA pour résoudre les erreurs de syntaxe ?",
-    "t_ai_permission_prompt_body": "Pluto va envoyer le code de cette cellule vers un service de LLM commercial pour résoudre les erreurs de syntaxe. Le code mis à jour sera exécuté sans confirmation.",
+    "t_ai_permission_prompt_body": "Pluto va envoyer le code de cette cellule vers un service de LLM (grand modèle de language) commercial pour résoudre les erreurs de syntaxe. Le code mis à jour sera exécuté sans confirmation.",
     "t_ai_permission_prompt_body_2": "Le code soumis peut être utilisé anonymement par les développeurs et développeuses de Pluto pour améliorer le service d'IA.",
     "t_dont_ask_again": "Ne plus demander",
     "t_no": "Non",
@@ -256,7 +256,7 @@
     "t_time_seconds_other": "{{count}} secondes",
     
     "t_frontmatter_title": "Métadonnées",
-    "t_frontmatter_description": "Si tu publies ce notebook sur le web, tu peux définir les paramètres ci-dessous pour fournir des métadonnées HTML. C'est utile pour les moteurs de recherche et les réseaux sociaux.",
+    "t_frontmatter_description": "Si tu publies ce notebook sur le web, tu peux définir les paramètres ci-dessous pour fournir des métadonnées HTML. Celà est utile pour les moteurs de recherche et les réseaux sociaux.",
     "t_frontmatter_synchronized": "Métadonnées synchronisées ✔\n\nCes paramètres seront utilisés dans les futures exportations.",
     "t_frontmatter_delete_field": "Supprimer le champ",
     "t_frontmatter_add_field": "Ajouter un champ {{plus}}",
