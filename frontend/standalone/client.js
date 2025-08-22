@@ -183,7 +183,7 @@ export class Host {
             // Upload notebook text to server using /notebookupload endpoint
             const response = await fetch(`${this.server_url}/notebookupload`, {
                 method: "POST",
-                body: notebook_text,
+                body: notebook_text.trim(),
             })
 
             if (!response.ok) {
@@ -291,9 +291,29 @@ export class Worker {
         /** @type {Promise<void>} */
         this._update_queue_promise = Promise.resolve()
 
+        /** @type {Promise<void>} */
+        this.notebook_ready_promise = Promise.resolve()
+
         // Initialize notebook state
         this.cell_inputs_local = {}
         this.last_update_time = 0
+    }
+
+    async wait(ready = true) {
+        // Sleep for 35ms
+        await new Promise((r) => setTimeout(r, 35))
+        if (this.isIdle() === ready) {
+            return
+        }
+
+        return new Promise((resolve, reject) => {
+            const cleanup = this.onUpdate(() => {
+                if (this.isIdle() === ready) {
+                    cleanup()
+                    resolve()
+                }
+            })
+        })
     }
 
     /**
@@ -458,17 +478,20 @@ export class Worker {
         try {
             if (!this.notebook_state.cell_results[cell_id]) {
                 console.log()
-                throw new Error(`
-# REPL cell not installed. Try including the following cell, with id "00000000-0000-0208-1991-000000000000"
-begin
+                await this.waitSnippet(
+                    this.notebook_state.cell_execution_order.length - 2,
+                    `begin
+    using AbstractPlutoDingetjes
 	function eval_in_pluto(x::String)
 		id = PlutoRunner.moduleworkspace_count[]
 		new_workspace_name = Symbol("workspace#", id)
 		Core.eval(getproperty(Main, new_workspace_name), Meta.parse(x))
 	end
 	AbstractPlutoDingetjes.Display.with_js_link(eval_in_pluto)
-end
-`)
+end`,
+                    { ...DEFAULT_CELL_METADATA, code_folded: true },
+                    "00000000-0000-0208-1991-000000000000"
+                )
             }
             const link_id = this.notebook_state.cell_results[cell_id].output.body.split('", "')[1].substr(0, 16)
             return this.client
