@@ -22,7 +22,7 @@ begin
     using AbstractPlutoDingetjes
     function 🪟(a)
         io = IOBuffer()
-        show(io, m, a)
+        show(io, a)
         return String(take!(io))
     end
 	function eval_in_pluto(x::String)
