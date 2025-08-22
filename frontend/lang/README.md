@@ -3,7 +3,7 @@ We want to make Pluto and Julia more accessible to a wider audience! Since 0.20.
 
 <img width="933" height="463" alt="Scherm­afbeelding 2025-08-11 om 22 56 30" src="https://github.com/user-attachments/assets/713bc887-2911-4faf-af07-2b33ef294c32" />
 
-_Here is a screenshot of Pluto in Greek! Also notice that one piece of text in the middle (`Enter cel code...`) has not been localized yet, so it uses English as a fallback._
+_Here is a screenshot of Pluto in Greek! Also notice that one piece of text in the middle (`Enter cell code...`) has not been localized yet, so it uses English as a fallback._
 
 Do you want to help localize Pluto? Awesome!! Here is **How it works**, and **How to contribute**.
 
@@ -96,7 +96,7 @@ Before you start, take a look at [the Issues and PRs labeled "language"](https:/
 3. Create a new branch for your contribution
 
 ### How to contribute:
-4. Run `julia update_languages.jl` to synchonize the JSON files with the English file. This will add new keys to the JSON files as empty strings, which you can then fill in.
+4. Run `julia update_languages.jl` to synchronize the JSON files with the English file. This will add new keys to the JSON files as empty strings, which you can then fill in.
 4. You can **edit the JSON files in this directory** to add text. 🌟
 5. When you are done, commit, push, and submit a pull request to the main Pluto.jl repository.
 
