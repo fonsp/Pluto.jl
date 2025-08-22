@@ -12,6 +12,12 @@ begin
 	Pkg.add("AbstractPlutoDingetjes")
     Pkg.develop(path="${path}")
 	using PlutoLinks, Revise
+
+    function 🪟(a)
+        io = IOBuffer()
+        show(io, a)
+        return String(take!(io))
+    end
 end
 
 # ╔═╡ 37f18ca2-d376-4dad-acb5-b21639355488
@@ -20,11 +26,6 @@ end
 # ╔═╡ 00000000-0000-0208-1991-000000000000
 begin
     using AbstractPlutoDingetjes
-    function 🪟(a)
-        io = IOBuffer()
-        show(io, a)
-        return String(take!(io))
-    end
 	function eval_in_pluto(x::String)
 		id = PlutoRunner.moduleworkspace_count[]
 		new_workspace_name = Symbol("workspace#", id)
