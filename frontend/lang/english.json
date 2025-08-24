@@ -129,6 +129,7 @@
     "t_safe_preview": "Safe preview",
     "t_safe_preview_not_executed": "Code not executed in <em>Safe preview</em>",
     "t_safe_preview_not_rendered": "Scripts and styles not rendered in <em>Safe preview</em>",
+    "t_safe_preview_confirm_warning": "Warning",
     "t_safe_preview_confirm_before": "Are you sure that you trust this file?",
     "t_safe_preview_confirm_before_danger": "⚠️ Danger!",
     "t_safe_preview_confirm_after": "A malicious notebook can steal passwords and data.",

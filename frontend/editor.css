@@ -355,11 +355,13 @@ pluto-output div.admonition.info > .admonition-title,
 pluto-output div.admonition.hint > .admonition-title {
     background: var(--jl-info-accent-color);
 }
-pluto-output div.admonition.warning {
+pluto-output div.admonition.warning,
+pluto-output div.admonition.alert-danger {
     background: var(--jl-warn-color);
     border: 5px solid var(--jl-warn-accent-color);
 }
-pluto-output div.admonition.warning > .admonition-title {
+pluto-output div.admonition.warning > .admonition-title,
+pluto-output div.admonition.alert-danger > .admonition-title {
     background: var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.danger {
