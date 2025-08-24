@@ -1,13 +1,10 @@
 {
-    
     "t_language_name": "English",
-    
     "t_my_work": "My work",
     "t_newnotebook": "Create a <strong>new notebook</strong>",
     "t_welcome_to_pluto": "welcome to {{pluto}}",
     "t_confirmdeletencells": "Are you sure you want to delete {{count}} cells?",
     "t_FORGET": "FORGET",
-    
     "t_live_docs_search_placeholder": "Search docs...",
     "t_live_docs_body": "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a target=\"_blank\" href=\"https://julialang.org/about/help/\">some tips</a>.</em></p>",
     "t_panel_status": "Process status",
@@ -18,8 +15,6 @@
     "t_panel_status_progress_inner": "({{done}}/{{total}})",
     "t_panel_close": "Close panel",
     "t_panel_popout": "Pop out panel",
-    
-    
     "t_stop_notebook_session": "Stop session",
     "t_shut_down_notebook": "Shut down notebook",
     "t_start_notebook_in_background": "Start notebook in background",
@@ -44,11 +39,9 @@
     "t_cell_indirectly_disabled_in_file_tooltip": "This cell is indirectly flagged as disabled in file. Click to know more!",
     "t_cell_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />Use the context menu to enable it again.",
     "t_cell_indirectly_disabled_in_file_explanation": "This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />This way, it will not run when the notebook runs as a script outside of Pluto.<br />An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable {{upstreamLink}} to affect this cell.",
-    
     "t_language_picker_description": "Change the language of the interface",
     "t_refresh_to_see_language_change_confirm": "Language changed! Would you like to refresh the page to see the changes?",
 
-   
     "t_anonymous_function_abbr": "A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.",
     "t_display_complete_type_information_of_this_function_call": "Display the complete type information of this function call",
     "t_multiple_expressions_in_one_cell": "Multiple expressions in one cell",
@@ -125,7 +118,6 @@
     "t_process_restart_action_short": "restart",
     "t_process_give_permission_to_run_code": "Run notebook code",
     "t_process_running_cells": "Running cells... ({{done}}/{{total}} done)",
-    
     "t_safe_preview": "Safe preview",
     "t_safe_preview_not_executed": "Code not executed in <em>Safe preview</em>",
     "t_safe_preview_not_rendered": "Scripts and styles not rendered in <em>Safe preview</em>",
@@ -136,7 +128,6 @@
     "t_safe_preview_body": "You are reading and editing this file without running Julia code.",
     "t_safe_preview_run_this_notebook": "When you are ready, you can {{run_this_notebook}}.",
     "t_safe_preview_run_this_notebook_link": "run this notebook",
-    
     "t_instant_feedback_ellipsis": "Instant feedback...",
     "t_instant_feedback_send": "Send",
     "t_how_can_we_improve": "🙋 How can we make {{pluto}} better?",
@@ -165,12 +156,8 @@
     "t_run_cell": "Run cell (Shift + Enter)",
     "t_help_about_tab_navigation_inside_cell": "Press <kbd>Esc</kbd> and then <kbd>Tab</kbd> to continue navigation.",
 
-    
     "t_cell_is_disabled": "This cell is disabled. {{link}} to run the code.",
     "t_cell_is_disabled_link": "Enable this cell",
-    
-    
-    
     "t_ask_ai_action": "Ask AI",
     "t_ask_ai_action_description": "Ask AI about this cell",
     "t_ai_prompt_generator_title": "AI Prompt Generator",
@@ -181,14 +168,12 @@
     "t_copy_action_description": "Copy to clipboard",
     "t_copy_action_complete": "Copied!",
     "t_copy_header_id_action_description": "Click to copy URL to this header",
-    
     "t_ai_permission_prompt_title": "Use AI to fix syntax errors?",
     "t_ai_permission_prompt_body": "Pluto will send code from this cell to a commercial LLM service to fix syntax errors. Updated code will not run without confirmation.",
     "t_ai_permission_prompt_body_2": "Submitted code can be used (anonymously) by Pluto developers to improve the AI service.",
     "t_dont_ask_again": "Don't ask again",
     "t_no": "No",
     "t_yes": "Yes",
-    
     "t_ai_accept_and_close": "Accept AI syntax fix and close",
     "t_ai_decline_and_close": "Decline AI syntax fix and close",
     "t_ai_accept_and_run": "Accept & Run",
@@ -199,15 +184,10 @@
     "t_ai_syntax_fix_failed": "Failed to fix syntax error: {{error}}",
     "t_ai_fix_syntax_with_ai": "Fix syntax with AI",
     "t_ai_fix_syntax_with_ai_description": "Attempt to fix this syntax error using an LLM service",
-    
     "t_confirm_delete_multiple_cells": "Delete {{count}} cells?",
     "t_confirm_delete_multiple_interrupt_notebook": "This cell is still running - would you like to interrupt the notebook?",
     "t_confirm_move_file": "Are you sure? Will move from\n\n{{old_path}}\n\nto\n\n{{new_path}}?",
-    
-    
     "t_oopsie_pls_refresh": "Oopsie!! please refresh your browser and everything will be alright!",
-    
-    
     "t_key_run": "run cell",
     "t_key_run_add": "run cell and add cell below",
     "t_key_submit_all_changes": "submit all changes",
@@ -223,17 +203,12 @@
     "t_key_ctrl_c": "copy selected cells",
     "t_key_ctrl_x": "cut selected cells",
     "t_key_ctrl_v": "paste selected cells",
-    
     "t_key_autosave_description": "The notebook file saves every time you run a cell.",
     "t_key_selection_description": "Select multiple cells by dragging a selection box from the space between cells.",
-    
     "t_key_or": "or",
-    
     "t_navigate_to_previous_page": "Go back",
-    
     "t_bonds_static_warning": "You are viewing a static document. {{run_notebook_action}} to enable interactivity.",
     "t_bonds_static_warning_inner": "Run this notebook",
-    
     "t_edit_or_run_this_notebook": "<strong>Edit</strong> or <strong>run</strong> this notebook",
     "t_edit_or_run_view_code": "View code",
     "t_edit_or_run_view_code_cancel": "Cancel",
@@ -251,12 +226,10 @@
     "t_edit_or_run_open_the_notebook_file": "Open the notebook file",
     "t_edit_or_run_open_the_notebook_file_description": "Type the saved filename in the <em>open</em> box.",
     "t_edit_or_run_paste_url_in_the_open_box": "Paste URL in the <em>Open</em> box",
-    
     "t_time_minutes_one": "{{count}} minute",
     "t_time_minutes_other": "{{count}} minutes",
     "t_time_seconds_one": "{{count}} second",
     "t_time_seconds_other": "{{count}} seconds",
-    
     "t_frontmatter_title": "Frontmatter",
     "t_frontmatter_description": "If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and social media.",
     "t_frontmatter_synchronized": "Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.",
@@ -267,48 +240,36 @@
     "t_frontmatter_save": "Save",
     "t_frontmatter_preview": "Preview",
     "t_frontmatter_language_placeholder": "en-US (enter a BCP 47 language tag)",
-    
-    
-    "t_logs_truncated": "{{count}} logs not shown...",    
+    "t_logs_truncated": "{{count}} logs not shown...",
     "t_logs_stdout": "This text was written to the <a href=\"https://en.wikipedia.org/wiki/Standard_streams\" target=\"_blank\">terminal stream</a> while running the cell. It is not the <em>return value</em> of the cell.",
     "t_logs_click_for_more_info": "Click for more info",
-    
     "t_ready_notif_title": "Pluto: notebook ready",
     "t_ready_notif_body": "✓ All {{count}} steps completed",
     "t_ready_notif": "Notify when done",
     "t_ready_notif_permission": "Pluto needs permission to show notifications. <strong>Enable notifications</strong> in your browser settings to use this feature.",
-    
     "t_pkg_disables_str": "{{function}} disables Pluto's built-in package manager.",
     "t_pkg_stdlib": "{{package}} is part of Julia's pre-installed <em>standard library</em>.",
     "t_pkg_will_be_installed": "{{package}} will be installed when you run this notebook.",
     "t_pkg_is_installing": "{{package}} is installing...",
     "t_pkg_is_installed": "{{package}} is installed in the notebook.",
-    
     "t_pkg_not_found": "The package {{package}} could not be found in the registry. Did you make a typo?",
     "t_pkg_will_be_installed_in_notebook": "{{package}} will be installed in the notebook when you run this cell.",
-    
     "t_pkg_installation_can_take": "Installation can take {{time_install}}.<br/>Afterwards, it loads in {{time_load}}.",
     "t_pkg_update_packages": "Update packages",
     "t_pkg_update_packages_description": "Would you like to check for updates and install them? A backup of the notebook file will be created.",
     "t_pkg_currently_busy": "Pkg is currently busy with other packages... come back later!",
     "t_pkg_toggle_terminal": "Show/hide Pkg terminal output",
-    
     "t_pkg_go_to_help": "Learn more about packages in Pluto",
-    
     "t_save_all_changes": "Save all changes",
     "t_save_all_changes_description": "Save and run all changed cells",
     "t_file_change_detected": "File change detected, <b>notebook updated</b>",
     "t_file_saved": "Saved",
-    
     "t_recording_ui_start_recording": "<strong>Start recording</strong>",
     "t_recording_ui_start_recording_muted": "<strong>Start recording</strong> (no audio)",
     "t_recording_ui_stop_recording": "<strong>Stop recording</strong>",
     "t_recording_ui_back_to_recording": "Back to <strong>recording</strong> {{icon}}",
-    
     "t_presentation_previous_slide": "Previous slide",
     "t_presentation_next_slide": "Next slide",
-    
-    
     "t_status_names": {
         "workspace": "Workspace setup",
         "create_process": "Start Julia",
@@ -327,15 +288,12 @@
         "backend_responded": "Opening notebook file",
         "backend_notebook_running": "Switching to live editing"
     },
-    
     "t_tree_show_more_items": "more",
     "t_table_no_columns": "This table has no columns",
     "t_table_no_rows": "This table has no rows",
-    
     "t_undo_delete_one": "Cell deleted",
     "t_undo_delete_other": "{{count}} cells deleted",
     "t_undo_delete_link": "UNDO",
     "t_auto_disabled": "{{another_cell}} has been disabled because it also defined {{variable}}.",
     "t_auto_disabled_link": "Another cell"
 }
-        
