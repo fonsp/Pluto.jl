@@ -106,11 +106,11 @@
     "t_export_card_static_html_description": "En <b>.html</b>-fil til onlinedeling eller nettsiden din.",
     "t_export_card_pdf": "PDF",
     "t_export_card_pdf_description": "En statisk <b>.pdf</b>-fil til utskrift eller e-post.",
-    "t_export_card_record": "Ta opp <em>(forhåndsvisning)</em>",
-    "t_export_card_record_description": "Fang hele notebooken og alle endringer du gjør.",
+    "t_export_card_record": "Ta opp",
+    "t_export_card_record_description": "<em>(forhåndsvisning)</em> Fang hele notebooken og alle endringer du gjør.",
     "t_export_card_pride_month_message": "Fremtiden er <strong>skeiv</strong>!",
 
-    "t_save_notebook_ellipses": "Lagre notebook...",
+    "t_save_notebook_ellipsis": "Lagre notebook...",
     "t_save_notebook_button_label_when_currently_not_saved": "Velg",
     "t_save_notebook_button_label_when_currently_saved": "Flytt",
 
