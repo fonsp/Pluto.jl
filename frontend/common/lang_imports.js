@@ -8,6 +8,8 @@ export { default as ellinika } from "../lang/ellinika.json" with { type: "json" 
 // @ts-ignore
 export { default as english } from "../lang/english.json" with { type: "json" }
 // @ts-ignore
+export { default as french } from "../lang/french.json" with { type: "json" }
+// @ts-ignore
 export { default as nederlands } from "../lang/nederlands.json" with { type: "json" }
 // @ts-ignore
 export { default as nederlands } from "../lang/nederlands.json" with { type: "json" }

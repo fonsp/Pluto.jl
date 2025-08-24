@@ -1,9 +1,16 @@
-import i18next from "../imports/i18next.js"
-import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
-import { html } from "../imports/Preact.js"
-import _ from "../imports/lodash.js"
+import i18next from "../imports/i18next.js";
+import LanguageDetector from "../imports/i18next-browser-languagedetector.js";
+import { html } from "../imports/Preact.js";
+import _ from "../imports/lodash.js";
 
-import { deutsch, ellinika, english, nederlands, norsk_bokmål } from "./lang_imports.js"
+import {
+    deutsch,
+    ellinika,
+    english,
+    french,
+    nederlands,
+    norsk_bokmål,
+} from "./lang_imports.js";
 
 const without_empty_keys = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
@@ -21,6 +28,9 @@ i18next.use(LanguageDetector).init({
         },
         en: {
             translation: without_empty_keys(english),
+        },
+        fr: {
+            translation: without_empty_keys(french),
         },
         nl: {
             translation: without_empty_keys(nederlands),
@@ -74,8 +84,6 @@ export const changeLanguage = async (language) => {
 export const getCurrentLanguage = () => {
     return i18next.language
 }
-
-document.documentElement.lang = getCurrentLanguage()
 
 /**
  * Like t, but you can interpolate Preact elements.

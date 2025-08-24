@@ -924,6 +924,8 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
 
+            this.updateLang()
+
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
@@ -1464,6 +1466,12 @@ ${t("t_key_autosave_description")}`
         })
     }
 
+    updateLang() {
+        const lang = this.state.notebook.metadata?.frontmatter?.language
+        document.documentElement.lang = lang ?? getCurrentLanguage()
+        console.error("Updated lang to", document.documentElement.lang)
+    }
+
     componentDidMount() {
         const lp = this.props.launch_params
         if (this.state.static_preview) {
@@ -1479,6 +1487,7 @@ ${t("t_key_autosave_description")}`
                     : // @ts-ignore
                       `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
             )
+            this.updateLang()
         } else {
             this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
         }
@@ -1518,6 +1527,10 @@ ${t("t_key_autosave_description")}`
         }
         if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
             console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
+        }
+
+        if (old_state.notebook.metadata?.frontmatter?.language !== new_state.notebook.metadata?.frontmatter?.language) {
+            this.updateLang()
         }
     }
 

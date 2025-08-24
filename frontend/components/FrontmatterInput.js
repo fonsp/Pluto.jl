@@ -65,6 +65,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         image: null,
         tags: [],
         author: [{}],
+        language: null,
         ...frontmatter,
     }
 
@@ -192,7 +193,7 @@ console.assert(
     test
 )
 
-const special_field_names = ["tags", "date", "license", "url", "color"]
+const special_field_names = ["tags", "date", "license", "url", "color", "language"]
 
 const field_type = (name) => {
     if (name === "image") return "url"
@@ -225,13 +226,19 @@ const Input = ({ value, on_value, type, id }) => {
         }
     }, [input_ref.current])
 
-    const placeholder = type === "url" ? "https://..." : undefined
+    const placeholder = type === "url" ? "https://..." : type === "language" ? t("t_frontmatter_language_placeholder") : undefined
+
+    const pattern =
+        type === "language"
+            ? // https://stackoverflow.com/a/60899733
+              "^((?<grandfathered>(en-GB-oed|i-ami|i-bnn|i-default|i-enochian|i-hak|i-klingon|i-lux|i-mingo|i-navajo|i-pwn|i-tao|i-tay|i-tsu|sgn-BE-FR|sgn-BE-NL|sgn-CH-DE)|(art-lojban|cel-gaulish|no-bok|no-nyn|zh-guoyu|zh-hakka|zh-min|zh-min-nan|zh-xiang))|((?<language>([A-Za-z]{2,3}(-(?<extlang>[A-Za-z]{3}(-[A-Za-z]{3}){0,2}))?)|[A-Za-z]{4}|[A-Za-z]{5,8})(-(?<script>[A-Za-z]{4}))?(-(?<region>[A-Za-z]{2}|[0-9]{3}))?(-(?<variant>[A-Za-z0-9]{5,8}|[0-9][A-Za-z0-9]{3}))*(-(?<extension>[0-9A-WY-Za-wy-z](-[A-Za-z0-9]{2,8})+))*(-(?<privateUse>x(-[A-Za-z0-9]{1,8})+))?)|(?<privateUse1>x(-[A-Za-z0-9]{1,8})+))$"
+            : undefined
 
     return type === "tags"
         ? html`<rbl-tag-input id=${id} ref=${input_ref} />`
         : type === "license"
         ? LicenseInput({ ref: input_ref, id })
-        : html`<input type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} />`
+        : html`<input type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} pattern=${pattern} title=${placeholder} />`
 }
 
 // https://choosealicense.com/licenses/
