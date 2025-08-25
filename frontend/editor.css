@@ -4006,7 +4006,7 @@ pluto-header-id-copy {
     align-items: baseline;
     display: inline-block;
     padding: 0;
-    margin-left: 0.2em;
+    margin-inline-start: 0.2em;
     border: none;
     background: none;
     transition: opacity 0.1s ease;

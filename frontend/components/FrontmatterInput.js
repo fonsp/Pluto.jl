@@ -238,7 +238,7 @@ const Input = ({ value, on_value, type, id }) => {
         ? html`<rbl-tag-input id=${id} ref=${input_ref} />`
         : type === "license"
         ? LicenseInput({ ref: input_ref, id })
-        : html`<input type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} pattern=${pattern} title=${placeholder} />`
+        : html`<input dir="auto" type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} pattern=${pattern} title=${placeholder} />`
 }
 
 // https://choosealicense.com/licenses/
