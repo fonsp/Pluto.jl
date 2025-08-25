@@ -9,6 +9,7 @@ import {
     english,
     french,
     nederlands,
+    norsk_bokmål,
 } from "./lang_imports.js";
 
 const without_empty_keys = (obj) => {
@@ -34,6 +35,9 @@ i18next.use(LanguageDetector).init({
         nl: {
             translation: without_empty_keys(nederlands),
         },
+        nb: {
+            translation: without_empty_keys(norsk_bokmål),
+        }
     },
     detection: {
         order: ["localStorage", "navigator"],
