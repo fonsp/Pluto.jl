@@ -1,17 +1,18 @@
-import i18next from "../imports/i18next.js";
-import LanguageDetector from "../imports/i18next-browser-languagedetector.js";
-import { html } from "../imports/Preact.js";
-import _ from "../imports/lodash.js";
+import i18next from "../imports/i18next.js"
+import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
+import { html } from "../imports/Preact.js"
+import _ from "../imports/lodash.js"
 
 import {
+    // in alphabetical order
     deutsch,
     ellinika,
     english,
     french,
     nederlands,
     norsk_bokmål,
-    finnish,
-} from "./lang_imports.js";
+    suomi,
+} from "./lang_imports.js"
 
 const without_empty_keys = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
@@ -30,6 +31,9 @@ i18next.use(LanguageDetector).init({
         en: {
             translation: without_empty_keys(english),
         },
+        fi: {
+            translation: without_empty_keys(suomi),
+        },
         fr: {
             translation: without_empty_keys(french),
         },
@@ -39,9 +43,6 @@ i18next.use(LanguageDetector).init({
         nb: {
             translation: without_empty_keys(norsk_bokmål),
         },
-        fi: {
-            translation: without_empty_keys(finnish),
-        }
     },
     detection: {
         order: ["localStorage", "navigator"],
