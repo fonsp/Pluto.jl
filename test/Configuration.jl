@@ -5,6 +5,7 @@ using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
 using Pluto.WorkspaceManager: poll
+using LibGit2
 import URIs
 
 @testset "Configurations" begin
@@ -54,6 +55,9 @@ end
 
     @test _convert_to_flags(Configuration.CompilerOptions(compile="min")) ⊇
     ["--compile=min", "--startup-file=no", "--history-file=no"]
+
+    @test _convert_to_flags(Configuration.CompilerOptions(; code_coverage_file = "coverage.info", code_coverage_track = "user")) ⊇
+    ["--code-coverage=coverage.info", "--code-coverage=user"]
 end
 
 @testset "Authentication" begin
@@ -244,6 +248,41 @@ end
     @test notebook.cells[3].output.mime isa MIME"text/plain"
 
     cleanup(🍭, notebook)
+end
+
+@testset "Code Coverage" begin
+    mktempdir() do path
+        cd(path) do
+            # We develop Example.jl in this folder
+            example_path = joinpath(path, "Example")
+            LibGit2.clone("https://github.com/JuliaLang/Example.jl", example_path)
+            example_src = joinpath(example_path, "src", "Example.jl")
+
+            options = Pluto.Configuration.from_flat_kwargs(; launch_browser=false)
+            🍭 = ServerSession(; options)
+            🍭.options.compiler.code_coverage_track = "user"
+            🍭.options.compiler.code_coverage_file = "coverage.info"
+            if VERSION >= v"1.8"
+                # We change to track only this directory
+                🍭.options.compiler.code_coverage_track = "@$(path)"
+            end
+
+            covfile = joinpath(path, "coverage.info")
+
+            nb = Pluto.Notebook([
+                Pluto.Cell("""import Pkg; Pkg.activate(raw"$(example_path)")""")
+                Pluto.Cell("using Example")
+                Pluto.Cell("""hello("Pluto")""")
+                Pluto.Cell("domath(5)")
+            ])
+            sn = (🍭, nb)
+
+            Pluto.update_run!(🍭, nb, nb.cells)
+            Pluto.WorkspaceManager.unmake_workspace(sn) # We need to close the workspace for coverage files to be generated
+
+            @test contains(read(covfile, String), example_src)
+        end
+    end
 end
 
 end
