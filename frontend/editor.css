@@ -811,6 +811,40 @@ pluto-filepicker button:disabled {
     cursor: not-allowed;
 }
 
+header#pluto-nav pluto-filepicker button {
+    margin: 0px;
+    background: var(--footer-filepicker-focus-color);
+    border-radius: 0 3px 3px 0;
+    border: 3px solid var(--footer-filepicker-focus-color);
+    color: var(--footer-filepicker-button-color);
+    /* border: none; */
+    font-family: inherit;
+    font-weight: 600;
+    height: auto;
+    font-size: 0.75rem;
+}
+
+pluto-filepicker.suggest_button button {
+    outline: 4px solid var(--nav-filepicker-suggest-color);
+    animation: pulse-outline 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion) {
+    pluto-filepicker.suggest_button button {
+        animation: none;
+    }
+}
+
+@keyframes pulse-outline {
+    0%,
+    50% {
+        outline-offset: 0px;
+    }
+    25% {
+        outline-offset: 4px;
+    }
+}
+
 /* .desktop_picker button {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
