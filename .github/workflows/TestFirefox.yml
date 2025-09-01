@@ -47,14 +47,6 @@ jobs:
         with:
           chrome-version: 'latest'
 
-      
-      - run: |
-          ${{ steps.setup-firefox.outputs.firefox-path }} --version
-
-      
-      - run: |
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
-
       - run: |
           julia --project=$GITHUB_WORKSPACE -e 'import Pluto
 
