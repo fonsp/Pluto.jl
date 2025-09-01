@@ -352,12 +352,21 @@ const pathhints =
                     }
                 }
 
+                const startpos = ctx.pos
+                const validFor = (/** @type {string} */ text, from, to) => {
+                    return (
+                        to >= startpos &&
+                        /[\p{L}\p{Nl}\p{Sc}\d_!-\.]*$/u.test(text) &&
+                        // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                        !results.includes(basename(text))
+                    )
+                }
+
                 return {
                     options: styledResults,
                     from: from,
                     to: ctx.state.doc.length,
-                    // Not using a validFor because the suggest_new_file logic does not work with it.
-                    // validFor,
+                    validFor: suggest_new_file ? undefined : validFor,
                 }
             })
     }
