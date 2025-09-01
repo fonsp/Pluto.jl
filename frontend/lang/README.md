@@ -142,3 +142,16 @@ If you want to contribute a new language/dialect that does not yet have a JSON f
 **All languages and dialects are welcome!** Even if the language is not spoken by many people, or less represented in the scientific programming world, we would really like your contribution!
 
 Your language might require additional support, like Right-To-Left or other typography features. The Pluto developers are more than happy to work together with you to make this happen!
+
+### Creating a new JSON file
+Create a new JSON file for your language. Put in the following:
+
+```json
+{
+    "t_language_name": "Ελληνικά",
+}
+```
+
+and replace `Ελληνικά` with the name of your language (written in your language, not English).
+
+Now run `julia update_languages.jl` to fill in the rest of the file with empty strings. Now you can start working on the file!
