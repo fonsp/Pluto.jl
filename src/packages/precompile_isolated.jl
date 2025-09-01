@@ -18,6 +18,12 @@ function precompile_isolated(
         # https://github.com/JuliaLang/julia/pull/58887
         :force_fancyprint => true,
     )
+        
+    
+    try
+        printstyled(out_stream,"[debug cache flags] ",  Base.CacheFlags(), "\n"; color=:light_black)
+    catch
+    end
     
     @static if !(v"1.11.7" <= VERSION < v"1.12.0-aaa" || VERSION >= v"1.12.0-rc1")
         # Versions that do no include https://github.com/JuliaLang/julia/pull/58887
