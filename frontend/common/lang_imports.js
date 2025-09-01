@@ -12,3 +12,4 @@ export { default as french } from "../lang/french.json" with { type: "json" }
 export { default as nederlands } from "../lang/nederlands.json" with { type: "json" }
 export { default as norsk_bokmål } from "../lang/norsk_bokmål.json" with { type: "json" }
 export { default as suomi } from "../lang/suomi.json" with { type: "json" }
+export { default as japanese } from "../lang/japanese.json" with { type: "json" }

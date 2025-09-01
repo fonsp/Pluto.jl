@@ -9,6 +9,7 @@ import {
     ellinika,
     english,
     french,
+    japanese,
     nederlands,
     norsk_bokmål,
     suomi,
@@ -42,6 +43,9 @@ i18next.use(LanguageDetector).init({
         },
         nb: {
             translation: without_empty_keys(norsk_bokmål),
+        },
+        ja: {
+            translation: without_empty_keys(japanese),
         },
     },
     detection: {
