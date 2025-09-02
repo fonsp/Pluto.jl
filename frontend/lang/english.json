@@ -55,6 +55,7 @@
     "t_another_cell_defining_xs_contains_errors": "Another cell defining {{symbols}} contains errors.",
     "t_error_message": "Error message",
     "t_stack_trace": "Stack trace",
+    "t_header_list_of_syntax_errors": "Syntax errors",
     "t_here_is_what_happened_the_most_recent_locations_are_first": "Here is what happened, the most recent locations are first:",
     "t_show_stack_trace": "Show stack trace...",
     "t_stack_frame_location": "from",
