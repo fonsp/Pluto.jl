@@ -12,6 +12,17 @@ export const guess_notebook_location = async (path_or_url) => {
         if (!["http:", "https:", "ftp:", "ftps:"].includes(u.protocol)) {
             throw "Not a web URL"
         }
+        if (u.host === "pluto.land") {
+            console.log("pluto.land URL detected")
+            const parts = u.pathname.substring(1).split("/")
+            if (parts.length >= 2 && parts[0] === "n") {
+                return {
+                    type: "url",
+                    display_url: `https://pluto.land/n/${parts[1]}`,
+                    path_or_url: `https://pluto.land/n/${parts[1]}/notebookfile`,
+                }
+            }
+        }
         if (u.host === "gist.github.com") {
             console.log("Gist URL detected")
             const parts = u.pathname.substring(1).split("/")
