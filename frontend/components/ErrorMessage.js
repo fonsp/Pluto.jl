@@ -240,7 +240,7 @@ export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
             </header>
             <section>
                 <div class="stacktrace-header">
-                    <secret-h1>Syntax errors</secret-h1>
+                    <secret-h1>${t("t_header_list_of_syntax_errors")}</secret-h1>
                 </div>
                 <ol>
                     ${diagnostics.map(

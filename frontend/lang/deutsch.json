@@ -25,7 +25,7 @@
     "t_remove_from_recent_notebooks": "Aus aktuellen Notebooks entfernen. Dies löscht nicht die Notebookdatei.",
     "t_loading_something": "Lade {{text}}...",
     "t_loading_something_notebook_from_clipboard": "Notebook aus Zwischenablage",
-    "t_loading_something_new_notebook": "Neues Notebook",
+    "t_loading_something_new_notebook": "neues Notebook",
     "t_open_a_notebook_action": "Ein Notebook öffnen",
     "t_enter_path_or_url": "Pfad oder URL eingeben...",
     "t_open_file_action": "Datei öffnen",

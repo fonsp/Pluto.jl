@@ -18,7 +18,7 @@ import { t, th } from "../../common/lang.js"
 export const Open = ({ client, connected, CustomPicker, show_samples, on_start_navigation }) => {
     const on_open_path = async (new_path) => {
         const processed = await guess_notebook_location(new_path)
-        on_start_navigation(processed.path_or_url)
+        on_start_navigation(processed.display_url ?? processed.path_or_url)
         window.location.href = (processed.type === "path" ? link_open_path : link_open_url)(processed.path_or_url)
     }
 
