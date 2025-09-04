@@ -8,6 +8,7 @@ import {
     deutsch,
     ellinika,
     english,
+    farsi,
     french,
     nederlands,
     norsk_bokmål,
@@ -30,6 +31,9 @@ i18next.use(LanguageDetector).init({
         },
         en: {
             translation: without_empty_keys(english),
+        },
+        fa: {
+            translation: without_empty_keys(farsi),
         },
         fi: {
             translation: without_empty_keys(suomi),
