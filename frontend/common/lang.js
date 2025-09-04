@@ -94,6 +94,10 @@ export const getCurrentLanguage = () => {
     return i18next.language
 }
 
+export const getWritingDirection = () => {
+    return t("t_language_direction") === "rtl" ? "rtl" : "ltr"
+}
+
 /**
  * Like t, but you can interpolate Preact elements.
  * @param {string} key
