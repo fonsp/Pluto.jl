@@ -63,8 +63,8 @@ export const getAvailableLanguages = () => {
     const totalKeys = englishKeys.length
 
     return languages.map((lang) => {
-        const langKeys = Object.keys(i18next.options.resources?.[lang]?.translation || {})
-        const completeness = totalKeys > 0 ? Math.round((langKeys.length / totalKeys) * 100) : 100
+        const lang_entries = Object.entries(i18next.options.resources?.[lang]?.translation || {}).filter(([key, value]) => value !== "")
+        const completeness = totalKeys > 0 ? Math.round((lang_entries.length / totalKeys) * 100) : 100
 
         return {
             code: lang,
