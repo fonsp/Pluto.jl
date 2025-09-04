@@ -37,7 +37,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
 
     return html`<${PasteHandler} on_start_navigation=${on_start_navigation} />
         <h2>${picker.text}</h2>
-        <div id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
+        <div dir="ltr" id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
             <${FilePicker}
                 key=${picker.placeholder}
                 client=${client}

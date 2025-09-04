@@ -47,7 +47,7 @@ import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
 import { LanguagePicker } from "./LanguagePicker.js"
-import { getCurrentLanguage, t, th } from "../common/lang.js"
+import { getCurrentLanguage, getWritingDirection, t, th } from "../common/lang.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1469,7 +1469,8 @@ ${t("t_key_autosave_description")}`
     updateLang() {
         const lang = this.state.notebook.metadata?.frontmatter?.language
         document.documentElement.lang = lang ?? getCurrentLanguage()
-        console.error("Updated lang to", document.documentElement.lang)
+        document.documentElement.dir = getWritingDirection()
+        console.error("Updated lang to", document.documentElement.lang, document.documentElement.dir)
     }
 
     componentDidMount() {
