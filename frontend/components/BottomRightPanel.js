@@ -113,7 +113,7 @@ export let BottomRightPanel = ({
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
                 <header translate=${false}>
                     <button
-                        title="Live Docs: Search for Julia documentation, and get live documentation of everything you type."
+                        title=${t("t_panel_docs_description")}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-docs": true,

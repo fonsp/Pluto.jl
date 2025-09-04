@@ -388,7 +388,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
-                let code = node.innerText
+                let code = node.textContent
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 

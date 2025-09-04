@@ -18,7 +18,8 @@ export const RunLocalButton = ({ show, start_local }) => {
             start_local()
         }}
     >
-        ${th("t_edit_or_run_this_notebook", { icon: html`<span></span>` })}
+        <span class="yayicon"></span>
+        <span class="text">${th("t_edit_or_run_this_notebook")}</span>
     </button>`
 }
 
@@ -61,7 +62,8 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                 e.preventDefault()
             }}
         >
-            ${th("t_edit_or_run_this_notebook", { icon: html`<span></span>` })}
+            <span class="yayicon"></span>
+            <span class="text">${th("t_edit_or_run_this_notebook")}</span>
         </button>
         <dialog ref=${dialog_ref} class="binder_help_text">
             <span onClick=${closeModal} class="close"></span>
@@ -71,7 +73,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                           ${t("t_edit_or_run_description_1")}
                           <b>${th("t_edit_or_run_description_2")}</b>
                       </p>
-                      ${runtime_str == null ? null : html` <div class="expected_runtime_box">${t("t_edit_or_run_runtime", { runtime: runtime_str })}</div>`}
+                      ${runtime_str == null ? null : html` <div class="expected_runtime_box">${th("t_edit_or_run_runtime", { runtime: runtime_str })}</div>`}
                       <h2 style="margin-top: 3em;">${th("t_binder_help_text_title")}</h2>
                       <div style="padding: 0 2rem;">
                           <button onClick=${start_binder}>

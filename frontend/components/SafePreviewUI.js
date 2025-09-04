@@ -36,10 +36,10 @@ export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_sourc
                                           </p>
                                           ${warn_about_untrusted_code
                                               ? html`
-                                                    <pluto-output class="rich_output"
+                                                    <pluto-output translate="yes" class="rich_output"
                                                         ><div class="markdown">
                                                             <div class="admonition warning">
-                                                                <p class="admonition-title">Warning</p>
+                                                                <p class="admonition-title">${t("t_safe_preview_confirm_warning")}</p>
                                                                 <p>${t("t_safe_preview_confirm_before")}</p>
                                                                 ${risky_file_source == null ? null : html`<p><code>${risky_file_source}</code></pre>`}
                                                                 <p>${t("t_safe_preview_confirm_after")}</p>
@@ -69,5 +69,5 @@ export const SafePreviewOutput = () => {
 
 /** @type {string} */ // Because this is used as innerHTML content, without preact.
 export const SafePreviewSanitizeMessage = `<div class="safe-preview-output">
-<span class="offline-icon pluto-icon"></span><span>${t("t_safe_preview_not_rendered")}</span>
+<span class="offline-icon pluto-icon"></span><span>${th("t_safe_preview_not_rendered")}</span>
 </div>`

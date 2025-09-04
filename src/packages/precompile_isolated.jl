@@ -11,13 +11,29 @@ function precompile_isolated(
     import Pkg
     popfirst!(LOAD_PATH)
     
-    out_stream = IOContext(stdout, :color => true)
-    # I'm a pirate harrr 🏴‍☠️
-    @static if isdefined(Pkg, :can_fancyprint)
-        Pkg.can_fancyprint(io::IO) = true
+    out_stream = IOContext(
+        stdout,
+        :color => true,
+        # Look at that I put a feature in Julia! 😎
+        # https://github.com/JuliaLang/julia/pull/58887
+        :force_fancyprint => true,
+    )
+        
+    
+    try
+        printstyled(out_stream,"[debug cache flags] ",  Base.CacheFlags(), "\n"; color=:light_black)
+    catch
     end
-    @static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
-        Base.Precompilation.can_fancyprint(io::IO) = true
+    
+    @static if !(v"1.11.7" <= VERSION < v"1.12.0-aaa" || VERSION >= v"1.12.0-rc1")
+        # Versions that do no include https://github.com/JuliaLang/julia/pull/58887
+        # I'm a pirate harrr 🏴‍☠️
+        @static if isdefined(Pkg, :can_fancyprint)
+            Pkg.can_fancyprint(io::IO) = true
+        end
+        @static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
+            Base.Precompilation.can_fancyprint(io::IO) = true
+        end
     end
     
     Pkg.activate($(repr(environment)); io=out_stream)
