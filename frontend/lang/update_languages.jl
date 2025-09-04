@@ -61,14 +61,25 @@ for lang_file in not_english
     new_data = OrderedDict{String,Any}()
     for key in keys(english)
         # copy the English key or initialize with an empty string
-        new_data[key] = haskey(json, key) ? json[key] : ""
         base = base_plural(key)
-        if base !== nothing
+        if base === nothing
+            new_data[key] = haskey(json, key) ? json[key] : ""
+        elseif haskey(json, base)
+            @info "# the localization uses the base without plural forms, so copy that" base
+            new_data[base] = json[base]
+        else
+            newfile_has_a_plural = any(haskey(json, base * "_" * suffix) for suffix in plural_suffixes)
+            
+            if !newfile_has_a_plural
+                # if the new file does not define any plural forms, add the same forms as english
+                new_data[key] = ""
+            end
+            
             # if the English file defines one plural form, copy any
             # additional forms present in the translation file
             for suffix in plural_suffixes
                 candidate = string(base, "_", suffix)
-                if !haskey(english, candidate) && haskey(json, candidate)
+                if haskey(json, candidate)
                     new_data[candidate] = json[candidate]
                 end
             end
