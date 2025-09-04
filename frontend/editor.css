@@ -74,7 +74,7 @@ pluto-editor {
     min-width: 0;
     container-type: inline-size;
     container-name: editor;
-    overflow: hidden;
+    overflow-x: clip;
 }
 
 main {
@@ -105,6 +105,7 @@ pluto-editor main {
         /* Second part: push away from the right to take up all free space */ min((100% - (700px + 25px + 6px)), /* but don't do this more than */ 500px)
     );
     position: relative;
+    margin-left: auto;
 }
 
 pluto-notebook {

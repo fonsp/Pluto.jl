@@ -17,7 +17,7 @@ const TerminalViewAnsiUp = ({ value }) => {
     }, [node_ref.current, value])
 
     return !!value
-        ? html`<pkg-terminal
+        ? html`<pkg-terminal dir="ltr"
               ><div class="scroller" tabindex="0"><pre ref=${node_ref} class="pkg-terminal"></pre></div
           ></pkg-terminal>`
         : null
