@@ -681,12 +681,12 @@ end`,
     async waitSnippet(index = 0, code = "", metadata = {}, cell_id = uuidv4(), timeout = -1) {
         await this.addSnippet(index, code, metadata, cell_id)
         await new Promise((resolve, reject) => {
-            const timeout = timeout > 0 ? setTimeout(reject(null), timeout) : -1
+            const t = timeout > 0 ? setTimeout(reject(null), timeout) : -1
             const cleanup = this.onUpdate((v) => {
                 if (v.type === "notebook_updated" && getStatus(this, cell_id) === "done") {
                     resolve(getResult(this, cell_id))
                     cleanup()
-                    clearTimeout(timeout)
+                    clearTimeout(t)
                 }
             })
         })
