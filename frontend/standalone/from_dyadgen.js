@@ -11,7 +11,7 @@
  * @author Pluto.jl Frontend Team
  */
 
-import { serialize } from "./parser.js"
+import { MTOML_CELL_ID, serialize } from "./parser.js"
 import { PTOML_CELL_ID } from "./parser.js"
 
 export const MODULE_CELL_ID = "00000000-c0de-ce11-0000-000000000000"
@@ -80,7 +80,8 @@ export function from_dyadgen(code, defaultPackages = {}) {
         cell_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
         _topological_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
         _package_cells: {
-            [PTOML_CELL_ID]: `"""
+            [MTOML_CELL_ID]: `PLUTO_MANIFEST_TOML_CONTENTS = """"""`,
+            [PTOML_CELL_ID]: `PLUTO_PROJECT_TOML_CONTENTS = """
 name = "DyadAnalysis"
 
 [deps]
