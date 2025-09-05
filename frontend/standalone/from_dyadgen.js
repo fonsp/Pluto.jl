@@ -42,61 +42,66 @@ export const EXECUTION_CELL_ID_CODE = `begin
 end`;
 
 export function from_dyadgen(code, defaultPackages = {}) {
-    return serialize({
-        cell_execution_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
-        cell_inputs: {
-            [PKG_CELL_ID]: {
-                cell_id: PKG_CELL_ID,
-                code: PKG_CELL_CODE,
-                code_folded: false,
-                metadata: {
-                    disabled: false,
-                    show_logs: true,
-                    skip_as_script: false,
-                    name: "usings cell",
-                },
-            },
-            [MODULE_CELL_ID]: {
-                cell_id: MODULE_CELL_ID,
-                code,
-                code_folded: true,
-                metadata: {
-                    disabled: false,
-                    show_logs: true,
-                    skip_as_script: false,
-                },
-            },
-            [EXECUTION_CELL_ID]: {
-                cell_id: EXECUTION_CELL_ID,
-                code: EXECUTION_CELL_ID_CODE,
-                code_folded: true,
-                metadata: {
-                    disabled: false,
-                    show_logs: true,
-                    skip_as_script: false,
-                },
-            },
+  return serialize({
+    cell_execution_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
+    cell_inputs: {
+      [PKG_CELL_ID]: {
+        cell_id: PKG_CELL_ID,
+        code: PKG_CELL_CODE,
+        code_folded: false,
+        metadata: {
+          disabled: false,
+          show_logs: true,
+          skip_as_script: false,
+          name: "usings cell",
         },
-        cell_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
-        _topological_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
-        _package_cells: {
-            [PTOML_CELL_ID]: `"""
+      },
+      [MODULE_CELL_ID]: {
+        cell_id: MODULE_CELL_ID,
+        code,
+        code_folded: true,
+        metadata: {
+          disabled: false,
+          show_logs: true,
+          skip_as_script: false,
+        },
+      },
+      [EXECUTION_CELL_ID]: {
+        cell_id: EXECUTION_CELL_ID,
+        code: EXECUTION_CELL_ID_CODE,
+        code_folded: true,
+        metadata: {
+          disabled: false,
+          show_logs: true,
+          skip_as_script: false,
+        },
+      },
+    },
+    cell_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
+    _topological_order: [PKG_CELL_ID, MODULE_CELL_ID, EXECUTION_CELL_ID],
+    _package_cells: {
+      [MTOML_CELL_ID]: `PLUTO_MANIFEST_TOML_CONTENTS = """"""`,
+      [PTOML_CELL_ID]: `PLUTO_PROJECT_TOML_CONTENTS = """
 name = "DyadAnalysis"
 
 [deps]
 AbstractPlutoDingetjes = "6e696c72-6542-2067-7265-42206c756150"
 ${Object.entries(defaultPackages)
-    .map(([name, { uuid }]) => `${name} = "${uuid}"`)
-    .join("\n")}
+  .map(([name, { uuid }]) => `${name} = "${uuid}"`)
+  .join("\n")}
 
 [compat]
-${defaultPackages.DyadEcosystemDependencies ? `DyadEcosystemDependencies = "${defaultPackages.DyadEcosystemDependencies.compat}"` : ""}
+${
+  defaultPackages.DyadEcosystemDependencies
+    ? `DyadEcosystemDependencies = "${defaultPackages.DyadEcosystemDependencies.compat}"`
+    : ""
+}
 
 [extras]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 """`,
-        },
-    });
+    },
+  });
 }
