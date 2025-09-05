@@ -671,7 +671,7 @@ end`,
      * @param {string} [code=""] - Initial cell code
      * @param {Object} [metadata={}] - Additional cell metadata
      * @param {string} [cell_id=uuidv4()] - Snippet's UUID, if you need to specifically set one     * @param {number} [timeout=-1] - Timeout to reject the results. defaults to -1 which disables the timeout
-     * @returns {Promise<CellData>} UUID of the newly created cell
+     * @returns {Promise<import("../components/Editor.js").CellResultData>} The output of the added cell
      * @throws {Error} If not connected to notebook
      *
      * @example
@@ -680,8 +680,8 @@ end`,
 
     async waitSnippet(index = 0, code = "", metadata = {}, cell_id = uuidv4(), timeout = -1) {
         await this.addSnippet(index, code, metadata, cell_id)
-        await new Promise((resolve, reject) => {
-            const t = timeout > 0 ? setTimeout(reject(null), timeout) : -1
+        return await new Promise((resolve, reject) => {
+            let t = 0
             const cleanup = this.onUpdate((v) => {
                 if (v.type === "notebook_updated" && getStatus(this, cell_id) === "done") {
                     resolve(getResult(this, cell_id))
@@ -689,6 +689,12 @@ end`,
                     clearTimeout(t)
                 }
             })
+            if (timeout > 0) {
+                t = setTimeout(() => {
+                    cleanup()
+                    reject(null)
+                }, timeout)
+            }
         })
     }
     /**
