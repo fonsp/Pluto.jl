@@ -1,3 +1,4 @@
+import { t } from "../common/lang.js"
 import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 import { useDelayedTruth } from "./BottomRightPanel.js"
@@ -53,8 +54,11 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
     }
 
     const title = binder_loading
-        ? "Loading binder..."
-        : `Running cells... (${recently_running.length - currently_running.length}/${recently_running.length} done)`
+        ? t("t_process_status_loading_binder")
+        : t("t_process_running_cells", {
+              done: recently_running.length - currently_running.length,
+              total: recently_running.length,
+          })
 
     return html`<loading-bar
         class=${binder_loading ? "slow" : "fast"}

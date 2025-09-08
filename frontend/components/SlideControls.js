@@ -1,3 +1,4 @@
+import { t } from "../common/lang.js"
 import { html, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
 
 export const SlideControls = () => {
@@ -89,8 +90,10 @@ export const SlideControls = () => {
 
     return html`
         <nav id="slide_controls" inert=${!presenting}>
-            <button ref=${button_prev_ref} class="changeslide prev" title="Previous slide" onClick=${go_previous_slide}><span></span></button>
-            <button ref=${button_next_ref} class="changeslide next" title="Next slide" onClick=${go_next_slide}><span></span></button>
+            <button ref=${button_prev_ref} class="changeslide prev" title=${t("t_presentation_previous_slide")} onClick=${go_previous_slide}>
+                <span></span>
+            </button>
+            <button ref=${button_next_ref} class="changeslide next" title=${t("t_presentation_next_slide")} onClick=${go_next_slide}><span></span></button>
         </nav>
     `
 }

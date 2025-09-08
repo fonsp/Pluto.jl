@@ -162,14 +162,17 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     end
 end
 
-# I'm a pirate harrr 🏴‍☠️
-@static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
-		get(io, :sneaky_enable_tty, false) === true
-end
-@static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
-	Base.Precompilation.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
-		get(io, :sneaky_enable_tty, false) === true
+@static if !(v"1.11.7" <= VERSION < v"1.12.0-aaa" || VERSION >= v"1.12.0-rc1")
+	# Versions that do no include https://github.com/JuliaLang/julia/pull/58887
+	# I'm a pirate harrr 🏴‍☠️
+	@static if isdefined(Pkg, :can_fancyprint)
+		Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+			get(io, :sneaky_enable_tty, false) === true
+	end
+	@static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
+		Base.Precompilation.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+			get(io, :sneaky_enable_tty, false) === true
+	end
 end
 
 ###

@@ -16,10 +16,10 @@ describe("PlutoAutocomplete", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
@@ -47,16 +47,20 @@ describe("PlutoAutocomplete", () => {
         // Add a new cell
         let lastPlutoCellId = lastElement(importedCellIds)
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitForTimeout(500)
+        await new Promise((resolve) => setTimeout(resolve, 500))
 
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "my_su")
-        await page.waitForTimeout(500)
+        await new Promise((resolve) => setTimeout(resolve, 500))
 
-        // Trigger autocomplete suggestions
-        await page.keyboard.press("Tab")
-        await page.waitForSelector(".cm-tooltip-autocomplete")
+        // Wait for the autocomplete suggestions to appear by itself
+        await page.waitForSelector(".cm-tooltip-autocomplete", { timeout: 10 * 1000 }).catch(async () => {
+            // If the autocomplete suggestions don't appear, we need let's trigger it manually
+            await page.keyboard.press("Tab")
+            await page.waitForSelector(".cm-tooltip-autocomplete")
+        })
+
         // Get suggestions
         const suggestions = await page.evaluate(() =>
             Array.from(document.querySelectorAll(".cm-tooltip-autocomplete li")).map((suggestion) => suggestion.textContent)
@@ -74,7 +78,7 @@ describe("PlutoAutocomplete", () => {
         // Add a new cell
         let lastPlutoCellId = lastElement(importedCellIds)
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitForTimeout(500)
+        await new Promise((resolve) => setTimeout(resolve, 500))
 
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))

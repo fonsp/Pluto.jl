@@ -1,3 +1,4 @@
+import { t } from "../common/lang.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useEffect, useRef } from "../imports/Preact.js"
 import { link_edit } from "./welcome/Open.js"
@@ -73,7 +74,7 @@ export const PasteHandler = ({ on_start_navigation }) => {
             // Notebook not found! Doing nothing :)
             return
         }
-        on_start_navigation("notebook from clipboard", false)
+        on_start_navigation(t("t_loading_something_notebook_from_clipboard"), false)
         document.body.classList.add("loading")
         const response = await fetch("./notebookupload", {
             method: "POST",

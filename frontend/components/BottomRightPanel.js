@@ -6,6 +6,7 @@ import { is_finished, StatusTab, total_done, total_tasks, useStatusItem } from "
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { t, th } from "../common/lang.js"
 
 /**
  * @typedef PanelTabName
@@ -112,7 +113,7 @@ export let BottomRightPanel = ({
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
                 <header translate=${false}>
                     <button
-                        title="Live Docs: Search for Julia documentation, and get live documentation of everything you type."
+                        title=${t("t_panel_docs_description")}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-docs": true,
@@ -125,10 +126,10 @@ export let BottomRightPanel = ({
                         }}
                     >
                         <span class="tabicon"></span>
-                        <span class="tabname">Live Docs</span>
+                        <span class="tabname">${t("t_panel_docs")}</span>
                     </button>
                     <button
-                        title=${"Process status"}
+                        title=${t("t_panel_status")}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
@@ -144,21 +145,25 @@ export let BottomRightPanel = ({
                         <span class="tabicon"></span>
                         <span class="tabname"
                             >${open_tab === "process" || !show_business_counter
-                                ? "Status"
-                                : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`}</span
+                                ? t("t_panel_status_short")
+                                : th("t_panel_status_progress", {
+                                      progress: html`<span class="subprogress-counter"
+                                          >${t("t_panel_status_progress_inner", { done: status_done, total: status_total })}</span
+                                      >`,
+                                  })}</span
                         >
                     </button>
 
                     ${hidden
                         ? null
                         : html` ${"documentPictureInPicture" in window
-                                  ? html`<button class="helpbox-popout" title="Pop out panel" onClick=${on_popout_click}>
+                                  ? html`<button class="helpbox-popout" title=${t("t_panel_popout")} onClick=${on_popout_click}>
                                         <span></span>
                                     </button>`
                                   : null}
                               <button
                                   class="helpbox-close"
-                                  title="Close panel"
+                                  title=${t("t_panel_close")}
                                   onClick=${() => {
                                       set_open_tab(null)
                                   }}

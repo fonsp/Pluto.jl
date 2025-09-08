@@ -5,6 +5,7 @@ import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { upstream_recursive } from "../common/SliderServerClient.js"
+import { t } from "../common/lang.js"
 
 const format_code = (s) =>
     s == null
@@ -41,7 +42,7 @@ export const AIContext = ({ cell_id, current_code }) => {
 
     const notebook = /** @type{import("./Editor.js").NotebookData} */ (pluto_actions.get_notebook())
 
-    const default_question = notebook.cell_results[cell_id]?.errored === true ? "Why does this cell error?" : ""
+    const default_question = notebook.cell_results[cell_id]?.errored === true ? t("t_ai_prompt_generator_default_question_errored") : ""
     const [userQuestion, setUserQuestion] = useState(default_question)
 
     const recursive = true
@@ -79,18 +80,17 @@ export const AIContext = ({ cell_id, current_code }) => {
     useEventListener(formRef, "submit", (e) => {
         e.preventDefault()
         copyToClipboard()
-        console.log("submitted")
     })
 
     return html`
         <form class="ai-context-container" ref=${formRef}>
-            <h2>AI Prompt Generator <em style="font-size: 0.8em; opacity: .7;">(beta)</em></h2>
-            <p class="ai-context-intro">You can copy this text into an AI chat to give it context from your notebook.</p>
+            <h2>${t("t_ai_prompt_generator_title")} <em style="font-size: 0.8em; opacity: .7;">(beta)</em></h2>
+            <p class="ai-context-intro">${t("t_ai_prompt_generator_intro")}</p>
             <input
                 type="text"
                 name="pluto-ai-context-question"
                 class="ai-context-question-input"
-                placeholder="Type your question here..."
+                placeholder=${t("t_ai_prompt_generator_question_input_placeholder")}
                 autocomplete="off"
                 value=${userQuestion}
                 onInput=${(e) => setUserQuestion(e.target.value)}
@@ -102,9 +102,9 @@ export const AIContext = ({ cell_id, current_code }) => {
                         "copied": copied,
                     })}
                     type="submit"
-                    title="Copy to clipboard"
+                    title=${t("t_copy_action_description")}
                 >
-                    ${copied ? "Copied!" : "Copy"}
+                    ${copied ? t("t_copy_action_complete") : t("t_copy_action")}
                 </button>
                 <div
                     class=${cl({

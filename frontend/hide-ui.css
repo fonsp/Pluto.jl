@@ -9,8 +9,10 @@ pluto-editor.disable_ui header#pluto-nav,
 pluto-editor.disable_ui preamble > button,
 pluto-editor.disable_ui pluto-cell > button,
 pluto-editor.disable_ui pluto-input > button,
-pluto-editor.disable_ui pluto-shoulder,
-pluto-editor.disable_ui pluto-shoulder,
+/* Hide the shoulder by default (when not inspecting hidden code) */
+pluto-editor.disable_ui:not(.inspecting_hidden_code) pluto-shoulder,
+/* And in any case, hide the shoulder for cells with folded code */
+pluto-editor.disable_ui pluto-cell:not(.code_folded) > pluto-shoulder,
 pluto-editor.disable_ui footer,
 pluto-editor.disable_ui pluto-runarea,
 pluto-editor.disable_ui jlerror .doclink,
@@ -32,7 +34,6 @@ pluto-editor.disable_ui .fix-with-ai {
     pluto-editor preamble > button,
     pluto-editor pluto-cell > button,
     pluto-editor pluto-input > button,
-    pluto-editor pluto-shoulder,
     pluto-editor pluto-shoulder,
     pluto-editor footer,
     pluto-editor pluto-runarea,
@@ -56,7 +57,8 @@ pluto-editor.disable_ui .fix-with-ai {
     .MJX_ToolTip,
     .MJX_HoverRegion,
     .MJX_LiveRegion,
-    nav#undo_delete {
+    nav#undo_delete,
+    .language-picker {
         display: none !important;
     }
     body:not(.___) pluto-editor:not(._____) > main {

@@ -324,9 +324,9 @@ function run!(session::ServerSession)
 
     address = pretty_address(session, hostIP, port)
     if session.options.server.launch_browser && open_in_default_browser(address)
-        @info("\nOpening $address in your default browser... ~ have fun!")
+        @info("\nOpening $address in your default browser... ~ have fun!\n\n")
     else
-        @info("\nGo to $address in your browser to start writing ~ have fun!")
+        @info("\nGo to $address in your browser to start writing ~ have fun!\n\n")
     end
     @info("\nPress Ctrl+C in this terminal to stop Pluto\n\n")
 

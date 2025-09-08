@@ -278,6 +278,9 @@ function create_emptyworkspacemodule(worker::Malt.AbstractWorker)::Symbol
     end)
 end
 
+# To avoid precompiling PlutoRunner multiple times in parallel https://github.com/fonsp/Pluto.jl/issues/3236
+const workspace_setup_token = Token()
+
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
@@ -298,11 +301,12 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
         Status.report_business_planned!(status, Symbol("Loading notebook boot environment"))
         
         worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
-            
-        Status.report_business_finished!(status, Symbol("Starting process"))
-        Status.report_business_started!(status, Symbol("Loading notebook boot environment"))
         
-        Malt.remote_eval_wait(worker, process_preamble())
+        Status.report_business_finished!(status, Symbol("Starting process"))
+        withtoken(workspace_setup_token) do
+            Status.report_business_started!(status, Symbol("Loading notebook boot environment"))
+            Malt.remote_eval_wait(worker, process_preamble())
+        end
     
         # so that we NEVER break the workspace with an interrupt 🤕
         Malt.remote_eval(worker, quote

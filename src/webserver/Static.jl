@@ -72,12 +72,12 @@ function notebook_response(notebook; home_url="./", as_redirect=true)
     end
 end
 
-const found_is_pluto_dev = Ref{Bool}()
+const found_is_pluto_dev = Ref{Union{Bool, Nothing}}()
 """
 Is the Pluto package `dev`ed? Returns `false` for normal Pluto installation from the registry.
 """
 function is_pluto_dev()
-    if isassigned(found_is_pluto_dev)
+    if found_is_pluto_dev[] !== nothing
         return found_is_pluto_dev[]
     end
 

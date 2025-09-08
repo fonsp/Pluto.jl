@@ -704,7 +704,12 @@ end
 
 function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
-    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true, :sneaky_enable_tty => true)) do
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(
+        iolistener.buffer, 
+        :color => true, 
+        :force_fancyprint => true, # https://github.com/JuliaLang/julia/pull/58887
+        :sneaky_enable_tty => true, # fallback for the flag above
+    )) do
         withinteractive(false) do
             f()
         end

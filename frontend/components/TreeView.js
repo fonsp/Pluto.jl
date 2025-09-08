@@ -4,6 +4,7 @@ import { ANSITextOutput, OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { is_noop_action } from "../common/SliderServerClient.js"
+import { t } from "../common/lang.js"
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -54,7 +55,7 @@ const More = ({ on_click_more, disable }) => {
                 }
             }
         }}
-        >more</pluto-tree-more
+        >${t("t_tree_show_more_items")}</pluto-tree-more
     >`
 }
 
@@ -182,7 +183,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html 
 const EmptyCols = ({ colspan = 999 }) => html`<thead>
     <tr class="empty">
         <td colspan=${colspan}>
-            <div>⌀ <small>(This table has no columns)</small></div>
+            <div>⌀ <small>${t("t_table_no_columns")}</small></div>
         </td>
     </tr>
 </thead>`
@@ -191,7 +192,7 @@ const EmptyRows = ({ colspan = 999 }) => html`<tr class="empty">
     <td colspan=${colspan}>
         <div>
             <div>⌀</div>
-            <small>(This table has no rows)</small>
+            <small>${t("t_table_no_rows")}</small>
         </div>
     </td>
 </tr>`

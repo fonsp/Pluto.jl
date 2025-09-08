@@ -94,6 +94,7 @@
         --nav-h1-text-color: white;
         --nav-filepicker-color: #b6b6b6;
         --nav-filepicker-border-color: #c7c7c7;
+        --nav-filepicker-suggest-color: rgba(107, 125, 140, 0.796);
         --nav-process-status-bg-color: rgb(82, 82, 82);
         --nav-process-status-color: var(--pluto-output-h-color);
 

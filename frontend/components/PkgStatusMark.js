@@ -1,7 +1,7 @@
+import { t, th } from "../common/lang.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
-import { open_icon } from "./Popup.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -56,32 +56,36 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     if (is_disable_pkg) {
         const f_name = package_name
         status = "disable_pkg"
-        hint_raw = `${f_name} disables Pluto's built-in package manager.`
-        hint = html`<b>${f_name}</b> disables Pluto's built-in package manager.`
+        hint_raw = t("t_pkg_disables_str", { function: f_name })
+        hint = th("t_pkg_disables_str", { function: html`<b>${f_name}</b>` })
     } else if (chosen_version != null || _.isEqual(available_versions, ["stdlib"])) {
         if (chosen_version == null || chosen_version === "stdlib") {
             status = "installed"
-            hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
-            hint = html`${package_name_pretty} is part of Julia's pre-installed <em>standard library</em>.`
+            hint_raw = t("t_pkg_stdlib", { package: package_name }).replaceAll(/<\/?em>/g, "'")
+            hint = th("t_pkg_stdlib", { package: package_name_pretty })
         } else {
             if (nbpkg_waiting_for_permission) {
                 status = "will_be_installed"
-                hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed when you run this notebook.`
-                hint = html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>
-                    will be installed when you run this notebook.`
+
+                hint_raw = t("t_pkg_will_be_installed", { package: `${package_name} (v${_.last(available_versions)})` })
+                hint = th("t_pkg_will_be_installed", {
+                    package: html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>`,
+                })
             } else if (busy) {
                 status = "busy"
-                hint_raw = `${package_name} (v${chosen_version}) is installing...`
-                hint = html`<header>${package_name_pretty} <pkg-version>v${chosen_version}</pkg-version></header>
-                    is installing...`
+
+                hint_raw = t("t_pkg_is_installing", { package: `${package_name} (v${chosen_version})` })
+                hint = th("t_pkg_is_installing", {
+                    package: html`<header>${package_name_pretty}${" "}<pkg-version>v${chosen_version}</pkg-version></header>`,
+                })
             } else {
                 status = "installed"
-                hint_raw = `${package_name} (v${chosen_version}) is installed in the notebook.`
-                hint = html`<header>
-                        ${package_name_pretty}
-                        <pkg-version>v${chosen_version}</pkg-version>
-                    </header>
-                    is installed in the notebook.`
+
+                hint_raw = t("t_pkg_is_installed", { package: `${package_name} (v${chosen_version})` })
+                hint = th("t_pkg_is_installed", {
+                    package: html`<header>${package_name_pretty}${" "}<pkg-version>v${chosen_version}</pkg-version></header>`,
+                })
+
                 offer_update = can_update(chosen_version, available_versions)
             }
         }
@@ -89,14 +93,19 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
         if (available_versions != null && _.isArray(available_versions)) {
             if (available_versions.length === 0) {
                 status = "not_found"
-                hint_raw = `The package "${package_name}" could not be found in the registry. Did you make a typo?`
-                hint = html`The package <em>"${package_name}"</em> could not be found in the registry.
-                    <section><em>Did you make a typo?</em></section>`
+
+                hint_raw = t("t_pkg_not_found", { package: `"${package_name}"` })
+                hint = th("t_pkg_not_found", {
+                    package: html`<em>"${package_name}"</em>`,
+                })
             } else {
                 status = "will_be_installed"
-                hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed in the notebook when you run this cell.`
-                hint = html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>
-                    will be installed in the notebook when you run this cell.`
+
+                hint_raw = t("t_pkg_will_be_installed_in_notebook", { package: `${package_name} (v${_.last(available_versions)})` })
+
+                hint = th("t_pkg_will_be_installed_in_notebook", {
+                    package: html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>`,
+                })
             }
         }
     }

@@ -1,9 +1,8 @@
 import _ from "../imports/lodash.js"
-import { BackendLaunchPhase } from "../common/Binder.js"
-import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
+import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 
-import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import { useDialog } from "../common/useDialog.js"
+import { t, th } from "../common/lang.js"
 
 export const RunLocalButton = ({ show, start_local }) => {
     //@ts-ignore
@@ -11,17 +10,17 @@ export const RunLocalButton = ({ show, start_local }) => {
         start_local()
     }
 
-    return html`<div class="edit_or_run">
-        <button
-            onClick=${(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                start_local()
-            }}
-        >
-            <b>Edit</b> or <b>run</b> this notebook
-        </button>
-    </div>`
+    return html`<button
+        class="edit_or_run_button"
+        onClick=${(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            start_local()
+        }}
+    >
+        <span class="yayicon"></span>
+        <span class="text">${th("t_edit_or_run_this_notebook")}</span>
+    </button>`
 }
 
 /**
@@ -55,39 +54,35 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
     const recommend_download = notebookfile_ref.current.startsWith("data:")
     const runtime_str = expected_runtime_str(notebook)
 
-    return html`<div class="edit_or_run">
-        <button
+    return html`<button
+            class="edit_or_run_button"
             onClick=${(e) => {
                 toggleModal()
                 e.stopPropagation()
                 e.preventDefault()
             }}
         >
-            <b>Edit</b> or <b>run</b> this notebook
+            <span class="yayicon"></span>
+            <span class="text">${th("t_edit_or_run_this_notebook")}</span>
         </button>
         <dialog ref=${dialog_ref} class="binder_help_text">
             <span onClick=${closeModal} class="close"></span>
             ${offer_binder
                 ? html`
                       <p style="text-align: center;">
-                          ${`To be able to edit code and run cells, you need to run the notebook yourself. `}
-                          <b>Where would you like to run the notebook?</b>
+                          ${t("t_edit_or_run_description_1")}
+                          <b>${th("t_edit_or_run_description_2")}</b>
                       </p>
-                      ${runtime_str == null
-                          ? null
-                          : html` <div class="expected_runtime_box">${`This notebook takes about `}<span>${runtime_str}</span>${` to run.`}</div>`}
-                      <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
+                      ${runtime_str == null ? null : html` <div class="expected_runtime_box">${th("t_edit_or_run_runtime", { runtime: runtime_str })}</div>`}
+                      <h2 style="margin-top: 3em;">${th("t_binder_help_text_title")}</h2>
                       <div style="padding: 0 2rem;">
                           <button onClick=${start_binder}>
                               <img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
                           </button>
                       </div>
-                      <p style="opacity: .5; margin: 20px 10px;">
-                          <a target="_blank" href="https://mybinder.org/">Binder</a> is a free, open source service that runs scientific notebooks in the cloud!
-                          It will take a while, usually 2-7 minutes to get a session.
-                      </p>
-                      <h2 style="margin-top: 4em;">On your computer</h2>
-                      <p style="opacity: .5;">(Recommended if you want to store your changes.)</p>
+                      <p style="opacity: .5; margin: 20px 10px;">${th("t_binder_help_text")}</p>
+                      <h2 style="margin-top: 4em;">${th("t_edit_or_run_local")}</h2>
+                      <p style="opacity: .5;">${th("t_edit_or_run_local_description")}</p>
                   `
                 : null}
             <ol style="padding: 0 2rem;">
@@ -95,7 +90,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                     <div>
                         ${recommend_download
                             ? html`
-                                  <div class="command">Download the notebook:</div>
+                                  <div class="command">${th("t_edit_or_run_download_notebook")}</div>
                                   <div
                                       onClick=${(e) => {
                                           e.target.tagName === "A" || e.target.closest("div").firstElementChild.click()
@@ -107,7 +102,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                                   </div>
                               `
                             : html`
-                                  <div class="command">Copy the notebook URL:</div>
+                                  <div class="command">${th("t_edit_or_run_copy_notebook_url")}</div>
                                   <div class="copy_div">
                                       <input onClick=${(e) => e.target.select()} value=${notebookfile_ref.current} readonly />
                                       <span
@@ -123,28 +118,24 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                     </div>
                 </li>
                 <li>
-                    <div class="command">Run Pluto</div>
-                    <p>
-                        ${"(Also see: "}
-                        <a target="_blank" href="https://plutojl.org/#install">How to install Julia and Pluto</a>)
-                    </p>
+                    <div class="command">${t("t_edit_or_run_run_pluto")}</div>
+                    <p>${th("t_edit_or_run_run_pluto_description", { url: "https://plutojl.org/#install" })}</p>
                     <img src="https://user-images.githubusercontent.com/6933510/107865594-60864b00-6e68-11eb-9625-2d11fd608e7b.png" />
                 </li>
                 <li>
                     ${recommend_download
                         ? html`
-                              <div class="command">Open the notebook file</div>
-                              <p>Type the saved filename in the <em>open</em> box.</p>
+                              <div class="command">${th("t_edit_or_run_open_the_notebook_file")}</div>
+                              <p>${th("t_edit_or_run_open_the_notebook_file_description")}</p>
                               <img src="https://user-images.githubusercontent.com/6933510/119374043-65556900-bcb9-11eb-9026-149c1ba2d05b.png" />
                           `
                         : html`
-                              <div class="command">Paste URL in the <em>Open</em> box</div>
+                              <div class="command">${th("t_edit_or_run_paste_url_in_the_open_box")}</div>
                               <video playsinline autoplay loop src="https://i.imgur.com/wf60p5c.mp4" />
                           `}
                 </li>
             </ol>
-        </dialog>
-    </div>`
+        </dialog>`
 }
 
 const expected_runtime = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {
@@ -170,8 +161,8 @@ export const pretty_long_time = (/** @type {number} */ sec) => {
     const min_r = Math.round(min)
 
     if (sec < 60) {
-        return `${sec_r} second${sec_r > 1 ? "s" : ""}`
+        return t("t_time_seconds", { count: sec_r })
     } else {
-        return `${min_r} minute${min_r > 1 ? "s" : ""}`
+        return t("t_time_minutes", { count: min_r })
     }
 }

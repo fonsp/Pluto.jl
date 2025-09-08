@@ -4,6 +4,7 @@
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html } from "../imports/Preact.js"
+import { t, th } from "./lang.js"
 import observablehq from "./SetupCellEnvironment.js"
 
 /**
@@ -156,8 +157,8 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
                 open_pluto_popup({
                     type: "info",
                     source_element: e.target,
-                    body: html`${`You are viewing a static document. `}
-                        <a
+                    body: th("t_bonds_static_warning", {
+                        run_notebook_action: html`<a
                             href="#"
                             onClick=${(e) => {
                                 //@ts-ignore
@@ -165,9 +166,9 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
                                 e.preventDefault()
                                 window.dispatchEvent(new CustomEvent("close pluto popup"))
                             }}
-                            >Run this notebook</a
-                        >
-                        ${` to enable interactivity.`}`,
+                            >${t("t_bonds_static_warning_inner")}</a
+                        >`,
+                    }),
                 })
             }
         }

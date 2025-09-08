@@ -29,6 +29,7 @@ import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 import lodashLibrary from "../imports/lodash.js"
+import { t } from "../common/lang.js"
 
 const prettyAssignee = (assignee) =>
     assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
@@ -387,7 +388,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
-                let code = node.innerText
+                let code = node.textContent
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
@@ -673,7 +674,7 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
 
     // create copy button
     const button = document.createElement("button")
-    button.title = "Copy to clipboard"
+    button.title = t("t_copy_action_description")
     button.className = "markdown-code-block-button"
     button.addEventListener("click", (e) => {
         const txt = pre.textContent ?? ""
@@ -696,8 +697,8 @@ export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ hea
     const id = header.id
     if (!id) return
     const button = document.createElement("pluto-header-id-copy")
-    button.title = "Click to copy URL to this header"
-    button.ariaLabel = "Copy URL to this header"
+    button.title = t("t_copy_header_id_action_description")
+    button.ariaLabel = t("t_copy_header_id_action_description")
     button.role = "button"
     button.tabIndex = 0
     const listener = (_e) => {
@@ -788,10 +789,11 @@ function apply_enhanced_markup_features(container, pluto_actions) {
         if (container.firstElementChild?.matches("div.markdown")) {
             container.querySelectorAll("pre > code").forEach((code_element) => {
                 const pre = code_element.parentElement
+                if (pre.closest("table, pluto-display, bond, pluto-tree")) return
                 generateCopyCodeButton(pre)
             })
             container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
-                if (header_element.closest("table, pluto-display, bond")) return
+                if (header_element.closest("table, pluto-display, bond, pluto-tree")) return
                 generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
             })
         }

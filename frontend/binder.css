@@ -54,13 +54,14 @@ binder-spinner {
 }
 
 .edit_or_run {
-    /* position: absolute; */
     position: fixed;
     z-index: 2000;
     top: 9px;
     right: 8px;
-    /* width: 153.2px; */
-    /* height: 60px; */
+    display: flex;
+    gap: 0.7em;
+    max-width: calc(100% - 30px - 2em);
+    justify-content: flex-end;
 }
 .binder_help_text button {
     padding: 7px 20px;
@@ -70,7 +71,7 @@ binder-spinner {
     display: block;
 }
 
-body.wiggle_binder .edit_or_run > button {
+body.wiggle_binder .edit_or_run > button:first-child {
     /* position: fixed; */
     animation: wiggle-binder-button 0.3s ease-in-out 0s 1;
 }
@@ -101,7 +102,7 @@ body.wiggle_binder .edit_or_run > button {
 
 .edit_or_run > button {
     width: 100%;
-    display: block;
+    display: flex;
     text-align: center;
     z-index: 2000;
     box-shadow: none;
@@ -117,10 +118,44 @@ body.wiggle_binder .edit_or_run > button {
     white-space: nowrap;
     padding: 8px 16px;
     border-radius: 30px;
+    flex: 0 1 max-content;
+    overflow: hidden;
+    align-items: center;
+    gap: 0.5em;
 }
 
 .edit_or_run > button:hover {
     text-decoration: underline;
+}
+
+.edit_or_run > button > span.yayicon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: var(--image-filters);
+    vertical-align: -0.1em;
+    transform: scale(1.3);
+    flex: 0 0 auto;
+}
+
+.edit_or_run > button.edit_or_run_button > span.yayicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/play-circle-outline.svg");
+}
+
+.edit_or_run > button.view_hidden_code > span.yayicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/code-working-outline.svg");
+}
+.edit_or_run > button.view_hidden_code_cancel > span.yayicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
+}
+
+@container editor (width < 400px) {
+    .edit_or_run > button.edit_or_run_button .text {
+        display: none;
+    }
 }
 
 .binder_help_text {
