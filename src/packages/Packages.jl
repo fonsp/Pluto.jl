@@ -169,7 +169,7 @@ function sync_nbpkg_core(
                         
                         # Resolve the package environment, using GracefulPkg.jl to solve any issues
                         Status.report_business!(pkg_status, :resolve) do
-                            with_auto_fixes(notebook) do
+                            with_auto_fixes(notebook, iolistener) do
                                 _resolve(notebook, iolistener)
                             end
                         end
@@ -458,7 +458,6 @@ function _precompile(notebook::Notebook, iolistener::IOListener, compiler_option
 end
 
 function _resolve(notebook::Notebook, iolistener::IOListener)
-    startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
         phasemessage(iolistener, "Resolving")
         @debug "PlutoPkg: Resolving" notebook.path 
@@ -475,19 +474,22 @@ end
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
-function with_auto_fixes(f::Function, notebook::Notebook)
+function with_auto_fixes(f::Function, notebook::Notebook, iolistener::IOListener)
     env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
     
     is_first = Ref(true)
-    report = GracefulPkg.gracefully(; env_dir, throw=false, strategies=gracefulpkg_strats) do
-        try
-            if !is_first[]
-                PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
-            end
+    report = 
+    with_io_setup(notebook, iolistener) do
+        GracefulPkg.gracefully(; env_dir, throw=false, strategies=gracefulpkg_strats) do
+            try
+                if !is_first[]
+                    PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
+                end
 
-            f()
-        finally
-            is_first[] = false
+                f()
+            finally
+                is_first[] = false
+            end
         end
     end
 
@@ -560,7 +562,7 @@ function update_nbpkg_core(
                 PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
                 if !notebook.nbpkg_ctx_instantiated
-                    with_auto_fixes(notebook) do
+                    with_auto_fixes(notebook, iolistener) do
                         _resolve(notebook, iolistener)
                     end
                     _instantiate(notebook, iolistener)
