@@ -132,6 +132,8 @@ Also think about the **writing style**. Does the AI generate text in a style (fo
 > @fonsp used Cursor Tab (AI autocomplete), but found it only a bit useful. But he thinks that it was sometimes nicer and more fun to think of the text yourself. 
 > 
 > @pankgeorg used Claude Code to generate the full json file at once, and then tweaked it manually. He was pretty happy with the result.
+> 
+> @rgouveiamendes used Copilot to translate all the values in the json file from English to Portuguese. Then, he reviewed each string. Few changes were needed. Executing the local copy of Pluto led to some final refinements.
 
 ## Modifying existing languages
 You are free to modify existing localization strings contributed by other people, if you see a way to improve! For large changes, we ask you to contact previous authors and find a consensus together.
