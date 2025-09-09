@@ -150,7 +150,13 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                             e.preventDefault()
                         }}
                         class="export_card"
-                        data-size=${getCurrentLanguage() === "el" ? "26" : getCurrentLanguage() === "de" ? "24" : null}
+                        data-size=${getCurrentLanguage() === "el"
+                            ? "26"
+                            : getCurrentLanguage() === "de"
+                            ? "24"
+                            : getCurrentLanguage() === "pt-PT"
+                            ? "26"
+                            : null}
                     >
                         <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
                         <section>${th("t_export_card_record_description")}</section>
