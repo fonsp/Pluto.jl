@@ -8,6 +8,7 @@ import {
     deutsch,
     ellinika,
     english,
+    farsi,
     french,
     japanese,
     nederlands,
@@ -31,6 +32,9 @@ i18next.use(LanguageDetector).init({
         },
         en: {
             translation: without_empty_keys(english),
+        },
+        fa: {
+            translation: without_empty_keys(farsi),
         },
         fi: {
             translation: without_empty_keys(suomi),
@@ -92,6 +96,10 @@ export const changeLanguage = async (language) => {
  */
 export const getCurrentLanguage = () => {
     return i18next.language
+}
+
+export const getWritingDirection = () => {
+    return t("t_language_direction") === "rtl" ? "rtl" : "ltr"
 }
 
 /**
