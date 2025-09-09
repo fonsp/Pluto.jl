@@ -54,6 +54,7 @@
     "t_another_cell_defining_xs_contains_errors": "",
     "t_error_message": "",
     "t_stack_trace": "",
+    "t_header_list_of_syntax_errors": "",
     "t_here_is_what_happened_the_most_recent_locations_are_first": "",
     "t_show_stack_trace": "",
     "t_stack_frame_location": "",
