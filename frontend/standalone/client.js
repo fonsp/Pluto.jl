@@ -411,7 +411,7 @@ export class Worker {
 
         try {
             // Send shutdown command to the server
-            await this.client.send("shutdown_notebook", {}, { notebook_id: this.notebook_id }, false)
+            await this.client.send("shutdown_notebook", { keep_in_session: false }, { notebook_id: this.notebook_id }, false)
 
             // Close the local connection
             this.close()
