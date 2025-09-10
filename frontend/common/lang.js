@@ -3,7 +3,18 @@ import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
 import { html } from "../imports/Preact.js"
 import _ from "../imports/lodash.js"
 
-import { english, nederlands, ellinika, polski } from "./lang_imports.js"
+import {
+    // in alphabetical order
+    deutsch,
+    ellinika,
+    english,
+    french,
+    japanese,
+    nederlands,
+    norsk_bokmål,
+    polski,
+    suomi,
+} from "./lang_imports.js"
 
 const without_empty_keys = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
@@ -13,28 +24,39 @@ i18next.use(LanguageDetector).init({
     debug: false,
     fallbackLng: "en",
     resources: {
+        de: {
+            translation: without_empty_keys(deutsch),
+        },
+        el: {
+            translation: ellinika,
+        },
         en: {
             translation: without_empty_keys(english),
+        },
+        fi: {
+            translation: without_empty_keys(suomi),
+        },
+        fr: {
+            translation: without_empty_keys(french),
         },
         nl: {
             translation: without_empty_keys(nederlands),
         },
-        el: {
-            translation: ellinika,
+        nb: {
+            translation: without_empty_keys(norsk_bokmål),
+        },
+        ja: {
+            translation: without_empty_keys(japanese),
         },
         pl: {
             translation: without_empty_keys(polski),
         },
     },
-    // supportedLngs: ["en", "nl", "el", "pl"],
     detection: {
-        // Disabled autodetection for now because we don't have enough translations yet.
-        // order: ["localStorage", "navigator"],
-        order: ["localStorage"],
+        order: ["localStorage", "navigator"],
         caches: ["localStorage"],
         lookupLocalStorage: "i18nextLng",
     },
-    // lng: "nl",
 })
 
 export const t = i18next.t
@@ -49,8 +71,8 @@ export const getAvailableLanguages = () => {
     const totalKeys = englishKeys.length
 
     return languages.map((lang) => {
-        const langKeys = Object.keys(i18next.options.resources?.[lang]?.translation || {})
-        const completeness = totalKeys > 0 ? Math.round((langKeys.length / totalKeys) * 100) : 100
+        const lang_entries = Object.entries(i18next.options.resources?.[lang]?.translation || {}).filter(([key, value]) => value !== "")
+        const completeness = totalKeys > 0 ? Math.round((lang_entries.length / totalKeys) * 100) : 100
 
         return {
             code: lang,

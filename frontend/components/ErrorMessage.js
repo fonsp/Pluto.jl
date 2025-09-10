@@ -240,7 +240,7 @@ export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
             </header>
             <section>
                 <div class="stacktrace-header">
-                    <secret-h1>Syntax errors</secret-h1>
+                    <secret-h1>${t("t_header_list_of_syntax_errors")}</secret-h1>
                 </div>
                 <ol>
                     ${diagnostics.map(
@@ -518,7 +518,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
             <!-- <p>This message was included with the error:</p> -->
         </div>
 
-        <header>${matched_rewriter.display(msg)}</header>
+        <header translate="yes">${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : stacktrace_waiting_to_view

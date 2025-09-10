@@ -37,9 +37,9 @@ export const LanguagePicker = () => {
                 onChange=${handleLanguageChange}
             >
                 ${availableLanguages.map(
-                    (lang) => html`<option value=${lang.code}>${lang.name}${lang.completeness < 100 ? ` (${lang.completeness}%)` : ""}</option>`
+                    (lang) => html`<option value=${lang.code}>${lang.name}${lang.completeness < 98 ? ` (${lang.completeness}%)` : ""}</option>`
                 )}
-                <option value="contribute">Help translate!</option>
+                <option value="contribute">💡 Help translate!</option>
             </select>
         </div>
     `

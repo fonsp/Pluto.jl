@@ -19,9 +19,11 @@ function Base.showerror(io::IO, e::UserError)
     print(io, e.msg)
 end
 
+_isboring_original_name(name::AbstractString) = isempty(name) || name in ("notebook", "notebookfile")
+
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
     name_from_url = startswith(url, r"https?://") ? strip(HTTP.unescapeuri(splitext(basename(HTTP.URI(url).path))[1])) : ""
-    new_name = isempty(name_from_url) ? cutename() : name_from_url
+    new_name = _isboring_original_name(name_from_url) ? cutename() : name_from_url
     
     random_notebook = emptynotebook()
     random_notebook.path = numbered_until_new(
