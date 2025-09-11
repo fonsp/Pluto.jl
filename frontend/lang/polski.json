@@ -107,7 +107,7 @@
     "t_package_could_not_load_things_you_could_try": "<ul><li>Uruchom ponownie notatnik.</li><li>Uruchom notatnik w innej wersji języka Julia.</li><li>Skontaktuj się z twórcami {{package}}.jl w sprawie tego błędu.</li></ul>",
     "t_might_find_info_in_pkg_log": "Możliwe że znajdziesz użyteczne informacje w dzienniku instalacyjnym paczki:",
 
-    "t_edit_frontmatter": "Edytuj części wstępną",
+    "t_edit_frontmatter": "Edytuj stronę wstępną",
     "t_start_presentation": "Rozpocznij prezentację",
     "t_close": "Zamknij",
 
