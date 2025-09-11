@@ -136,16 +136,23 @@ Return whether the function has any methods left after deletion.
 function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
-    methods_table = typeof(f).name.mt
+    
     deleted_sigs = Set{Type}()
-    Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
+    
+    function handle_method(method)
         if isfromcell(method, cell_id) && !is_method_deleted(method)
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
-
+    
+    if VERSION < v"1.12.0-0"
+        methods_table = typeof(f).name.mt
+        Base.visit(handle_method, methods_table) # iterates through all methods of `f`, including overridden ones            
+    else
+        foreach(handle_method, methods(f))
+    end
     
     if VERSION < v"1.12.0-0"
         # not necessary in Julia after https://github.com/JuliaLang/julia/pull/53415 💛
