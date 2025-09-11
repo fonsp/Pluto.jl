@@ -273,9 +273,9 @@
     "t_time_seconds_four": "{{count}} sekundy",
     "t_time_seconds_other": "{{count}} sekund",
 
-    "t_frontmatter_title": "Część wstępna",
-    "t_frontmatter_description": "Jeśli publikujesz ten notatnik w internecie, możesz ustawić poniższe parametry, aby dostarczyć metadane HTML. Jest to przydatne między innymi dla wyszukiwarek i mediów społecznościowych.",
-    "t_frontmatter_synchronized": "Część wstępna notatnika została zsynchronizowana ✔\n\nTe parametry będą używane w kolejnych wyeksportowanych wersjach tego notatnika.",
+    "t_frontmatter_title": "Strona wstępna",
+    "t_frontmatter_description": "Konfiguracja strony wstępnej (ang. front matter) jest wskazana jeżeli masz zamiar opublikować notatnik w internecie. Możesz ustawić poniższe parametry, aby dostarczyć metadane HTML. Jest to przydatne między innymi dla wyszukiwarek i mediów społecznościowych.",
+    "t_frontmatter_synchronized": "Strona wstępna notatnika została zsynchronizowana ✔\n\nTe parametry będą używane w kolejnych wyeksportowanych wersjach tego notatnika.",
     "t_frontmatter_delete_field": "Usuń pole",
     "t_frontmatter_add_field": "Dodaj pole {{plus}}",
     "t_frontmatter_add_author": "Dodaj autor {{plus}}",
