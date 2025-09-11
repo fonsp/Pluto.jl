@@ -11,7 +11,7 @@
     "t_live_docs_body": "<p>Witaj w <b>interaktywnej dokumentacji</b>! Pozostaw to nieduże okienko otwarte podczas pracy z notatnikiem, aby otrzymywać dokumentację wszystkiego, co wpisujesz!</p><p>Możesz również wpisać zapytanie w powyższym polu tekstowym.</p><hr><p><em>Nadal nie możesz sobie poradzić? Oto <a target=\"_blank\" href=\"https://julialang.org/about/help/\">kilka wskazówek</a>.</em></p>",
     "t_panel_status": "Stan procesu",
     "t_panel_status_short": "Stan",
-    "t_panel_docs": "Interaktywna dokumentacja",
+    "t_panel_docs": "Dokumentacja",
     "t_panel_status_progress": "Stan {{progress}}",
     "t_panel_status_progress_inner": "({{done}}/{{total}})",
     "t_panel_close": "Zamknij panel",
