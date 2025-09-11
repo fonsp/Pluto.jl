@@ -12,6 +12,7 @@ import {
     japanese,
     nederlands,
     norsk_bokmål,
+    portugues_pt,
     suomi,
 } from "./lang_imports.js"
 
@@ -23,29 +24,32 @@ i18next.use(LanguageDetector).init({
     debug: false,
     fallbackLng: "en",
     resources: {
-        de: {
+        "de": {
             translation: without_empty_keys(deutsch),
         },
-        el: {
+        "el": {
             translation: ellinika,
         },
-        en: {
+        "en": {
             translation: without_empty_keys(english),
         },
-        fi: {
+        "fi": {
             translation: without_empty_keys(suomi),
         },
-        fr: {
+        "fr": {
             translation: without_empty_keys(french),
         },
-        nl: {
+        "ja": {
+            translation: without_empty_keys(japanese),
+        },
+        "nl": {
             translation: without_empty_keys(nederlands),
         },
-        nb: {
+        "nb": {
             translation: without_empty_keys(norsk_bokmål),
         },
-        ja: {
-            translation: without_empty_keys(japanese),
+        "pt-PT": {
+            translation: without_empty_keys(portugues_pt),
         },
     },
     detection: {
