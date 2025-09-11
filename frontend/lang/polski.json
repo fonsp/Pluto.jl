@@ -104,7 +104,7 @@
         "Stasiuuuuuu, tutaj chyba "
     ],
     "t_package_could_not_load": "<p>Paczka <strong>{{package}}.jl</strong> nie może zostać załadowan, ponieważ nie udało się zainicjować.</p><p>To raczej nie oznacza nic dobrego! Możesz spróbować podjąć następujące kroki:</p>",
-    "t_package_could_not_load_things_you_could_try": "<ul><li>Uruchom ponownie notatnik.</li><li>Uruchom notatnik w innej wersji języka Julia.</li><li>Skontaktuj się z twórcami {{package}}.jl w sprawie tego błędu.</li></ul>",
+    "t_package_could_not_load_things_you_could_try": "<ul><li>Uruchom ponownie notatnik.</li><li>Uruchom notatnik w innej wersji języka Julia.</li><li>Skontaktuj się z osobami tworzącymi {{package}}.jl w sprawie tego błędu.</li></ul>",
     "t_might_find_info_in_pkg_log": "Możliwe że znajdziesz użyteczne informacje w dzienniku instalacyjnym paczki:",
 
     "t_edit_frontmatter": "Edytuj stronę wstępną",
@@ -278,7 +278,7 @@
     "t_frontmatter_synchronized": "Strona wstępna notatnika została zsynchronizowana ✔\n\nTe parametry będą używane w kolejnych wyeksportowanych wersjach tego notatnika.",
     "t_frontmatter_delete_field": "Usuń pole",
     "t_frontmatter_add_field": "Dodaj pole {{plus}}",
-    "t_frontmatter_add_author": "Dodaj autor {{plus}}",
+    "t_frontmatter_add_author": "Dodaj osobę autorską {{plus}}",
     "t_frontmatter_cancel": "Odrzuć",
     "t_frontmatter_save": "Zapisz",
     "t_frontmatter_preview": "Podgląd",
