@@ -18,7 +18,7 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
     useEventListener(window, "open pluto html export", open, [open])
 
     const [plutoland_state, set_plutoland_state] = useState("waiting")
-    const [plutoland_url, set_plutoland_url] = useState("")
+    const [plutoland_data, set_plutoland_data] = useState(/** @type Record<string, unknown> */ ({}))
 
     const [upload_progress, set_upload_progress] = useState(0)
 
@@ -41,8 +41,7 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
             if (response.status === 200) {
                 const data = JSON.parse(response.response)
                 console.log(data)
-                const url = `https://pluto.land/n/${data.id}`
-                set_plutoland_url(url)
+                set_plutoland_data(data)
                 set_plutoland_state("success")
             } else {
                 set_plutoland_state("error: Upload failed")
@@ -72,6 +71,7 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
                 </a>
             </div>
         </div>
+        <div class="ple-or">--- or ---</div>
         <div class="ple-plutoland ple-option">
             <p>Upload this notebook to <a href="https://pluto.land" target="_blank">pluto.land</a>, a free hosting service for Pluto notebooks.</p>
             <div class="ple-bigbutton-container">
@@ -87,7 +87,7 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
                                   on_plutoland_upload()
                               }}
                           >
-                              Upload to <strong>pluto.land</strong>
+                              Upload to <strong>pluto.land</strong> ${InlineIonicon("cloud-upload-outline")}
                           </a>
                       `
                     : plutoland_state === "uploading"
@@ -103,7 +103,29 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
                     : plutoland_state === "success"
                     ? html` <div class="ple-plutoland-phase">
                           <p>Uploaded! View your notebook at:</p>
-                          <a href=${plutoland_url} target="_blank" class="ple-plutoland-url"> ${plutoland_url} </a>
+                          <div class="ple-plutoland-url-container">
+                              <a href=${`https://pluto.land/n/${plutoland_data.id}`} target="_blank" class="ple-plutoland-url">
+                                  ${`https://pluto.land/n/${plutoland_data.id}`}
+                              </a>
+                              <a
+                                  href="#"
+                                  title="Delete permanently from pluto.land"
+                                  onClick=${async (e) => {
+                                      e.preventDefault()
+
+                                      await fetch(`https://pluto.land/n/${plutoland_data.id}`, {
+                                          method: "DELETE",
+                                          headers: {
+                                              "X-Creation-Secret": String(plutoland_data.creation_secret),
+                                          },
+                                      })
+                                      set_plutoland_state("waiting")
+                                      set_plutoland_data({})
+                                  }}
+                              >
+                                  ${InlineIonicon("trash-bin-outline")}
+                              </a>
+                          </div>
                       </div>`
                     : html` <div class="ple-plutoland-phase">Error: ${plutoland_state}</div>`}
             </div>

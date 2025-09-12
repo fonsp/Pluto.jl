@@ -38,6 +38,12 @@
         --frontmatter-input-bg-color: #fbfbfb;
         --frontmatter-input-border-color: hsl(207deg 24% 87%);
 
+        /* PlutoLand upload styling */
+        --plutoland-bg-color: white;
+        --plutoland-bigbutton-bg-color: white;
+        --plutoland-url-fg: #375bbd;
+        --plutoland-url-bg: #f7fbff;
+
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
