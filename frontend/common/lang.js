@@ -12,6 +12,7 @@ import {
     japanese,
     nederlands,
     norsk_bokmål,
+    polski,
     portugues_pt,
     suomi,
 } from "./lang_imports.js"
@@ -50,6 +51,9 @@ i18next.use(LanguageDetector).init({
         },
         "pt-PT": {
             translation: without_empty_keys(portugues_pt),
+        },
+        pl: {
+            translation: without_empty_keys(polski),
         },
     },
     detection: {
