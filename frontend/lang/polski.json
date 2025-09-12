@@ -194,7 +194,7 @@
     
     "t_ai_permission_prompt_title": "Użyć SI do poprawienia błędów składni?",
     "t_ai_permission_prompt_body": "Pluto wyśle kod z tej komórki do komercyjnego serwisu świadczącego usługi SI, aby poprawić błędy składni. Zaktualizowany kod nie zostanie uruchomiony bez potwierdzenia.",
-    "t_ai_permission_prompt_body_2": "Przesłany kod może zostać użyty (anonimowo) przez zespół twórczy Pluto, aby ulepszyć usługi SI.",
+    "t_ai_permission_prompt_body_2": "Przesłany kod może zostać użyty (anonimowo) przez zespół tworzący Pluto, aby ulepszyć usługi SI.",
     "t_dont_ask_again": "Nie pytaj ponownie",
     "t_no": "Nie",
     "t_yes": "Tak",
