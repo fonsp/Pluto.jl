@@ -31,7 +31,7 @@ function source_module(c::ModuleCompletion)
     end
 end
 
-completion_str_to_symbol(c::String) = endswith(s, "\"") ? Symbol("@$(s[begin:end-1])_str") : Symbol(s)
+completion_str_to_symbol(s::String) = endswith(s, "\"") ? Symbol("@$(s[begin:end-1])_str") : Symbol(s)
 
 completion_value_type(c::ModuleCompletion) = try
     completion_value_type_inner(getfield(c.parent, completion_str_to_symbol(c.mod)))::Symbol
