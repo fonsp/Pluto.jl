@@ -133,7 +133,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     onClick=${(e) => {
                         e.preventDefault()
                         WarnForVisisblePasswords()
-                        window.dispatchEvent(new CustomEvent("open pluto html export"))
+                        window.dispatchEvent(new CustomEvent("open pluto html export", { detail: { download_url: notebookexport_url } }))
                     }}
                 >
                     <header role="none"><${Square} fill="#E86F51" /> ${t("t_export_card_static_html")}</header>

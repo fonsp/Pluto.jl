@@ -4,18 +4,29 @@ import _ from "../imports/lodash.js"
 //@ts-ignore
 import { useDialog } from "../common/useDialog.js"
 import { useEventListener } from "../common/useEventListener.js"
-import { t } from "../common/lang.js"
+import { t, th } from "../common/lang.js"
 import { exportNotebookDesktop, WarnForVisisblePasswords } from "./ExportBanner.js"
 
 /**
  * @param {{
  *  notebook_id: String,
- *  notebookexport_url: String,
  * }} props
  * */
-export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
+export const PlutoLandUpload = ({ notebook_id }) => {
     const [dialog_ref, open, close, _toggle] = useDialog()
-    useEventListener(window, "open pluto html export", open, [open])
+    const [open_event_detail, set_open_event_detail] = useState(/** @type {Record<string, unknown>} */ ({}))
+
+    const { download_url, download_filename } = open_event_detail
+
+    useEventListener(
+        window,
+        "open pluto html export",
+        (/** @type {CustomEvent} */ e) => {
+            set_open_event_detail(e.detail)
+            open()
+        },
+        [open, set_open_event_detail]
+    )
 
     const [plutoland_state, set_plutoland_state] = useState("waiting")
     const [plutoland_data, set_plutoland_data] = useState(/** @type Record<string, unknown> */ ({}))
@@ -27,7 +38,7 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
             set_plutoland_state("generating")
             set_upload_progress(0)
 
-            const notebook_response = await fetch(notebookexport_url)
+            const notebook_response = await fetch(String(download_url))
             const notebook_blob = await notebook_response.blob()
 
             set_plutoland_state("uploading")
@@ -53,27 +64,33 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
 
     const prog = html`<progress class="ple-plutoland-progress" max="100" value=${upload_progress}>${Math.round(upload_progress * 100)}%</progress>`
 
+    const is_recording = open_event_detail.is_recording ?? false
+
     return html`<dialog ref=${dialog_ref} class="export-html-dialog">
         <div class="ple-download ple-option">
-            <p>Save the HTML export file to your disk.</p>
+            <p>${th(is_recording ? "t_plutoland_download_description_recording" : "t_plutoland_download_description")}</p>
             <div class="ple-bigbutton-container">
                 <a
                     class="ple-bigbutton"
-                    href=${notebookexport_url}
+                    href=${download_url}
                     target="_blank"
-                    download=""
+                    download=${download_filename ?? ""}
                     onClick=${(e) => {
                         exportNotebookDesktop(e, 1, notebook_id)
                         close()
                     }}
                 >
-                    Download HTML file ${InlineIonicon("download-outline")}
+                    ${th("t_plutoland_download")} ${InlineIonicon("download-outline")}
                 </a>
             </div>
         </div>
-        <div class="ple-or">--- or ---</div>
+        <div class="ple-or"><span>${th("t_plutoland_choose_up_or_down")}</span></div>
         <div class="ple-plutoland ple-option">
-            <p>Upload this notebook to <a href="https://pluto.land" target="_blank">pluto.land</a>, a free hosting service for Pluto notebooks.</p>
+            <p>
+                ${th(is_recording ? "t_plutoland_upload_description_recording" : "t_plutoland_upload_description", {
+                    plutoland: html`<a href="https://pluto.land/" target="_blank">pluto.land</a>`,
+                })}
+            </p>
             <div class="ple-bigbutton-container">
                 ${plutoland_state === "waiting"
                     ? html`
@@ -87,29 +104,27 @@ export const PlutoLandUpload = ({ notebook_id, notebookexport_url }) => {
                                   on_plutoland_upload()
                               }}
                           >
-                              Upload to <strong>pluto.land</strong> ${InlineIonicon("cloud-upload-outline")}
+                              ${th("t_plutoland_upload_upload", {
+                                  plutoland: html`<strong>pluto.land</strong>`,
+                              })}
+                              ${InlineIonicon("cloud-upload-outline")}
                           </a>
                       `
-                    : plutoland_state === "uploading"
+                    : plutoland_state === "uploading" || plutoland_state === "generating"
                     ? html` <div class="ple-plutoland-phase">
-                          <p>Uploading...</p>
-                          ${prog}
-                      </div>`
-                    : plutoland_state === "generating"
-                    ? html` <div class="ple-plutoland-phase">
-                          <p>Generating...</p>
+                          <p>${th("t_plutoland_upload_uploading")}</p>
                           ${prog}
                       </div>`
                     : plutoland_state === "success"
                     ? html` <div class="ple-plutoland-phase">
-                          <p>Uploaded! View your notebook at:</p>
+                          <p>${th(is_recording ? "t_plutoland_upload_success_recording" : "t_plutoland_upload_success")}</p>
                           <div class="ple-plutoland-url-container">
                               <a href=${`https://pluto.land/n/${plutoland_data.id}`} target="_blank" class="ple-plutoland-url">
                                   ${`https://pluto.land/n/${plutoland_data.id}`}
                               </a>
                               <a
                                   href="#"
-                                  title="Delete permanently from pluto.land"
+                                  title=${t("t_plutoland_upload_delete")}
                                   onClick=${async (e) => {
                                       e.preventDefault()
 

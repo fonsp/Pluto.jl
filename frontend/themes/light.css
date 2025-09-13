@@ -43,6 +43,7 @@
         --plutoland-bigbutton-bg-color: white;
         --plutoland-url-fg: #375bbd;
         --plutoland-url-bg: #f7fbff;
+        --plutoland-or-bg-color: hsl(210 20% 83% / 1);
 
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);

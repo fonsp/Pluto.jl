@@ -749,6 +749,12 @@ dialog.export-html-dialog > div.ple-or {
     transform: translateY(-1px);
 }
 
+dialog.export-html-dialog > div.ple-or span {
+    background: var(--plutoland-or-bg-color);
+    padding: 0.2em 0.5em;
+    border-radius: 0.4em;
+}
+
 dialog.export-html-dialog > div {
     padding: 1em;
 }
@@ -762,7 +768,7 @@ dialog.export-html-dialog p {
     margin: 0;
 }
 
-dialog.export-html-dialog > div > p {
+dialog.export-html-dialog > .ple-download > p {
     color: var(--pluto-output-color);
 }
 
@@ -810,6 +816,14 @@ dialog.export-html-dialog > div.ple-plutoland {
     background: #3c4c59;
     color: white;
     box-shadow: inset 0px 0px 47px #00000030;
+}
+
+dialog.export-html-dialog > div.final button {
+    border: none;
+    background: none;
+    font-variant: all-small-caps;
+    cursor: pointer;
+    padding: 0.3em 0.8em;
 }
 
 nav#at_the_top h1 {
