@@ -730,7 +730,7 @@ dialog.export-html-dialog {
     border-radius: 0.6rem;
     border: none;
     background: var(--main-bg-color);
-    box-shadow: 0px 2px 10px #00000033;
+    box-shadow: 0px 2px 30px #0000005c;
     padding: 0;
     font-family: var(--system-ui-font-stack);
 }
@@ -819,11 +819,7 @@ dialog.export-html-dialog > div.ple-plutoland {
 }
 
 dialog.export-html-dialog > div.final button {
-    border: none;
-    background: none;
-    font-variant: all-small-caps;
     cursor: pointer;
-    padding: 0.3em 0.8em;
 }
 
 nav#at_the_top h1 {

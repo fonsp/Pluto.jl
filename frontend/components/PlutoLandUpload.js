@@ -1,4 +1,4 @@
-import { html, useState } from "../imports/Preact.js"
+import { html, useEffect, useState } from "../imports/Preact.js"
 import _ from "../imports/lodash.js"
 
 //@ts-ignore
@@ -6,6 +6,7 @@ import { useDialog } from "../common/useDialog.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { t, th } from "../common/lang.js"
 import { exportNotebookDesktop, WarnForVisisblePasswords } from "./ExportBanner.js"
+import { useMillisSinceTruthy } from "./RunArea.js"
 
 /**
  * @param {{
@@ -15,7 +16,6 @@ import { exportNotebookDesktop, WarnForVisisblePasswords } from "./ExportBanner.
 export const PlutoLandUpload = ({ notebook_id }) => {
     const [dialog_ref, open, close, _toggle] = useDialog()
     const [open_event_detail, set_open_event_detail] = useState(/** @type {Record<string, unknown>} */ ({}))
-
     const { download_url, download_filename } = open_event_detail
 
     useEventListener(
@@ -28,23 +28,34 @@ export const PlutoLandUpload = ({ notebook_id }) => {
         [open, set_open_event_detail]
     )
 
-    const [plutoland_state, set_plutoland_state] = useState("waiting")
+    const [upload_flow_state, set_upload_flow_state] = useState("waiting")
     const [plutoland_data, set_plutoland_data] = useState(/** @type Record<string, unknown> */ ({}))
 
     const [upload_progress, set_upload_progress] = useState(0)
 
+    // Show some fake progress while the server is processing the upload
+    const [fake_progressing, set_fake_progressing] = useState(false)
+    const fake_progress = useMillisSinceTruthy(fake_progressing)
+    useEffect(() => {
+        if (fake_progressing && fake_progress) {
+            const y = 1.0 - Math.exp(-2 * (fake_progress / 1000))
+            set_upload_progress(Math.min(0.7 + y * 0.3, 1.0))
+        }
+    }, [fake_progress, fake_progressing])
+
     const on_plutoland_upload = async () => {
         try {
-            set_plutoland_state("generating")
+            set_upload_flow_state("generating")
             set_upload_progress(0)
 
             const notebook_response = await fetch(String(download_url))
             const notebook_blob = await notebook_response.blob()
 
-            set_plutoland_state("uploading")
-            set_upload_progress(0.2)
+            set_upload_flow_state("uploading")
+            set_upload_progress(0.1)
             const response = await upload_to_plutoland(notebook_blob, (progress) => {
-                set_upload_progress(0.2 + progress * 0.8)
+                set_upload_progress(0.1 + progress * 0.6)
+                if (progress >= 1.0) set_fake_progressing(true)
             })
 
             console.log(response)
@@ -53,16 +64,16 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                 const data = JSON.parse(response.response)
                 console.log(data)
                 set_plutoland_data(data)
-                set_plutoland_state("success")
+                set_upload_flow_state("success")
             } else {
-                set_plutoland_state("error: Upload failed")
+                set_upload_flow_state("error: Upload failed")
             }
         } catch (error) {
-            set_plutoland_state("error: " + error)
+            set_upload_flow_state("error: " + error)
         }
     }
 
-    const prog = html`<progress class="ple-plutoland-progress" max="100" value=${upload_progress}>${Math.round(upload_progress * 100)}%</progress>`
+    const prog = html`<progress class="ple-plutoland-progress" max="100" value=${upload_progress * 100}>${Math.round(upload_progress * 100)}%</progress>`
 
     const is_recording = open_event_detail.is_recording ?? false
 
@@ -84,7 +95,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                 </a>
             </div>
         </div>
-        <div class="ple-or"><span>${th("t_plutoland_choose_up_or_down")}</span></div>
+        <div class="ple-or" aria-hidden="true"><span>${th("t_plutoland_choose_up_or_down")}</span></div>
         <div class="ple-plutoland ple-option">
             <p>
                 ${th(is_recording ? "t_plutoland_upload_description_recording" : "t_plutoland_upload_description", {
@@ -92,7 +103,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                 })}
             </p>
             <div class="ple-bigbutton-container">
-                ${plutoland_state === "waiting"
+                ${upload_flow_state === "waiting"
                     ? html`
                           <a
                               class="ple-bigbutton"
@@ -110,12 +121,12 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                               ${InlineIonicon("cloud-upload-outline")}
                           </a>
                       `
-                    : plutoland_state === "uploading" || plutoland_state === "generating"
+                    : upload_flow_state === "uploading" || upload_flow_state === "generating"
                     ? html` <div class="ple-plutoland-phase">
                           <p>${th("t_plutoland_upload_uploading")}</p>
                           ${prog}
                       </div>`
-                    : plutoland_state === "success"
+                    : upload_flow_state === "success"
                     ? html` <div class="ple-plutoland-phase">
                           <p>${th(is_recording ? "t_plutoland_upload_success_recording" : "t_plutoland_upload_success")}</p>
                           <div class="ple-plutoland-url-container">
@@ -134,7 +145,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                                               "X-Creation-Secret": String(plutoland_data.creation_secret),
                                           },
                                       })
-                                      set_plutoland_state("waiting")
+                                      set_upload_flow_state("waiting")
                                       set_plutoland_data({})
                                   }}
                               >
@@ -142,7 +153,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                               </a>
                           </div>
                       </div>`
-                    : html` <div class="ple-plutoland-phase">Error: ${plutoland_state}</div>`}
+                    : html` <div class="ple-plutoland-phase">Error: ${upload_flow_state}</div>`}
             </div>
         </div>
         <div class="final"><button onClick=${close}>${t("t_frontmatter_cancel")}</button></div>
