@@ -50,17 +50,20 @@ export const WarnForVisisblePasswords = () => {
     }
 }
 
-export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+export const exportNotebookDesktop = (
+    /** @type {{ preventDefault: () => void; }} */ e,
+    /** @type {Desktop.PlutoExport} */ type,
+    /** @type {string} */ notebook_id
+) => {
     // @ts-ignore
     const isDesktop = !!window.plutoDesktop
-
-    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} */ type) => {
-        if (isDesktop) {
-            e.preventDefault()
-            window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
-        }
+    if (isDesktop) {
+        e.preventDefault()
+        window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
     }
+}
 
+export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     //
     let print_old_title_ref = useRef("")
     useEventListener(
@@ -118,7 +121,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
             <div id="container">
                 <div class="export_title">${t("t_export_category_export")}</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
-                <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
+                <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebookDesktop(e, 0, notebook_id)}>
                     <header role="none"><${Triangle} fill="#a270ba" /> ${t("t_export_card_notebook_file")}</header>
                     <section>${th("t_export_card_notebook_file_description")}</section>
                 </a>
@@ -128,8 +131,9 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     class="export_card"
                     download=""
                     onClick=${(e) => {
+                        e.preventDefault()
                         WarnForVisisblePasswords()
-                        exportNotebook(e, 1)
+                        window.dispatchEvent(new CustomEvent("open pluto html export", { detail: { download_url: notebookexport_url } }))
                     }}
                 >
                     <header role="none"><${Square} fill="#E86F51" /> ${t("t_export_card_static_html")}</header>

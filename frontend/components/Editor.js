@@ -48,6 +48,7 @@ import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
 import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
+import { PlutoLandUpload } from "./PlutoLandUpload.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1734,6 +1735,10 @@ ${t("t_key_autosave_description")}`
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
+                    />
+                    <${PlutoLandUpload}
+                        notebook_id=${notebook.notebook_id}
+                        notebookexport_url=${this.export_url("notebookexport")}
                     />
                     ${this.props.preamble_element}
                     <${Main}>

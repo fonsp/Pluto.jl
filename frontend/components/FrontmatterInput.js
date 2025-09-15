@@ -47,7 +47,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         close()
     }, [clean_data, frontmatter, close])
 
-    useEventListener(window, "open pluto frontmatter", open)
+    useEventListener(window, "open pluto frontmatter", open, [open])
 
     useEventListener(
         window,

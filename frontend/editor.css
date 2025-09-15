@@ -703,6 +703,125 @@ pluto-editor.static_preview button.toggle_export {
     display: none;
 }
 
+.ionicon-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    /* background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/notifications-outline.svg"); */
+    background-size: contain;
+    filter: var(--image-filters);
+    vertical-align: -0.1em;
+    margin-inline-start: 0.4ch;
+}
+
+.ionicon-icon[data-icon="download-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/download-outline.svg");
+}
+
+.ionicon-icon[data-icon="cloud-upload-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-upload-outline.svg");
+}
+.ionicon-icon[data-icon="trash-bin-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/trash-bin-outline.svg");
+}
+
+dialog.export-html-dialog {
+    max-width: 22rem;
+    border-radius: 0.6rem;
+    border: none;
+    background: var(--main-bg-color);
+    box-shadow: 0px 2px 30px #0000005c;
+    padding: 0;
+    font-family: var(--system-ui-font-stack);
+}
+
+dialog.export-html-dialog > div.ple-option {
+    padding: 1.4em 1.4em;
+}
+
+dialog.export-html-dialog > div.ple-or {
+    height: 0;
+    padding: 0 1.4em;
+    text-align: center;
+    font-weight: 700;
+    color: var(--pluto-output-color);
+    line-height: 0;
+    transform: translateY(-1px);
+}
+
+dialog.export-html-dialog > div.ple-or span {
+    background: var(--plutoland-or-bg-color);
+    padding: 0.2em 0.5em;
+    border-radius: 0.4em;
+}
+
+dialog.export-html-dialog > div {
+    padding: 1em;
+}
+
+dialog.export-html-dialog a {
+    color: inherit;
+    text-decoration-color: currentcolor;
+}
+
+dialog.export-html-dialog p {
+    margin: 0;
+}
+
+dialog.export-html-dialog > .ple-download > p {
+    color: var(--pluto-output-color);
+}
+
+dialog.export-html-dialog .ple-bigbutton-container {
+    display: grid;
+    place-items: center;
+    padding: 2em 0.5em 1em 0.5em;
+}
+
+dialog.export-html-dialog :is(.ple-bigbutton, .ple-plutoland-phase) {
+    display: block;
+    padding: 0.8em 1.2em;
+    border: none;
+    border-radius: 0.4em;
+    background: var(--plutoland-bigbutton-bg-color);
+    box-shadow: 0px 1px 10px #00000033;
+    text-decoration: none;
+    text-align: center;
+    color: var(--black);
+}
+
+dialog.export-html-dialog a.ple-plutoland-url {
+    font-family: monospace, sans-serif;
+    font-size: 0.7em;
+    font-weight: 700;
+    text-overflow: clip;
+    overflow: hidden;
+    white-space: nowrap;
+    background: var(--plutoland-url-bg);
+    color: var(--plutoland-url-fg);
+    padding: 0.2em 0.4em;
+    border-radius: 0.3em;
+    display: inline-block;
+}
+
+dialog.export-html-dialog .ple-plutoland-url-container {
+    margin-top: 1em;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5em;
+}
+
+dialog.export-html-dialog > div.ple-plutoland {
+    background: #3c4c59;
+    color: white;
+    box-shadow: inset 0px 0px 47px #00000030;
+}
+
+dialog.export-html-dialog > div.final button {
+    cursor: pointer;
+}
+
 nav#at_the_top h1 {
     color: var(--nav-h1-text-color);
     letter-spacing: 2px;
