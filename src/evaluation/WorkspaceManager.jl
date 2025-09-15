@@ -299,7 +299,7 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
             
         Status.report_business_started!(status, Symbol("Starting process"))
         Status.report_business_planned!(status, Symbol("Loading notebook boot environment"))
-        
+
         worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
         
         Status.report_business_finished!(status, Symbol("Starting process"))
