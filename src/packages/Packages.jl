@@ -41,10 +41,6 @@ PkgCompat.manifest_file(notebook::Notebook) = PkgCompat.manifest_file(PkgCompat.
 
 
 """
-```julia
-sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
-```
-
 Update the notebook package environment to match the notebook's code. This will:
 - Add packages that should be added (because they are imported in a cell).
 - Remove packages that are no longer needed.
