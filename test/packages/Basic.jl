@@ -427,6 +427,8 @@ import Malt
         end
 
         @test index_order == [3, 2, 1]
+        
+        cleanup(🍭, notebook)
     end
 
     @testset "File format -- Backwards compat" begin
