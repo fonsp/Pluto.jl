@@ -64,7 +64,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         Malt.Worker
     end
     
-    @debug "Creating workspace process" notebook.path length(notebook.cells)
+    @debug "Creating workspace process" notebook.path is_offline_renderer length(notebook.cells) exception=(ErrorException("test"), backtrace())
     try
         worker = create_workspaceprocess(WorkerType; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler), status=create_status)
         
@@ -365,7 +365,7 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
             
         Status.report_business_started!(status, Symbol("Starting process"))
         Status.report_business_planned!(status, Symbol("Loading notebook boot environment"))
-        
+
         worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
         
         Status.report_business_finished!(status, Symbol("Starting process"))
@@ -388,6 +388,8 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
     worker
 end
 
+const get_workspace_token = Token()
+
 """
 Return the `Workspace` of `notebook`; will be created if none exists yet.
 
@@ -400,12 +402,14 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
         error("Cannot run code in this notebook: it has already shut down.")
     end
 
-    task = if !allow_creation
-        get(active_workspaces, notebook.notebook_id, nothing)
-    else
-        get!(active_workspaces, notebook.notebook_id) do
-            🌸 = Pluto.@asynclog make_workspace(session_notebook)
-            yield(); 🌸
+    task = withtoken(get_workspace_token) do
+        if !allow_creation
+            get(active_workspaces, notebook.notebook_id, nothing)
+        else
+            get!(active_workspaces, notebook.notebook_id) do
+                🌸 = Pluto.@asynclog make_workspace(session_notebook)
+                yield(); 🌸
+            end
         end
     end
 
