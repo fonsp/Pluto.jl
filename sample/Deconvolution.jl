@@ -16,5 +16,5 @@ image_data[JIVECore.Files.loadImage!(image_data, image_keys)]
 JIVECore.Visualize.gif(JIVECore.Process.autoContrast(image_data["Stack_1"]))
 
 # ╔═╡ Cell order:
-# ╟─8cda66e0-9150-11f0-0810-71970ca2749f
+# ╠═8cda66e0-9150-11f0-0810-71970ca2749f
 # ╠═7dd6c408-1522-44eb-8f49-99c8f75fcb06
