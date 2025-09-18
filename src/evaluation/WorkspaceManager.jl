@@ -166,19 +166,53 @@ end
 
 
 
-function precompile_nbpkg((session, notebook)::SN)
+function precompile_nbpkg((session, notebook)::SN; io=stdout)
     workspace = get_workspace((session, notebook))
+    io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
     
-    # todo: get logs using a channel
     expr = quote
-        out_stream = IOContext(
-            stdout,
-            :color => true,
-            # Look at that I put a feature in Julia! 😎
-            # https://github.com/JuliaLang/julia/pull/58887
-            :force_fancyprint => true,
-        )
-        Pkg.precompile(; already_instantiated=true)
+        # This is just Pkg.precompile, but with extra stuff to relay stdout to the 
+        let
+            buffer = Base.BufferStream()
+            running = Ref(true)
+            @async try
+                while running[] && !eof(buffer) && isreadable(buffer)
+                    newdata = readavailable(buffer)
+                    isopen(__precomp_io_writes_channel) || break
+                    isempty(newdata) || put!(__precomp_io_writes_channel, newdata)
+                    sleep(0.01)
+                end
+            catch e
+                println(stderr, "Error while relaying precompilation stdout: ", sprint(showerror, e, catch_backtrace()))
+            end
+            
+            out_stream = IOContext(
+                buffer,
+                :color => true,
+                # Look at that, I put a feature in Julia! 😎
+                # https://github.com/JuliaLang/julia/pull/58887
+                :force_fancyprint => true,
+            )
+            
+            try
+                Pkg.precompile(; already_instantiated=true, io=out_stream)
+            finally
+                running[] = false
+                println(buffer)
+                flush(buffer)
+                close(buffer)
+                put!(__precomp_io_writes_channel, "")
+                close(__precomp_io_writes_channel)
+            end
+            
+        end
+    end
+    
+    running = Ref(true)
+    @async while running[]
+        newdata = take!(io_writes_channel)
+        write(io, newdata)
+        sleep(0.01)
     end
 
     try
@@ -187,6 +221,8 @@ function precompile_nbpkg((session, notebook)::SN)
         end
     catch e
         throw(PrecompilationFailedException(sprint(showerror, e)))
+    finally
+        running[] = false
     end
 end
 

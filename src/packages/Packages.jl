@@ -446,7 +446,7 @@ function _precompile(session::ServerSession, notebook::Notebook, iolistener::IOL
     with_io_setup(notebook, iolistener) do
         phasemessage(iolistener, "Precompiling")
         @debug "PlutoPkg: Precompiling" notebook.path 
-        WorkspaceManager.precompile_nbpkg((session, notebook))
+        WorkspaceManager.precompile_nbpkg((session, notebook); io=iolistener.buffer)
     end
     notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
 end
