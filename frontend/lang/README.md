@@ -121,6 +121,8 @@ Feel free to get creative! You don't need to match the English text exactly, jus
 
 With Pluto, we try to keep an **informal and clear style**, using simple and positive language. What would that look like in your language?
 
+If your language contains gender-specific words, please make an effort to use gender-neutral language. (In some languages, this means being careful to not assume that the user is masculine.) We want Pluto to feel inclusive!
+
 ## Using AI
 Feel free to use AI to help with writing the localization strings. (For example, copy the complete JSON file into ChatGPT and ask kindly for a translation.) But we do ask you to **check every localization string** yourself, and make sure that it is correct.
 
