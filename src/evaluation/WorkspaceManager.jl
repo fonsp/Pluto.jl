@@ -164,6 +164,36 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     end)
 end
 
+
+
+function precompile_nbpkg((session, notebook)::SN)
+    workspace = get_workspace((session, notebook))
+    
+    # todo: get logs using a channel
+    expr = quote
+        out_stream = IOContext(
+            stdout,
+            :color => true,
+            # Look at that I put a feature in Julia! 😎
+            # https://github.com/JuliaLang/julia/pull/58887
+            :force_fancyprint => true,
+        )
+        Pkg.precompile(; already_instantiated=true)
+    end
+
+    try
+        withtoken(workspace.dowork_token) do
+            Malt.remote_eval_wait(workspace.worker, expr)
+        end
+    catch e
+        throw(PrecompilationFailedException(sprint(showerror, e)))
+    end
+end
+
+struct PrecompilationFailedException <: Exception
+    msg::String
+end
+
 function start_relaying_self_updates((session, notebook)::SN, run_channel)
     while true
         try

@@ -63,9 +63,9 @@ function precompile_isolated(
     # by running this code using Malt.jl
 end
 
-struct PrecompilationFailedException <: Exception
-    msg::String
-end
+# struct PrecompilationFailedException <: Exception
+#     msg::String
+# end
 
 # Create a new IO object that redirects all writes to the given capture IOs. It's like the `tee` linux command. Return a named tuple with the IO object and a function to close it which you should not forget to call.
 function tee_io(captures...)
