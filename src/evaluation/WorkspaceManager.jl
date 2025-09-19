@@ -171,7 +171,8 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)
     io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
     
     expr = quote
-        # This is just Pkg.precompile, but with extra stuff to relay stdout to the 
+        # This is just Pkg.precompile, but with extra stuff to relay stdout to the host process
+        import Pkg
         let
             buffer = Base.BufferStream()
             running = Ref(true)
@@ -204,7 +205,6 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)
                 put!(__precomp_io_writes_channel, "")
                 close(__precomp_io_writes_channel)
             end
-            
         end
     end
     
