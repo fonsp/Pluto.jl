@@ -478,12 +478,11 @@ responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
     workspace = WorkspaceManager.get_workspace(session_notebook; allow_creation=false)
 
     already_interrupting = 🙋.notebook.wants_to_interrupt
-    anything_running = !isready(workspace.dowork_token)
+    anything_running = !isready(workspace.dowork_token) && any(c -> c.running, 🙋.notebook.cells)
     if !already_interrupting && anything_running
         🙋.notebook.wants_to_interrupt = true
         WorkspaceManager.interrupt_workspace(session_notebook)
     end
-    # TODO: notify user whether interrupt was successful
 end
 
 responses[:shutdown_notebook] = function response_shutdown_notebook(🙋::ClientRequest)

@@ -164,6 +164,72 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     end)
 end
 
+
+
+function precompile_nbpkg((session, notebook)::SN; io=stdout)
+    workspace = get_workspace((session, notebook))
+    io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
+    
+    expr = quote
+        # This is just Pkg.precompile, but with extra stuff to relay stdout to the host process
+        import Pkg
+        let
+            buffer = Base.BufferStream()
+            running = Ref(true)
+            @async try
+                while running[] && !eof(buffer) && isreadable(buffer)
+                    newdata = readavailable(buffer)
+                    isopen(__precomp_io_writes_channel) || break
+                    isempty(newdata) || put!(__precomp_io_writes_channel, newdata)
+                    sleep(0.01)
+                end
+            catch e
+                println(stderr, "Error while relaying precompilation stdout: ", sprint(showerror, e, catch_backtrace()))
+            end
+            
+            out_stream = IOContext(
+                buffer,
+                :color => true,
+                # Look at that, I put a feature in Julia! 😎
+                # https://github.com/JuliaLang/julia/pull/58887
+                :force_fancyprint => true,
+            )
+            
+            try
+                Pkg.precompile(; already_instantiated=true, io=out_stream)
+            finally
+                running[] = false
+                println(buffer)
+                flush(buffer)
+                close(buffer)
+                put!(__precomp_io_writes_channel, "")
+                close(__precomp_io_writes_channel)
+            end
+        end
+    end
+    
+    running = Ref(true)
+    @async while running[]
+        newdata = take!(io_writes_channel)
+        write(io, newdata)
+        sleep(0.01)
+    end
+
+    try
+        withtoken(workspace.dowork_token) do
+            Malt.remote_eval_wait(workspace.worker, expr)
+        end
+    catch e
+        throw(PrecompilationFailedException(sprint(showerror, e)))
+    finally
+        running[] = false
+    end
+end
+
+struct PrecompilationFailedException <: Exception
+    msg::String
+end
+
 function start_relaying_self_updates((session, notebook)::SN, run_channel)
     while true
         try

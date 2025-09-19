@@ -4,7 +4,6 @@ import .PkgCompat
 import .PkgCompat: select, is_stdlib
 import Logging
 import LoggingExtras
-import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import GracefulPkg
 
 const tiers = unique((
@@ -42,10 +41,6 @@ PkgCompat.manifest_file(notebook::Notebook) = PkgCompat.manifest_file(PkgCompat.
 
 
 """
-```julia
-sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
-```
-
 Update the notebook package environment to match the notebook's code. This will:
 - Add packages that should be added (because they are imported in a cell).
 - Remove packages that are no longer needed.
@@ -59,7 +54,7 @@ function sync_nbpkg_core(
     on_terminal_output::Function=((args...) -> nothing), 
     cleanup_iolistener::Ref{Function}=Ref{Function}(_default_cleanup),
     lag::Real=0,
-    compiler_options::CompilerOptions=CompilerOptions(),
+    precompile_session::ServerSession,
 )
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
@@ -263,7 +258,7 @@ function sync_nbpkg_core(
                     
                     if should_precompile_later
                         Status.report_business!(pkg_status, :precompile) do
-                            _precompile(notebook, iolistener, compiler_options)
+                            _precompile(precompile_session, notebook, iolistener)
                         end
                     end
 
@@ -337,7 +332,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 on_terminal_output=iocallback, 
                 cleanup_iolistener,
                 lag=session.options.server.simulated_pkg_lag,
-                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
+                precompile_session=session,
             )
 		end
 
@@ -372,7 +367,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
         showerror(stderr, e, bt)
         
         
-		error_text = e isa PrecompilationFailedException ? e.msg : sprint(showerror, e, bt)
+		error_text = e isa WorkspaceManager.PrecompilationFailedException ? e.msg : sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
             old = get(notebook.nbpkg_terminal_outputs, p, "")
 			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\e[1mPkg error!\e[22m\n" * error_text
@@ -442,17 +437,12 @@ function _instantiate(notebook::Notebook, iolistener::IOListener)
     notebook.nbpkg_ctx_instantiated = true
 end
 
-function _precompile(notebook::Notebook, iolistener::IOListener, compiler_options::CompilerOptions)
+function _precompile(session::ServerSession, notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
         phasemessage(iolistener, "Precompiling")
         @debug "PlutoPkg: Precompiling" notebook.path 
-        
-        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
-        precompile_isolated(env_dir; 
-            io=iolistener.buffer,
-            compiler_options,
-        )
+        WorkspaceManager.precompile_nbpkg((session, notebook); io=iolistener.buffer)
     end
     notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
 end
@@ -537,7 +527,7 @@ function update_nbpkg_core(
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
     cleanup_iolistener::Ref{Function}=Ref{Function}(default_cleanup),
-    compiler_options::CompilerOptions=CompilerOptions(),
+    precompile_session::ServerSession,
 )
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
@@ -592,7 +582,7 @@ function update_nbpkg_core(
                 if should_instantiate_again
                     # Status.report_business!(pkg_status, :instantiate2) do
                     _instantiate(notebook, iolistener)
-                    _precompile(notebook, iolistener, compiler_options)
+                    _precompile(precompile_session, notebook, iolistener)
                     # end
                 end
 
@@ -639,7 +629,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 level, 
                 on_terminal_output=iocallback,
                 cleanup_iolistener,
-                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
+                precompile_session=session,
             )
 		end
 
