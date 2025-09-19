@@ -49,6 +49,8 @@ import { get_included_external_source } from "../common/external_source.js"
 import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
+import { available as vscode_available, api as vscode } from "../common/VSCodeApi.js"
+import { alert, confirm } from "../common/alert_confirm.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -336,7 +338,7 @@ export class Editor extends Component {
         /** @type {EditorState} */
         this.state = {
             notebook: initial_notebook_state,
-            cell_inputs_local: {},
+            cell_inputs_local: vscode.load_cell_inputs_from_vscode_state(),
             unsumbitted_global_definitions: {},
             desired_doc_query: null,
             recently_deleted: [],
@@ -393,6 +395,7 @@ export class Editor extends Component {
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
+                vscode.store_cell_input_in_vscode_state(cell_id, new_val)
                 return this.setStatePromise(
                     immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
@@ -1661,6 +1664,8 @@ ${t("t_key_autosave_description")}`
                                     ? html`<pluto-filepicker
                                           ><a href=${this.export_url("notebookfile")} target="_blank">${t("t_save_notebook_ellipsis")}</a></pluto-filepicker
                                       >`
+                                    : vscode_available
+                                    ? null
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}

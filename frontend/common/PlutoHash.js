@@ -13,6 +13,11 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     return base64url.substring(base64url.indexOf(',')+1)
 }
 
+export const decode_base64_to_arraybuffer = async (/** @type {string} */ data) => {
+    let r = await fetch(`data:;base64,${data}`)
+    return await r.arrayBuffer()
+}
+
 /** Encode a buffer using the `base64url` encoding, which uses URL-safe special characters, see https://en.wikipedia.org/wiki/Base64#Variants_summary_table */
 export const base64url_arraybuffer = async (/** @type {BufferSource} */ data) => {
     // This is roughly 0.5 as fast as `base64_arraybuffer`. See https://gist.github.com/fonsp/d2b84265012942dc40d0082b1fd405ba for benchmark and even slower alternatives.

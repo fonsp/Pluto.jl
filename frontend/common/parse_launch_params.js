@@ -1,3 +1,5 @@
+import { available as vscode_available } from "./VSCodeApi.js"
+
 /**
  *
  * @return {import("../components/Editor.js").LaunchParameters}
@@ -7,7 +9,7 @@ export const parse_launch_params = () => {
 
     return {
         //@ts-ignore
-        notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
+        notebook_id: (vscode_available ? null : url_params.get("id")) ?? window.pluto_notebook_id,
         //@ts-ignore
         statefile: url_params.get("statefile") ?? window.pluto_statefile,
         //@ts-ignore

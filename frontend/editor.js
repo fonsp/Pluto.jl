@@ -2,11 +2,17 @@ import { html, render, useEffect, useRef, useState } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Editor, default_path } from "./components/Editor.js"
+import { available as vscode_available } from "./common/VSCodeApi.js"
 import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
 import { unpack } from "./common/MsgPack.js"
 import { RawHTMLContainer } from "./components/CellOutput.js"
 import { ProcessStatus } from "./common/ProcessStatus.js"
 import { parse_launch_params } from "./common/parse_launch_params.js"
+
+// remove default stylesheet inserted by VS Code
+if (vscode_available) {
+    document.head.querySelector("style#_defaultStyles")?.remove()
+}
 
 const url_params = new URLSearchParams(window.location.search)
 
