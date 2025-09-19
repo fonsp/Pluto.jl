@@ -41,7 +41,8 @@
     "t_cell_disabled_in_file_tooltip": "Ta komórka jest bezpośrednio oznaczona w pliku jako nieaktywna. Kliknij, aby dowiedzieć się więcej!",
     "t_cell_indirectly_disabled_in_file_tooltip": "Ta komórka jest pośrednio oznaczona w pliku jako nieaktywna. Kliknij, aby dowiedzieć się więcej!",
     "t_cell_disabled_in_file_explanation": "Ta komórka jest obecnie przechowywana w pliku notatnika jako <em>komentarz</em> języka Julia, zamiast jako <em>kod</em>.<br />W rezultacie ta komórką nie będzie uruchomiona, gdy notatnik będzie uruchomiany jako skrypt poza Pluto.<br />Użyj menu kontekstowego, aby ponownie ją włączyć.",
-    "t_cell_indirectly_disabled_in_file_explanation": "Ta komórka jest obecnie przechowywana w pliku notatnika jako <em>komentarz</em> języka Julia, zamiast jako <em>kod</em>.<br />W rezultacie ta komórka nie będzie uruchomiana, gdy notatnik będzie uruchomiany jako skrypt poza Pluto.<br /> Stan ten jest spowodowany <b>pośrednio</b> przez oznaczenie którejś z komórek od której ta komóra zależy, jako <em>niekatywną w pliku</em>, przez co ta komóra także jest nieaktywna w pliku. Aby zaaktywować tę komórkę w pliku, aktywuj komórkę {{upstreamLink}}.",
+    "t_cell_indirectly_disabled_in_file_explanation": "Ta komórka jest obecnie przechowywana w pliku notatnika jako <em>komentarz</em> języka Julia, zamiast jako <em>kod</em>.<br />W rezultacie ta komórka nie będzie uruchomiana, gdy notatnik będzie uruchomiany jako skrypt poza Pluto.<br /> Stan ten jest spowodowany <b>pośrednio</b> przez oznaczenie którejś z komórek od której ta komóra zależy, jako <em>niekatywną w pliku</em>, przez co ta komóra także jest nieaktywna w pliku. Aby zaaktywować tę komórkę w pliku, aktywuj {{upstreamLink}} komórkę.",
+    "t_cell_upstreamLink": "nadrzędną",
 
     "t_language_picker_description": "Wybierz język interfejsu",
     "t_refresh_to_see_language_change_confirm": "Język zmieniony! Czy chciałbyś odświeżyć stronę, aby zobaczyć zmiany?",

@@ -424,7 +424,7 @@ export const Cell = ({
                               source_element: e.target,
                               body: th("t_cell_indirectly_disabled_in_file_explanation", {
                                   upstreamLink: html`<span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline">
-                                      the upstream one</span
+                                      ${t("t_cell_upstreamLink")}</span
                                   >`,
                               }),
                           })
