@@ -15,6 +15,7 @@ import {
     polski,
     portugues_pt,
     suomi,
+    businesese,
 } from "./lang_imports.js"
 
 const without_empty_keys = (obj) => {
@@ -52,8 +53,11 @@ i18next.use(LanguageDetector).init({
         "pt-PT": {
             translation: without_empty_keys(portugues_pt),
         },
-        pl: {
+        "pl": {
             translation: without_empty_keys(polski),
+        },
+        "bx": {
+            translation: without_empty_keys(businesese),
         },
     },
     detection: {
