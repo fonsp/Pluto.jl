@@ -1,5 +1,5 @@
 {
-    "t_language_name": "Businessese",
+    "t_language_name": "Business English",
     "t_my_work": "My strategic initiatives",
     "t_newnotebook": "Orchestrate a <strong>new deliverable</strong>",
     "t_welcome_to_pluto": "welcome to {{pluto}}",
@@ -104,7 +104,7 @@
     "t_export_card_record_description": "Capture the entire notebook, and any changes you make.",
     "t_export_card_pride_month_message": "The future is equally open to any potential revenue stream, no matter what!",
 
-    "t_save_notebook_ellipsis": "Save notebook...",
+    "t_save_notebook_ellipsis": "Lock in value...",
     "t_save_notebook_button_label_when_currently_not_saved": "Choose",
     "t_save_notebook_button_label_when_currently_saved": "Move",
 
