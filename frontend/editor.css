@@ -3285,7 +3285,7 @@ footer #info {
     gap: 0.5rem;
     margin-right: 1rem;
     font-size: 0.75rem;
-    flex: 0 0 auto;
+    flex: 0 2 auto;
 }
 
 .language-picker label {
@@ -3303,6 +3303,8 @@ footer #info {
     font-size: inherit;
     color: var(--footer-color);
     cursor: pointer;
+    /* width: 78px; */
+    width: 100%;
 }
 
 .language-picker select:focus {
