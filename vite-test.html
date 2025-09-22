@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vite Test - Pluto Frontend</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .status { padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .link { display: inline-block; margin: 10px 0; padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🎉 Vite 开发服务器已成功启动！</h1>
+    
+    <div class="status success">
+        <h2>✅ 状态：运行中</h2>
+        <p>Vite开发服务器已成功启动并正在运行</p>
+        <p><strong>端口：</strong>1234</p>
+        <p><strong>根目录：</strong>frontend/</p>
+        <p><strong>构建输出：</strong>frontend-dist/</p>
+    </div>
+
+    <div class="status info">
+        <h3>📁 入口文件：</h3>
+        <ul>
+            <li>index.html - 欢迎页面</li>
+            <li>editor.html - 笔记本编辑器</li>
+            <li>error.jl.html - 错误页面</li>
+        </ul>
+    </div>
+
+    <h3>🔗 测试链接：</h3>
+    <a href="http://localhost:1234" target="_blank" class="link">🏠 主页面</a>
+    <a href="http://localhost:1234/editor.html" target="_blank" class="link">📝 编辑器</a>
+    
+    <h3>⚡ 开发命令：</h3>
+    <pre style="background-color: #f8f9fa; padding: 15px; border-radius: 3px;">
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 预览构建结果
+npm run preview
+    </pre>
+
+    <h3>📋 替代方案说明：</h3>
+    <p>由于Parcel在Windows环境下存在路径处理问题，我们成功切换到Vite作为替代的前端构建工具。</p>
+    <p>Vite提供了更快的开发体验和更好的Windows兼容性。</p>
+</body>
+</html>

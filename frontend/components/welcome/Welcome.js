@@ -36,7 +36,6 @@ import { t, th } from "../../common/lang.js"
  * }}
  */
 
-// We use a link from the head instead of directing linking "img/logo.svg" because parcel does not bundle preact files
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
 
 /**

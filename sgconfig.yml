@@ -1,0 +1,6 @@
+ruleDirs:
+- C:\Juliacode\Pluto.jl\rules
+testConfigs:
+- testDir: C:\Juliacode\Pluto.jl\rule-tests
+utilDirs:
+- C:\Juliacode\Pluto.jl\utils
