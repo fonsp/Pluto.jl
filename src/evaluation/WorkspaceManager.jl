@@ -166,8 +166,15 @@ end
 
 
 
-function precompile_nbpkg((session, notebook)::SN; io=stdout)
-    workspace = get_workspace((session, notebook))
+function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
+    workspace = try
+        get_workspace((session, notebook))
+    catch e
+        e isa DiscardedWorkspaceException && return false
+        rethrow(e)
+    end
+    Malt.isrunning(workspace.worker) || return false
+
     io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
     
     expr = quote
@@ -224,6 +231,8 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)
     finally
         running[] = false
     end
+    
+    true
 end
 
 struct PrecompilationFailedException <: Exception
@@ -390,6 +399,12 @@ end
 
 const get_workspace_token = Token()
 
+struct DiscardedWorkspaceException <: Exception
+    notebook_id::UUID
+end
+
+Base.showerror(io::IO, e::DiscardedWorkspaceException) = print(io, "Cannot run code in this notebook: it has already shut down.")
+
 """
 Return the `Workspace` of `notebook`; will be created if none exists yet.
 
@@ -399,7 +414,7 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
     session, notebook = session_notebook
     if notebook.notebook_id in discarded_workspaces
         @debug "This should not happen" notebook.process_status
-        error("Cannot run code in this notebook: it has already shut down.")
+        throw(DiscardedWorkspaceException(notebook.notebook_id))
     end
 
     task = withtoken(get_workspace_token) do
