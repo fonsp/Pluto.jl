@@ -144,7 +144,10 @@ function run!(session::ServerSession)
         is_first_run[] = false
         @info "Loading..."
     end
-
+    if !session.options.security.require_secret_for_open_links
+        @warn "Dangerous setting:\n\n\trequire_secret_for_open_links = false\n\nDo not use this setting on your own computer – it allows any website to run arbitrary code on your computer. Only use this on an isolated disposable server like Binder, or when using your own authentication layer."
+    end
+        
     warn_julia_compat()
 
     pluto_router = http_router_for(session)
@@ -324,9 +327,9 @@ function run!(session::ServerSession)
 
     address = pretty_address(session, hostIP, port)
     if session.options.server.launch_browser && open_in_default_browser(address)
-        @info("\nOpening $address in your default browser... ~ have fun!")
+        @info("\nOpening $address in your default browser... ~ have fun!\n\n")
     else
-        @info("\nGo to $address in your browser to start writing ~ have fun!")
+        @info("\nGo to $address in your browser to start writing ~ have fun!\n\n")
     end
     @info("\nPress Ctrl+C in this terminal to stop Pluto\n\n")
 

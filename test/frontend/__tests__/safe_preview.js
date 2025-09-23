@@ -13,6 +13,7 @@ import {
     runAllChanged,
     openPathOrURLNotebook,
     getAllCellOutputs,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("safe_preview", () => {
@@ -20,17 +21,17 @@ describe("safe_preview", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)
@@ -43,10 +44,11 @@ describe("safe_preview", () => {
         browser = null
     })
 
-    const expect_safe_preview = async (/** @type {puppeteer.Page} */ page) => {
+    const expect_safe_preview = async (/** @type {import("puppeteer").Page} */ page) => {
         await waitForPlutoToCalmDown(page)
         expect(await page.evaluate(() => window.I_DID_SOMETHING_DANGEROUS)).toBeUndefined()
-        expect(await page.evaluate(() => [...document.body.classList])).toContain("process_waiting_for_permission")
+        await page.waitForSelector("pluto-editor.process_waiting_for_permission")
+        expect(await page.evaluate(() => [...document.querySelector("pluto-editor").classList])).toContain("process_waiting_for_permission")
         expect(await page.evaluate(() => document.querySelector("a#restart-process-button"))).not.toBeNull()
         expect(await page.evaluate(() => document.querySelector(".safe-preview-info"))).not.toBeNull()
     }
@@ -102,7 +104,7 @@ Hello
             expect(dmsg.toLowerCase()).toContain("danger")
             expect(dmsg.toLowerCase()).toContain("are you sure")
 
-            await page.waitForTimeout(1000)
+            await new Promise((resolve) => setTimeout(resolve, 1000))
             await waitForPlutoToCalmDown(page)
             await expect_safe_preview(page)
         }
@@ -128,7 +130,7 @@ Hello
         let path = await page.evaluate(() => window.editor_state.notebook.path.replaceAll("\\", "\\\\"))
         let shutdown = async () => {
             await shutdownCurrentNotebook(page)
-            await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+            await gotoPlutoMainMenu(page)
             // Wait for it to be shut down
             await page.waitForSelector(`li.recent a[title="${path}"]`)
         }
@@ -136,7 +138,7 @@ Hello
 
         // Run it again
         await clickAndWaitForNavigation(page, `a[title="${path}"]`)
-        await page.waitForTimeout(1000)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
 
         await expect_safe_preview(page)
@@ -167,7 +169,7 @@ Hello
             }),
             page.click(`a#restart-process-button`),
         ])
-        await page.waitForTimeout(1000)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
 
         // Nice
@@ -186,7 +188,7 @@ Hello
         await page.click(`a#restart-process-button`)
 
         // If there was a dialog, we would stall right now and the test would fail.
-        await page.waitForTimeout(1000)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
         expect((await getAllCellOutputs(page))[0]).toBe("2")
     })

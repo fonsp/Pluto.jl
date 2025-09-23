@@ -38,6 +38,13 @@
         --frontmatter-input-bg-color: #fbfbfb;
         --frontmatter-input-border-color: hsl(207deg 24% 87%);
 
+        /* PlutoLand upload styling */
+        --plutoland-bg-color: white;
+        --plutoland-bigbutton-bg-color: white;
+        --plutoland-url-fg: #375bbd;
+        --plutoland-url-bg: #f7fbff;
+        --plutoland-or-bg-color: hsl(210 20% 83% / 1);
+
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
@@ -94,6 +101,7 @@
         --nav-h1-text-color: black;
         --nav-filepicker-color: #6f6f6f;
         --nav-filepicker-border-color: #b2b2b2;
+        --nav-filepicker-suggest-color: rgba(129, 146, 160, 0.5);
         --nav-process-status-bg-color: white;
         --nav-process-status-color: var(--pluto-output-h-color);
 
@@ -121,8 +129,11 @@
         --input-context-menu-bg-color: white;
         --input-context-menu-soon-color: #55555544;
         --input-context-menu-hover-bg-color: rgba(0, 0, 0, 0.1);
-        --input-context-menu-li-color: #6b6a6a;
+        --input-context-menu-li-color: #1e1e1e;
 
+        /* ai features */
+        --ai-gradient-bg: linear-gradient(20deg, #f9ecff, #fff4f2);
+        --ai-prompt-bg: #fbffff;
         /*Pkg status*/
         --pkg-popup-bg: white;
         --pkg-popup-border-color: #f0e4ee;
@@ -175,7 +186,7 @@
         --footnote-border-color: rgba(23, 115, 119, 0.15);
 
         /* undo delete cell*/
-        --undo-delete-box-shadow-color: #0083;
+        --undo-delete-box-shadow-color: #0000000f;
 
         /*codemirror hints*/
         --cm-color-editor-tooltip-border: rgba(0, 0, 0, 0.2);
@@ -190,37 +201,33 @@
         --cm-highlighted: #cbceb668;
 
         /* code highlighting */
-        --cm-color-editor-text: #41323f;
-        --cm-color-comment:     #e96ba8;
-        --cm-color-atom:        #815ba4;
-        --cm-color-number:      #815ba4;
-        --cm-color-property:    #b67a48;
-        --cm-color-keyword:     #ef6155;
-        --cm-color-string:      #da5616;
-        --cm-color-var:         #5668a4;
-        --cm-color-var2:        #37768a;
-        --cm-color-macro:       #5c8c5f;
-        --cm-color-builtin:     #5e7ad3;
-        --cm-color-function:    #cc80ac;
-        --cm-color-type:        hsl(170deg 7% 56%);
-        --cm-color-bracket:     #41323f;
-        --cm-color-tag:         #ef6155;
-        --cm-color-link:        #815ba4;
-        --cm-color-error-bg:    #ef6155;
-        --cm-color-error:       #f7f7f7;
+        --cm-color-editor-text: oklch(30% 0% 0deg);
+        --cm-color-comment: oklch(45% 60% 0deg);
+        --cm-color-keyword: oklch(45% 80% 30deg);
+        --cm-color-symbol: oklch(45% 80% 90deg);
+        --cm-color-command: oklch(35% 100% 120deg);
+        --cm-color-macro: oklch(45% 80% 150deg);
+        --cm-color-string: oklch(35% 100% 180deg);
+        --cm-color-variable: oklch(45% 40% 270deg);
+        --cm-color-literal: oklch(45% 60% 330deg);
+        --cm-filter-type: brightness(150%) saturate(50%);
+        --cm-color-builtin: #5e7ad3;
+        --cm-color-function: #cc80ac;
+        --cm-color-link: #815ba4;
+        --cm-color-bracket: #41323f;
         --cm-color-matchingBracket: black;
         --cm-color-matchingBracket-bg: #1b4bbb21;
         --cm-color-placeholder-text: rgba(0, 0, 0, 0.2);
         --cm-color-clickable-underline: #ced2ef;
 
         /* Mixed parsers */
-        --cm-color-html:        #48b685;
+        --cm-color-html: #48b685;
         --cm-color-html-accent: #00ab85;
-        --cm-color-css:         #876800;
-        --cm-color-css-accent:  #696200;
+        --cm-color-css: #876800;
+        --cm-color-css-accent: #696200;
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
-        --cm-color-md:          #005a9b;
-        --cm-color-md-accent:   #00a9d1;
+        --cm-color-md: #005a9b;
+        --cm-color-md-accent: #00a9d1;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: white;

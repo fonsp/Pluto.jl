@@ -18,6 +18,7 @@ export const pkg_disablers = [
     "Pkg.API.develop",
     "Pkg.add",
     "Pkg.API.add",
+    "TestEnv.activate",
     // https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
     "quickactivate",
     "@quickactivate",
@@ -79,9 +80,11 @@ function find_import_statements({ state, from, to }) {
             }
 
             if (node.name === "ImportPath") {
+                const package_name = doc.sliceString(node.from, node.to).split(".")[0]
+                if (package_name === "") return false
                 const item = {
                     type: "package",
-                    name: doc.sliceString(node.from, node.to).split(".")[0],
+                    name: package_name,
                     from: node.from,
                     to: node.to,
                 }

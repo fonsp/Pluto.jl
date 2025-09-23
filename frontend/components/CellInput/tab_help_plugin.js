@@ -1,3 +1,4 @@
+import { th } from "../../common/lang.js"
 import { open_pluto_popup } from "../../common/open_pluto_popup.js"
 import { ViewPlugin, StateEffect, StateField } from "../../imports/CodemirrorPlutoSetup.js"
 import _ from "../../imports/lodash.js"
@@ -65,7 +66,7 @@ export const tab_help_plugin = ViewPlugin.define(
                         open_pluto_popup({
                             type: "info",
                             source_element: view.dom,
-                            body: html`Press <kbd>Esc</kbd> and then <kbd>Tab</kbd> to continue navigation. <em style="font-size: .6em;">skkrt!</em>`,
+                            body: th("t_help_about_tab_navigation_inside_cell"),
                         })
                         this.setready(false)
                     }

@@ -25,7 +25,7 @@ jobs:
         
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Makes thes `julia` command available
       - uses: julia-actions/setup-julia@v2
@@ -40,20 +40,12 @@ jobs:
       - id: setup-firefox
         uses: browser-actions/setup-firefox@v1
         with:
-          firefox-version: 'latest-esr'
+          firefox-version: 'latest'
 
       - id: setup-chrome
         uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: 'latest'
-
-      
-      - run: |
-          ${{ steps.setup-firefox.outputs.firefox-path }} --version
-
-      
-      - run: |
-          ${{ steps.setup-chrome.outputs.chrome-path }} --version
 
       - run: |
           julia --project=$GITHUB_WORKSPACE -e 'import Pluto

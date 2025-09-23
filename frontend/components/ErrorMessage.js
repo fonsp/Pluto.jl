@@ -1,11 +1,15 @@
 import { cl } from "../common/ClassTable.js"
-import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
-import AnsiUp from "../imports/AnsiUp.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
+import { FixWithAIButton } from "./FixWithAIButton.js"
+import { localized_list_htl, t, th } from "../common/lang.js"
+
+const nbsp = "\u00A0"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     if (file.includes("#@#==#")) return null
@@ -44,7 +48,7 @@ const DocLink = ({ frame }) => {
     const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
     if (!builtin && nb?.nbpkg != null && !installed) return null
 
-    return html`  <span
+    return html` ${nbsp}<span
             ><a
                 href="#"
                 class="doclink"
@@ -58,6 +62,8 @@ const DocLink = ({ frame }) => {
         >`
 }
 
+const noline = (line) => line == null || line < 1
+
 const StackFrameFilename = ({ frame, cell_id }) => {
     if (ignore_location(frame)) return null
 
@@ -68,26 +74,28 @@ const StackFrameFilename = ({ frame, cell_id }) => {
             internal-file=${frame.file}
             href=${`#${frame_cell_id}`}
             onclick=${(e) => {
-                focus_line(frame_cell_id, line == null ? null : line - 1)
+                focus_line(frame_cell_id, noline(line) ? null : line - 1)
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`: <em>line ${line}</em>`}
+            ${(frame_cell_id == cell_id ? t("t_stack_frame_this_cell") : t("t_stack_frame_other_cell")).replaceAll(" ", "\xa0")}${noline(line)
+                ? null
+                : html`:${nbsp}<em>${t("t_stack_frame_line")}${nbsp}${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
         const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
 
-        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
+        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}${noline(frame.line) ? null : `:${frame.line}`}</em>`
 
-        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
+        const text = sp != null ? html`<strong>${origin}</strong>${nbsp}→${nbsp}${file_line}` : file_line
 
         const href = frame?.url?.startsWith?.("https") ? frame.url : null
         return html`<a title=${frame.path} class="remote-url" href=${href}>${text}</a>`
     }
 }
 
-const at = html`<span> from </span>`
+const at = html`<span> ${t("t_stack_frame_location")}${nbsp}</span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
@@ -125,9 +133,7 @@ const Funccall = ({ frame }) => {
 
     // if function name is #12 or #15#16 then it is an anonymous function
 
-    const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
-        ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
-        : funcname
+    const funcname_display = funcname.match(/^#\d+(#\d+)?$/) ? html`<abbr title=${t("t_anonymous_function_abbr")}>anonymous function</abbr>` : funcname
 
     let inner = html`<strong>${funcname_display}</strong><${HighlightCallArgumentNames} code=${call_funcname_args[1]} />`
 
@@ -137,7 +143,7 @@ const Funccall = ({ frame }) => {
             ? html`<a
                   aria-expanded=${expanded}
                   aria-controls=${id}
-                  title="Display the complete type information of this function call"
+                  title=${t("t_display_complete_type_information_of_this_function_call")}
                   role="button"
                   href="#"
                   onClick=${(e) => {
@@ -182,7 +188,7 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
     useLayoutEffect(() => {
         if (code_ref.current) {
-            code_ref.current.innerText = code
+            code_ref.current.textContent = code
             delete code_ref.current.dataset.highlighted
             highlight(code_ref.current, "julia")
         }
@@ -213,7 +219,7 @@ const HighlightCallArgumentNames = ({ code }) => {
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
-export const ParseError = ({ cell_id, diagnostics }) => {
+export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
     useEffect(() => {
         window.dispatchEvent(
             new CustomEvent("cell_diagnostics", {
@@ -227,18 +233,24 @@ export const ParseError = ({ cell_id, diagnostics }) => {
     }, [diagnostics])
 
     return html`
-        <jlerror>
-            <header><p>Syntax error</p></header>
+        <jlerror class="syntax-error">
+            <header>
+                <p>Syntax error</p>
+                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} last_run_timestamp=${last_run_timestamp} />
+            </header>
             <section>
-                <div class="stacktrace-header"><secret-h1>Syntax errors</secret-h1></div>
+                <div class="stacktrace-header">
+                    <secret-h1>${t("t_header_list_of_syntax_errors")}</secret-h1>
+                </div>
                 <ol>
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
                             html`<li
                                 class="from_this_notebook from_this_cell important"
                                 onmouseenter=${() =>
-                                    // NOTE: this could be moved move to `StackFrameFilename`
-                                    window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
+                                    cell_is_unedited(cell_id)
+                                        ? window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))
+                                        : null}
                                 onmouseleave=${() =>
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
@@ -254,6 +266,8 @@ export const ParseError = ({ cell_id, diagnostics }) => {
     `
 }
 
+const cell_is_unedited = (cell_id) => document.querySelector(`pluto-cell[id="${cell_id}"].code_differs`) == null
+
 const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, frame_cell_id) => {
     if (frame_cell_id != null) return true
 
@@ -267,6 +281,9 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
 
     // too sciency
     if (frame.inlined) return false
+
+    // makes no sense anyways
+    if (frame.line < 1) return false
 
     if (params == null) {
         // no type signature... must be some function call that got optimized away or something special
@@ -289,7 +306,7 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 
     useLayoutEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        node_ref.current.innerHTML = ansi_to_html(value)
         did_ansi_up.current = true
     }, [node_ref.current, value])
 
@@ -299,8 +316,9 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
-export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
+export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
+
     const default_rewriter = {
         pattern: /.?/,
         display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
@@ -315,7 +333,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                         e.preventDefault()
                         pluto_actions.wrap_remote_cell(cell_id, "begin")
                     }}
-                    >Wrap all code in a <em>begin ... end</em> block.</a
+                    >${th("t_wrap_all_code_in_a_begin_end_block")}</a
                 >`
                 if (x.includes("\n\nBoundaries: ")) {
                     const boundaries = JSON.parse(x.split("\n\nBoundaries: ")[1]).map((x) => x - 1) // Julia to JS index
@@ -326,17 +344,17 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                                 e.preventDefault()
                                 pluto_actions.split_remote_cell(cell_id, boundaries, true)
                             }}
-                            >Split this cell into ${boundaries.length} cells</a
+                            >${t("t_split_this_cell_into_cells", { count: boundaries.length })}</a
                         >, or
                     </p>`
-                    return html`<p>Multiple expressions in one cell.</p>
-                        <p>How would you like to fix it?</p>
+                    return html`<p>${t("t_multiple_expressions_in_one_cell")}</p>
+                        <p>${t("t_how_would_you_like_to_fix_it")}</p>
                         <ul>
                             <li>${split_hint}</li>
                             <li>${begin_hint}</li>
                         </ul>`
                 } else {
-                    return html`<p>Multiple expressions in one cell.</p>
+                    return html`<p>${t("t_multiple_expressions_in_one_cell")}</p>
                         <p>${begin_hint}</p>`
                 }
             },
@@ -368,9 +386,13 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
                         let symbol_links = syms.map((what) => html`<a href="#${encodeURI(what)}">${what}</a>`)
 
-                        return html`<p>Cyclic references among${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                        const symbol_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+
+                        return html`<p>${th("t_cyclic_references_among", { symbols: symbol_interp })}</p>`
                     } else {
-                        return html`<p>${line}</p>`
+                        // This must be the hint.
+
+                        return html`<p>${th("t_combine_cells_begin_block")}</p>`
                     }
                 }),
         },
@@ -394,9 +416,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                             return html`<a href="#" onclick=${onclick}>${what}</a>`
                         })
 
-                        return html`<p>Multiple definitions for${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                        const symbol_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+
+                        return html`<p>${th("t_multiple_definitions_for", { symbols: symbol_interp })}</p>`
                     } else {
-                        return html`<p>${line}</p>`
+                        return html`<p>${th("t_combine_cells_begin_block")}</p>`
                     }
                 }),
         },
@@ -435,8 +459,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
 
-                // const plural = symbol_links.length > 1
-                return html`<p><em>Another cell defining ${insert_commas_and_and(symbol_links)} contains errors.</em></p>`
+                const symbol_interp = localized_list_htl(symbol_links, Object.keys(erred_upstreams), { type: "disjunction" })
+
+                return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_interp })}</em></p>`
             },
             show_stacktrace: () => {
                 const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
@@ -446,20 +471,19 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         {
             pattern: /^ArgumentError: Package (.*) not found in current path/,
             display: (/** @type{string} */ x) => {
+                if (pluto_actions.get_notebook().nbpkg?.enabled === false) return default_rewriter.display(x)
+
                 const match = x.match(/^ArgumentError: Package (.*) not found in current path/)
                 const package_name = (match?.[1] ?? "").replaceAll("`", "")
 
                 const pkg_terminal_value = pluto_actions.get_notebook()?.nbpkg?.terminal_outputs?.[package_name]
 
-                return html`<p>The package <strong>${package_name}.jl</strong> could not load because it failed to initialize.</p>
-                    <p>That's not nice! Things you could try:</p>
-                    <ul>
-                        <li>Restart the notebook.</li>
-                        <li>Try a different Julia version.</li>
-                        <li>Contact the developers of ${package_name}.jl about this error.</li>
-                    </ul>
-                    <p>You might find useful information in the package installation log:</p>
-                    <${PkgTerminalView} value=${pkg_terminal_value} />`
+                return html`${th("t_package_could_not_load", { package: package_name })}
+                ${th("t_package_could_not_load_things_you_could_try", { package: package_name })}
+                ${pkg_terminal_value == null
+                    ? null
+                    : html` <p>${t("t_might_find_info_in_pkg_log")}</p>
+                          <${PkgTerminalView} value=${pkg_terminal_value} />`} `
             },
             show_stacktrace: () => false,
         },
@@ -483,19 +507,28 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     const first_package = get_first_package(limited_stacktrace)
 
+    const [stacktrace_waiting_to_view, set_stacktrace_waiting_to_view] = useState(true)
+    useEffect(() => {
+        set_stacktrace_waiting_to_view(true)
+    }, [msg, stacktrace, cell_id])
+
     return html`<jlerror>
         <div class="error-header">
-            <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
+            <secret-h1>${first_package == null ? t("t_error_message") : t("t_error_message_from_package", { package: first_package })}</secret-h1>
             <!-- <p>This message was included with the error:</p> -->
         </div>
 
-        <header>${matched_rewriter.display(msg)}</header>
+        <header translate="yes">${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
+            : stacktrace_waiting_to_view
+            ? html`<section class="stacktrace-waiting-to-view">
+                  <button onClick=${() => set_stacktrace_waiting_to_view(false)}>${t("t_show_stack_trace")}</button>
+              </section>`
             : html`<section>
                   <div class="stacktrace-header">
-                      <secret-h1>Stack trace</secret-h1>
-                      <p>Here is what happened, the most recent locations are first:</p>
+                      <secret-h1>${t("t_stack_trace")}</secret-h1>
+                      <p>${t("t_here_is_what_happened_the_most_recent_locations_are_first")}</p>
                   </div>
 
                   <ol>
@@ -524,13 +557,13 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                                         set_show_more(true)
                                         e.preventDefault()
                                     }}
-                                    >Show more...</a
+                                    >${t("t_show_more")}</a
                                 >
                             </li>`
                           : null}
                   </ol>
               </section>`}
-        <${Motivation} stacktrace=${stacktrace} />
+        ${pluto_actions.get_session_options?.()?.server?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
 
@@ -547,27 +580,7 @@ const get_first_package = (limited_stacktrace) => {
 }
 
 const motivational_word_probability = 0.1
-const motivational_words = [
-    //
-    "Don't panic!",
-    "Keep calm, you got this!",
-    "You got this!",
-    "Silly computer!",
-    "Silly computer!",
-    "beep boop CRASH 🤖",
-    "computer bad, you GREAT!",
-    "Probably not your fault!",
-    "Try asking on Julia Discourse!",
-    "uhmmmmmm??!",
-    "Maybe time for a break? ☕️",
-    "Everything is going to be okay!",
-    "Computers are hard!",
-    "C'est la vie !",
-    "¯\\_(ツ)_/¯",
-    "Oh no! 🙀",
-    "this suckz 💣",
-    "Be patient :)",
-]
+const motivational_words = /** @type {string[]} */ (t("t_motivational_words_be_creative_and_write_as_many_as_you_want", { returnObjects: true }))
 
 const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {
@@ -582,6 +595,7 @@ const get_erred_upstreams = (
     /** @type {string} */ cell_id,
     /** @type {string[]} */ visited_edges = []
 ) => {
+    /** @type {Record<string, string>} */
     let erred_upstreams = {}
     if (notebook != null && notebook?.cell_results?.[cell_id]?.errored) {
         const referenced_variables = Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map)

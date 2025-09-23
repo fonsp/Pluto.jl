@@ -244,7 +244,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  * @type {{
  *  session_options: Record<string,any>,
  *  send: import("./PlutoConnectionSendFn").SendFn,
- *  kill: () => void,
+ *  kill: (allow_reconnect?: boolean) => void,
  *  version_info: {
  *      julia: string,
  *      pluto: string,
@@ -285,6 +285,7 @@ export const create_pluto_connection = async ({
     const message_log = new Stack(100)
     // @ts-ignore
     window.pluto_get_message_log = () => message_log.get()
+    let auto_reconnect = true
 
     const client = {
         // send: null,
@@ -336,6 +337,8 @@ export const create_pluto_connection = async ({
     const connect = async () => {
         let update_url_with_binder_token = async () => {
             try {
+                const on_a_binder_server = window.location.href.includes("binder")
+                if (!on_a_binder_server) return
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
                 if (!response.ok) {
@@ -372,6 +375,11 @@ export const create_pluto_connection = async ({
                 },
                 on_socket_close: async () => {
                     on_connection_status(false, false)
+                    if (!auto_reconnect) {
+                        console.log("Auto-reconnect is disabled, so we're not reconnecting")
+                        on_connection_status(false, true)
+                        return
+                    }
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
                     await Promises.delay(reconnect_after_close_delay)
@@ -391,10 +399,11 @@ export const create_pluto_connection = async ({
             console.log("Hello?")
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
-            client.kill = () => {
+            client.kill = (allow_reconnect = true) => {
+                auto_reconnect = allow_reconnect
                 if (ws_connection) ws_connection.socket.close()
             }
-            client.session_options = u.message.options
+            client.session_options = u.message.session_options
             client.version_info = u.message.version_info
             client.notebook_exists = u.message.notebook_exists
 

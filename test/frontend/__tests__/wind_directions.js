@@ -9,6 +9,7 @@ import {
     waitForPlutoToCalmDown,
     runAllChanged,
     importNotebook,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("wind_directions", () => {
@@ -16,18 +17,18 @@ describe("wind_directions", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
 
         await importNotebook(page, "wind_directions.jl", { permissionToRunCode: true, timeout: 180 * 1000 })
-        await page.waitForTimeout(1000)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         await waitForPlutoToCalmDown(page)
     })
     beforeEach(async () => {})
@@ -62,6 +63,7 @@ describe("wind_directions", () => {
         expect(await page.evaluate((sel) => document.querySelector(sel).disabled, button_selector(xoxob_again, 1))).toBe(false)
 
         await page.click(button_selector(xoxob, 1))
+        await new Promise((resolve) => setTimeout(resolve, 500))
         await waitForPlutoToCalmDown(page)
 
         expect(await page.evaluate((sel) => document.querySelector(sel).disabled, button_selector(xoxob, -1))).toBe(false)
@@ -71,6 +73,7 @@ describe("wind_directions", () => {
 
         await page.click(button_selector(xoxob_again, 1))
         await page.click(button_selector(xoxob_again, 1))
+        await new Promise((resolve) => setTimeout(resolve, 500))
         await waitForPlutoToCalmDown(page)
 
         expect(await page.evaluate((sel) => document.querySelector(sel).disabled, button_selector(xoxob, -1))).toBe(false)

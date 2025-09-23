@@ -1,0 +1,139 @@
+/* ANSI color classes */
+
+:root {
+    --ansi-black: rgb(0, 0, 0);
+    --ansi-red: rgb(187, 0, 0);
+    --ansi-green: rgb(0, 187, 0);
+    --ansi-yellow: rgb(187, 187, 0);
+    --ansi-blue: rgb(0, 0, 187);
+    --ansi-magenta: rgb(187, 0, 187);
+    --ansi-cyan: rgb(0, 187, 187);
+    --ansi-white: rgb(255, 255, 255);
+    --ansi-bright-black: rgb(85, 85, 85);
+    --ansi-bright-red: rgb(255, 85, 85);
+    --ansi-bright-green: rgb(0, 255, 0);
+    --ansi-bright-yellow: rgb(255, 255, 85);
+    --ansi-bright-blue: rgb(85, 85, 255);
+    --ansi-bright-magenta: rgb(255, 85, 255);
+    --ansi-bright-cyan: rgb(85, 255, 255);
+    --ansi-bright-white: rgb(255, 255, 255);
+}
+
+/* Foreground colors */
+.ansi-black-fg {
+    color: var(--ansi-black);
+}
+.ansi-red-fg {
+    color: var(--ansi-red);
+}
+.ansi-green-fg {
+    color: var(--ansi-green);
+}
+.ansi-yellow-fg {
+    color: var(--ansi-yellow);
+}
+.ansi-blue-fg {
+    color: var(--ansi-blue);
+}
+.ansi-magenta-fg {
+    color: var(--ansi-magenta);
+}
+.ansi-cyan-fg {
+    color: var(--ansi-cyan);
+}
+.ansi-white-fg {
+    color: var(--ansi-white);
+}
+
+.ansi-bright-black-fg {
+    color: var(--ansi-bright-black);
+}
+.ansi-bright-red-fg {
+    color: var(--ansi-bright-red);
+}
+.ansi-bright-green-fg {
+    color: var(--ansi-bright-green);
+}
+.ansi-bright-yellow-fg {
+    color: var(--ansi-bright-yellow);
+}
+.ansi-bright-blue-fg {
+    color: var(--ansi-bright-blue);
+}
+.ansi-bright-magenta-fg {
+    color: var(--ansi-bright-magenta);
+}
+.ansi-bright-cyan-fg {
+    color: var(--ansi-bright-cyan);
+}
+.ansi-bright-white-fg {
+    color: var(--ansi-bright-white);
+}
+
+/* Background colors */
+.ansi-black-bg {
+    background-color: var(--ansi-black);
+}
+.ansi-red-bg {
+    background-color: var(--ansi-red);
+}
+.ansi-green-bg {
+    background-color: var(--ansi-green);
+}
+.ansi-yellow-bg {
+    background-color: var(--ansi-yellow);
+}
+.ansi-blue-bg {
+    background-color: var(--ansi-blue);
+}
+.ansi-magenta-bg {
+    background-color: var(--ansi-magenta);
+}
+.ansi-cyan-bg {
+    background-color: var(--ansi-cyan);
+}
+.ansi-white-bg {
+    background-color: var(--ansi-white);
+}
+
+.ansi-bright-black-bg {
+    background-color: var(--ansi-bright-black);
+}
+.ansi-bright-red-bg {
+    background-color: var(--ansi-bright-red);
+}
+.ansi-bright-green-bg {
+    background-color: var(--ansi-bright-green);
+}
+.ansi-bright-yellow-bg {
+    background-color: var(--ansi-bright-yellow);
+}
+.ansi-bright-blue-bg {
+    background-color: var(--ansi-bright-blue);
+}
+.ansi-bright-magenta-bg {
+    background-color: var(--ansi-bright-magenta);
+}
+.ansi-bright-cyan-bg {
+    background-color: var(--ansi-bright-cyan);
+}
+.ansi-bright-white-bg {
+    background-color: var(--ansi-bright-white);
+}
+
+/* Some custom styles for stdout to improve contrast and readability */
+pluto-log-dot.Stdout {
+    --ansi-red: rgb(220, 0, 0);
+    --ansi-magenta: rgb(200, 0, 200);
+    --ansi-white: rgb(220, 220, 220);
+    --ansi-bright-black: rgb(50, 50, 50);
+    --ansi-bright-yellow: rgb(240, 240, 50);
+    --ansi-bright-blue: rgb(110, 110, 255);
+    --ansi-bright-white: rgb(240, 240, 240);
+    --ansi-bright-black: rgb(183 183 183);
+}
+
+pluto-log-dot.Stdout .ansi-bright-black-fg:is(.ansi-white-bg, .ansi-bright-white-bg) {
+    text-shadow: none;
+    color: black;
+}

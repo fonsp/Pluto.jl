@@ -9,6 +9,7 @@ import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstima
 import { pretty_long_time } from "./EditOrRunButton.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { get_included_external_source } from "../common/external_source.js"
+import { t, th } from "../common/lang.js"
 
 export const arrow_up_circle_icon = get_included_external_source("arrow_up_circle_icon")?.href
 export const document_text_icon = get_included_external_source("document_text_icon")?.href
@@ -20,6 +21,7 @@ export const open_icon = get_included_external_source("open_icon")?.href
  * @property {"nbpkg"} type
  * @property {HTMLElement} [source_element]
  * @property {Boolean} [big]
+ * @property {string} [css_class]
  * @property {Boolean} [should_focus] Should the popup receive keyboard focus after opening? Rule of thumb: yes if the popup opens on a click, no if it opens spontaneously.
  * @property {string} package_name
  * @property {boolean} is_disable_pkg
@@ -30,6 +32,7 @@ export const open_icon = get_included_external_source("open_icon")?.href
  * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
  * @property {HTMLElement?} [source_element]
+ * @property {string} [css_class]
  * @property {Boolean} [big]
  * @property {Boolean} [should_focus] Should the popup receive keyboard focus after opening? Rule of thumb: yes if the popup opens on a click, no if it opens spontaneously.
  */
@@ -95,7 +98,8 @@ export const Popup = ({ notebook, disable_input }) => {
             if (recent_event.should_focus === true) {
                 requestAnimationFrame(() => {
                     element_focused_before_popup.current = document.activeElement
-                    const el = element_ref.current?.querySelector("a") ?? element_ref.current
+                    /** @type {HTMLElement?} */
+                    const el = element_ref.current?.querySelector("a, input, button") ?? element_ref.current
                     // console.debug("restoring focus to", el)
                     el?.focus?.()
                 })
@@ -138,6 +142,7 @@ export const Popup = ({ notebook, disable_input }) => {
                 visible: recent_event != null,
                 [type ?? ""]: type != null,
                 big: recent_event?.big === true,
+                [recent_event?.css_class ?? ""]: recent_event?.css_class != null,
             })}
             style="${pos_ref.current}"
             ref=${element_ref}
@@ -237,8 +242,10 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
         ${pkg_status?.hint ?? "Loading..."}
         ${(pkg_status?.status === "will_be_installed" || pkg_status?.status === "busy") && total_time > 10
             ? html`<div class="pkg-time-estimate">
-                  Installation can take <strong>${pretty_long_time(total_time)}</strong>${`. `}<br />${`Afterwards, it loads in `}
-                  <strong>${pretty_long_time(total_second_time)}</strong>.
+                  ${th("t_pkg_installation_can_take", {
+                      time_install: html`<strong>${pretty_long_time(total_time)}</strong>`,
+                      time_load: html`<strong>${pretty_long_time(total_second_time)}</strong>`,
+                  })}
               </div>`
             : null}
         <div class="pkg-buttons">
@@ -247,14 +254,14 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                 : html`<a
                       class="pkg-update"
                       target="_blank"
-                      title="Update packages"
+                      title=${th("t_pkg_update_packages")}
                       style=${!!showupdate ? "" : "opacity: .4;"}
                       href="#"
                       onClick=${(e) => {
                           if (busy) {
-                              alert("Pkg is currently busy with other packages... come back later!")
+                              alert(t("t_pkg_currently_busy"))
                           } else {
-                              if (confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
+                              if (confirm(t("t_pkg_update_packages_description"))) {
                                   console.warn("Pkg.updating!")
                                   pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
                               }
@@ -266,7 +273,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
             <a
                 class="toggle-terminal"
                 target="_blank"
-                title="Show/hide Pkg terminal output"
+                title=${t("t_pkg_toggle_terminal")}
                 style=${!!terminal_value ? "" : "display: none;"}
                 href="#"
                 onClick=${(e) => {
@@ -275,8 +282,10 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                 }}
                 ><img alt="📄" src=${document_text_icon} width="17"
             /></a>
-            <a class="help" target="_blank" title="Go to help page" href="https://plutojl.org/pkg/"><img alt="❔" src=${help_circle_icon} width="17" /></a>
+            <a class="help" target="_blank" title=${t("t_pkg_go_to_help")} href="https://plutojl.org/pkg/"
+                ><img alt="❔" src=${help_circle_icon} width="17"
+            /></a>
         </div>
-        <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />
+        <${PkgTerminalView} value=${terminal_value ?? t("t_loading_ellipses")} />
     </pkg-popup>`
 }

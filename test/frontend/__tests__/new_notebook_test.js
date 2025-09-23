@@ -13,6 +13,7 @@ import {
     manuallyEnterCells,
     runAllChanged,
     clearPlutoInput,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("PlutoNewNotebook", () => {
@@ -20,17 +21,17 @@ describe("PlutoNewNotebook", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
         await createNewNotebook(page)
     })
     afterEach(async () => {

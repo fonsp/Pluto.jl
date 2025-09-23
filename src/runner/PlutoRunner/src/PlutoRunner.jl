@@ -20,6 +20,9 @@ using InteractiveUtils
 # shared things between files:
 using UUIDs
 
+# for Pkg.precompile
+import Pkg
+
 
 const ObjectID = typeof(objectid("hello computer"))
 
@@ -64,6 +67,7 @@ include("./evaluation/deleting globals.jl")
 
 
 include("./display/LaTeX.jl")
+include("./display/HeaderID.jl")
 include("./display/format_output.jl")
 include("./display/IOContext.jl")
 include("./display/syntax error.jl")

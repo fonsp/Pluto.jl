@@ -27,7 +27,7 @@ function basic_notebook()
         """),
         # test included InteractiveUtils import
         Cell("subtypes(Number)"),
-    ]) |> init_packages!
+    ])
 end
 
 function cell_metadata_notebook()
@@ -43,7 +43,7 @@ function cell_metadata_notebook()
                 "disabled" => true,
             ) |> create_cell_metadata,
         ),
-    ]) |> init_packages!
+    ])
 end
 
 function ingredients(path::String)
@@ -74,13 +74,13 @@ function skip_as_script_notebook()
         Cell(
             code="dependent_var = skipped_var + 1",
         ),
-    ]) |> init_packages!
+    ])
 end
 
 function notebook_metadata_notebook()
     nb = Notebook([
         Cell(code="n * (n + 1) / 2"),
-    ]) |> init_packages!
+    ])
     nb.metadata = Dict(
         "boolean" => true,
         "string" => "String",
@@ -104,7 +104,7 @@ function shuffled_notebook()
         Cell("t = 1"),
         Cell("w = v"),
         Cell("u = t"),
-    ]) |> init_packages!
+    ])
 end
 
 function shuffled_with_imports_notebook()
@@ -127,13 +127,7 @@ function shuffled_with_imports_notebook()
             x
             using REPL
         end"""),
-    ]) |> init_packages!
-end
-
-function init_packages!(nb::Notebook)
-    nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
-    Pluto.sync_nbpkg_core(nb, nb.topology, nb.topology)
-    return nb
+    ])
 end
 
 function bad_code_notebook()
@@ -144,7 +138,7 @@ function bad_code_notebook()
         
         [[["""),
         Cell("using Aasdfdsf"),
-    ]) |> init_packages!
+    ])
 end
 
 function bonds_notebook()
@@ -160,7 +154,7 @@ function bonds_notebook()
         Cell("w = Wow(10)"),
         Cell("@bind z w"),
         Cell("@assert z == 10"),
-    ]) |> init_packages!
+    ])
 end
 
 
@@ -168,10 +162,12 @@ function project_notebook()
     Notebook([
         Cell("using Dates"),
         Cell("using Example"),
-    ]) |> init_packages!
+    ])
 end
 
 @testset "Notebook Files" begin
+    🍭 = ServerSession()
+
     nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook, project_notebook]]
 
     @testset "Sample notebooks " begin
@@ -187,7 +183,6 @@ end
         end
     end
 
-    🍭 = ServerSession()
     for (name, nb) in nbs
         nb.path = tempname() * "é🧡💛.jl"
     end
@@ -429,6 +424,23 @@ end
             "cdd40e28-61be-11ec-28fd-111111111111",
             "cdd40e28-61be-11ec-28fd-333333333333",
             "cdd40e28-61be-11ec-28fd-222222222222",
+        ])
+        @test keys(nb.cells_dict) == Set(nb.cell_order)
+    end
+    
+    @testset "Recover from missing cell order" begin
+        contents =  read(Pluto.project_relative_path("sample", "Basic no cell order.jl"), String)
+        
+        path = tempname()
+        write(path, contents)
+        
+        nb = load_notebook(path)
+        
+        @test nb.cell_order == UUID.([
+            "b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e",
+            "b2d792c2-7f73-11ea-0c65-a5042701e9f3",
+            "b2d79330-7f73-11ea-0d1c-a9aad1efaae1",
+            "b2d79376-7f73-11ea-2dce-cb9c449eece6",
         ])
         @test keys(nb.cells_dict) == Set(nb.cell_order)
     end

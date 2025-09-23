@@ -15,7 +15,12 @@ export const useDialog = () => {
 
     return useMemo(() => {
         const open = () => {
-            if (!dialog_ref.current?.open) dialog_ref.current?.showModal()
+            if (!dialog_ref.current?.open) {
+                dialog_ref.current?.showModal()
+                requestAnimationFrame(() => {
+                    dialog_ref.current?.scrollIntoView({ behavior: "instant", block: "nearest", inline: "nearest" })
+                })
+            }
         }
         const close = () => {
             if (dialog_ref.current?.open === true) dialog_ref.current?.close?.()

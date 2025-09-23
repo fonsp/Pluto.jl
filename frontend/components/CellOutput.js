@@ -1,6 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
 import DOMPurify from "../imports/DOMPurify.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
 
 import { ErrorMessage, ParseError } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
@@ -27,6 +28,8 @@ import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
+import lodashLibrary from "../imports/lodash.js"
+import { t } from "../common/lang.js"
 
 const prettyAssignee = (assignee) =>
     assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
@@ -182,7 +185,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         case "application/vnd.pluto.parseerror+object":
-            return html`<div><${ParseError} cell_id=${cell_id} ...${body} /></div>`
+            return html`<div><${ParseError} cell_id=${cell_id} last_run_timestamp=${last_run_timestamp} ...${body} /></div>`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
@@ -192,9 +195,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             break
         case "text/plain":
             if (body) {
-                return html`<div>
-                    <pre class="no-block"><code>${body}</code></pre>
-                </div>`
+                return html`<div><${ANSITextOutput} body=${body} /></div>`
             } else {
                 return html`<div></div>`
             }
@@ -387,7 +388,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
-                let code = node.innerText
+                let code = node.textContent
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
@@ -445,6 +446,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                       }),
 
                                 ...observablehq_for_cells,
+                                _: lodashLibrary,
                             },
                             code,
                         })
@@ -596,44 +598,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     add_bonds_disabled_message_handler(bond_nodes, invalidation)
                 }
 
-                // Convert LaTeX to svg
-                // @ts-ignore
-                if (window.MathJax?.typeset != undefined) {
-                    try {
-                        // @ts-ignore
-                        window.MathJax.typeset(container.querySelectorAll(".tex"))
-                    } catch (err) {
-                        console.info("Failed to typeset TeX:")
-                        console.info(err)
-                    }
-                }
-
-                // Apply syntax highlighting
-                try {
-                    container.querySelectorAll("code").forEach((code_element) => {
-                        code_element.classList.forEach((className) => {
-                            if (className.startsWith("language-") && !className.endsWith("undefined")) {
-                                // Remove "language-"
-                                let language = className.substring(9)
-                                highlight(code_element, language)
-                            }
-                        })
-                    })
-                } catch (err) {
-                    console.warn("Highlighting failed", err)
-                }
-
-                // Find code blocks and add a copy button:
-                try {
-                    if (container.firstElementChild?.matches("div.markdown")) {
-                        container.querySelectorAll("pre > code").forEach((code_element) => {
-                            const pre = code_element.parentElement
-                            generateCopyCodeButton(pre)
-                        })
-                    }
-                } catch (err) {
-                    console.warn("Adding markdown code copy button failed", err)
-                }
+                apply_enhanced_markup_features(container, pluto_actions)
             } finally {
                 js_init_set?.delete(container)
             }
@@ -709,18 +674,134 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
 
     // create copy button
     const button = document.createElement("button")
-    button.title = "Copy to Clipboard"
+    button.title = t("t_copy_action_description")
     button.className = "markdown-code-block-button"
     button.addEventListener("click", (e) => {
         const txt = pre.textContent ?? ""
         navigator.clipboard.writeText(txt)
 
-        button.classList.add("markdown-code-block-copied-code-button")
+        button.classList.add("recently-copied")
         setTimeout(() => {
-            button.classList.remove("markdown-code-block-copied-code-button")
-        }, 2000)
+            button.classList.remove("recently-copied")
+        }, 1300)
     })
 
     // Append copy button to the code block element
     pre.prepend(button)
 }
+
+/**
+ * Generates a copy button for Markdown header elements, to copy the URL to this header using the `id`.
+ */
+export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ header, /** @type {any} */ pluto_actions) => {
+    const id = header.id
+    if (!id) return
+    const button = document.createElement("pluto-header-id-copy")
+    button.title = t("t_copy_header_id_action_description")
+    button.ariaLabel = t("t_copy_header_id_action_description")
+    button.role = "button"
+    button.tabIndex = 0
+    const listener = (_e) => {
+        const id = header.id
+        if (!id) return
+        let url_to_copy = `#${id}`
+        const launch_params = /** @type {import("./Editor.js").LaunchParameters?} */ (pluto_actions?.get_launch_params?.())
+        if (launch_params?.isolated_cell_ids != null) return
+        const root = new URL(window.location.href)
+        root.hash = ""
+
+        const is_localhost_hostname = (hostname) => hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0"
+        if (
+            (!launch_params || (launch_params.disable_ui && launch_params.notebook_id == null && launch_params.pluto_server_url == null)) &&
+            !is_localhost_hostname(root.hostname)
+        ) {
+            url_to_copy = `${root.href}${url_to_copy}`
+        }
+
+        navigator.clipboard.writeText(url_to_copy)
+
+        button.classList.add("recently-copied")
+        setTimeout(() => {
+            button.classList.remove("recently-copied")
+        }, 1300)
+    }
+    button.addEventListener("click", listener)
+    button.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return
+        listener(e)
+        e.preventDefault()
+    })
+
+    const wrapper = document.createElement("pluto-header-id-copy-wrapper")
+    wrapper.append(button)
+    header.append(wrapper)
+}
+
+export const ANSITextOutput = ({ body }) => {
+    const has_ansi = /\x1b\[\d+m/.test(body)
+
+    if (has_ansi) {
+        return html`<${ANSIUpContents} body=${body} />`
+    } else {
+        return html`<pre class="no-block"><code>${body}</code></pre>`
+    }
+}
+
+const ANSIUpContents = ({ body }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useLayoutEffect(() => {
+        if (!node_ref.current) return
+        node_ref.current.innerHTML = ansi_to_html(body)
+    }, [body])
+    return html`<pre class="no-block"><code ref=${node_ref}></code></pre>`
+}
+
+function apply_enhanced_markup_features(container, pluto_actions) {
+    // Convert LaTeX to svg
+    // @ts-ignore
+    if (window.MathJax?.typeset != undefined) {
+        try {
+            // @ts-ignore
+            window.MathJax.typeset(container.querySelectorAll(".tex"))
+        } catch (err) {
+            console.info("Failed to typeset TeX:")
+            console.info(err)
+        }
+    }
+
+    // Apply syntax highlighting
+    try {
+        container.querySelectorAll("code").forEach((code_element) => {
+            code_element.classList.forEach((className) => {
+                if (className.startsWith("language-") && !className.endsWith("undefined")) {
+                    // Remove "language-"
+                    let language = className.substring(9)
+                    highlight(code_element, language)
+                }
+            })
+        })
+    } catch (err) {
+        console.warn("Highlighting failed", err)
+    }
+
+    // Find code blocks and add a copy button:
+    try {
+        if (container.firstElementChild?.matches("div.markdown")) {
+            container.querySelectorAll("pre > code").forEach((code_element) => {
+                const pre = code_element.parentElement
+                if (pre.closest("table, pluto-display, bond, pluto-tree")) return
+                generateCopyCodeButton(pre)
+            })
+            container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
+                if (header_element.closest("table, pluto-display, bond, pluto-tree")) return
+                generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
+            })
+        }
+    } catch (err) {
+        console.warn("Adding markdown code copy button failed", err)
+    }
+}
+
+// Exposing this for PlutoPages.jl
+// @ts-ignore
+window.__pluto_apply_enhanced_markup_features = apply_enhanced_markup_features

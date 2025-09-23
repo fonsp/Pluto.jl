@@ -29,6 +29,15 @@ md"""
 # ╔═╡ e746ef9c-47c1-4d5d-bce1-4616f25ff586
 ( 1 + 2)
 
+# ╔═╡ 5777ddb4-b161-4b8c-9862-f8ed31d7c46a
+
+
+# ╔═╡ e1974eba-cf83-4dd3-b95b-f22fb49db931
+let
+	adsfdsf = 123
+	adsfdsf
+end
+
 # ╔═╡ 5666ac41-9e8d-40fc-89be-e2a6c1637da5
 # https://github.com/fonsp/Pluto.jl/issues/2382
 @a f(x-1 : g(x))
@@ -304,6 +313,9 @@ md"""
 # Package imports
 """
 
+# ╔═╡ 2892628b-5cf3-45b9-abc9-de08066a2c73
+
+
 # ╔═╡ 20276c02-8e7c-41a6-ad3d-5ce84eadf025
 md"""
 # Mixed mode
@@ -335,12 +347,16 @@ md"""
 
 """)
 
-# ╔═╡ 62b805db-2028-40b0-b412-4c91d15ad338
-c = d = e = f= g =h=i=j=k=l=m=n=o=p=q=r=9
+# ╔═╡ 99c58cfd-e400-458d-8304-8c68bce3a769
+begin
+	ff(a, b=2; c=2, d) = a + b + c + d + f
+	xxx 
+end 
 
-# ╔═╡ 5b62306f-c730-42f0-85dd-8692ca8b50fa
-function f(by, y; by=213, beeyt)
-		sdf
+# ╔═╡ 3786a4fc-1b62-4b5c-b4ac-139b7bd376c4
+function f(a::Z; bbb::Asdf=2)::Y
+	aaeeeeeee
+	bbb
 end
 
 # ╔═╡ a35574d7-c7eb-4ffa-b8ef-5e8aef7aa3e9
@@ -351,16 +367,28 @@ begin
 	xxx 
 end 
 
-# ╔═╡ 99c58cfd-e400-458d-8304-8c68bce3a769
-begin
-	ff(a, b=2; c=2, d) = a + b + c + d + f
-	xxx 
-end 
+# ╔═╡ 62b805db-2028-40b0-b412-4c91d15ad338
+c = d = e = f= g =h=i=j=k=l=m=n=o=p=q=r=9
+
+# ╔═╡ 5b62306f-c730-42f0-85dd-8692ca8b50fa
+function f(by, y; by=213, beeyt)
+		sdf = 123
+	"crazy"
+
+
+	something_amazing = 23
+
+
+	amazing
+end
 
 # ╔═╡ Cell order:
 # ╟─d0ee4518-406a-4628-ac4a-30d5fa11f5a7
 # ╠═e746ef9c-47c1-4d5d-bce1-4616f25ff586
 # ╠═e45548dc-cf3c-4ddd-be78-e2776380f172
+# ╠═5777ddb4-b161-4b8c-9862-f8ed31d7c46a
+# ╠═e1974eba-cf83-4dd3-b95b-f22fb49db931
+# ╠═3786a4fc-1b62-4b5c-b4ac-139b7bd376c4
 # ╠═5b62306f-c730-42f0-85dd-8692ca8b50fa
 # ╠═b57da300-58b5-498b-9798-c565dbb74026
 # ╠═69acb688-3726-4252-b7e2-f496181d2aa6
@@ -416,6 +444,7 @@ end
 # ╠═b6ece33c-8f33-4219-b711-ef3ebb30b0bb
 # ╟─67150120-fc85-448f-91c4-aaf69145900c
 # ╠═e19bd550-c9dd-11ef-02bd-795cab4c96c6
+# ╠═2892628b-5cf3-45b9-abc9-de08066a2c73
 # ╟─20276c02-8e7c-41a6-ad3d-5ce84eadf025
 # ╠═5360ae7a-b43c-404b-b039-76485d12fa2f
 # ╠═e9019c45-4609-4640-8a6f-345129c54ac4

@@ -40,6 +40,7 @@ import {
     cssLanguage,
     setDiagnostics,
     moveLineUp,
+    Facet,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -60,7 +61,10 @@ import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
-import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { AIContext } from "./AIContext.js"
+import { AiSuggestionPlugin } from "./CellInput/ai_suggestion.js"
+import { t } from "../common/lang.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
@@ -96,25 +100,22 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
 
 const common_style_tags = [
     { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
-    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
-    { tag: tags.variableName, color: "var(--cm-color-var)", fontWeight: 700 },
-    { tag: tags.typeName, color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.typeOperator, color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.tagName, color: "var(--cm-color-tag)" }, // JS
-    { tag: tags.propertyName, color: "var(--cm-color-property)" },
-    // TODO: tags.labelName
+    { tag: tags.variableName, color: "var(--cm-color-variable)", fontWeight: 700 },
+    { tag: tags.propertyName, color: "var(--cm-color-symbol)", fontWeight: 700 },
     { tag: tags.macroName, color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.typeName, filter: "var(--cm-filter-type)", fontWeight: "lighter" },
+    { tag: tags.atom, color: "var(--cm-color-symbol)" },
     { tag: tags.string, color: "var(--cm-color-string)" },
-    // TODO: tags.character
-    { tag: tags.number, color: "var(--cm-color-number)" },
-    { tag: tags.bool, color: "var(--cm-color-builtin)", fontWeight: 700 },
-    // TODO: tags.escape
-    // TODO: tags.self, tags.null
-    { tag: tags.atom, color: "var(--cm-color-atom)" },
-    { tag: tags.unit, color: "var(--cm-color-tag)" }, // TODO: Remove
-    // TODO? tags.operator
+    { tag: tags.special(tags.string), color: "var(--cm-color-command)" },
+    { tag: tags.character, color: "var(--cm-color-literal)" },
+    { tag: tags.literal, color: "var(--cm-color-literal)" },
+    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
+    // TODO: normal operators
+    { tag: tags.definitionOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.logicOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.controlOperator, color: "var(--cm-color-keyword)" },
     { tag: tags.bracket, color: "var(--cm-color-bracket)" },
-    { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
+    // TODO: tags.self, tags.null
 ]
 
 export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
@@ -204,8 +205,8 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
 
 // Compartments: https://codemirror.net/6/examples/config/
 let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>} */ codemirror_ref, value) => {
-    let compartment = useRef(new Compartment())
-    let initial_value = useRef(compartment.current.of(value))
+    const compartment = useRef(new Compartment())
+    const initial_value = useRef(compartment.current.of(value))
 
     useLayoutEffect(() => {
         codemirror_ref.current?.dispatch?.({
@@ -215,6 +216,11 @@ let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>
 
     return initial_value.current
 }
+
+export const LastRemoteCodeSetTimeFacet = Facet.define({
+    combine: (values) => values[0],
+    compare: _.isEqual,
+})
 
 let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPlutoSetup.js").Text} */ doc, { line, ch }) => {
     let line_object = doc.line(_.clamp(line + 1, 1, doc.lines))
@@ -227,7 +233,6 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
- *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  global_definition_locations: { [variable_name: string]: string },
  *  [key: string]: any,
@@ -283,6 +288,10 @@ export const CellInput = ({
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+    let last_remote_code_set_time_compartment = useCompartment(
+        newcm_ref,
+        useMemo(() => LastRemoteCodeSetTimeFacet.of(Date.now()), [remote_code])
+    )
 
     let on_change_compartment = useCompartment(
         newcm_ref,
@@ -383,7 +392,6 @@ export const CellInput = ({
             const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
-            console.table({ value, trimmed, offset })
             if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
                 // Markdown cell, change to code
                 let start, end
@@ -571,6 +579,7 @@ export const CellInput = ({
                     highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    last_remote_code_set_time_compartment,
                     highlightLinePlugin(),
                     highlightRangePlugin(),
 
@@ -664,21 +673,25 @@ export const CellInput = ({
                               julia(),
                           ]),
                     go_to_definition_plugin,
+                    AiSuggestionPlugin(),
                     pluto_autocomplete({
-                        request_autocomplete: async ({ text }) => {
+                        request_autocomplete: async ({ query, query_full }) => {
                             let response = await timeout_promise(
-                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                pluto_actions.send("complete", { query, query_full }, { notebook_id: notebook_id_ref.current }),
                                 5000
                             ).catch(console.warn)
                             if (!response) return null
 
                             let { message } = response
+
                             return {
-                                start: utf8index_to_ut16index(text, message.start),
-                                stop: utf8index_to_ut16index(text, message.stop),
+                                start: utf8index_to_ut16index(query_full ?? query, message.start),
+                                stop: utf8index_to_ut16index(query_full ?? query, message.stop),
                                 results: message.results,
+                                too_long: message.too_long,
                             }
                         },
+                        request_packages: () => pluto_actions.send("all_registered_package_names").then(({ message }) => message.results),
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                         request_unsubmitted_global_definitions: () => pluto_actions.get_unsubmitted_global_definitions(),
@@ -695,7 +708,7 @@ export const CellInput = ({
                         focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
                     }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
-                    placeholder("Enter cell code..."),
+                    placeholder(t("t_cell_input_placeholder")),
 
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
@@ -863,15 +876,30 @@ export const CellInput = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
+                get_current_code=${() => {
+                    let cm = newcm_ref.current
+                    return cm == null ? "" : getValue6(cm)
+                }}
             />
             ${PreviewHiddenCode}
         </pluto-input>
     `
 }
 
-const PreviewHiddenCode = html`<div class="preview_hidden_code_info">👀 Reading hidden code</div>`
+const PreviewHiddenCode = html`<div class="preview_hidden_code_info">${t("t_reading_hidden_code")}</div>`
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
+const InputContextMenu = ({
+    on_delete,
+    cell_id,
+    run_cell,
+    skip_as_script,
+    running_disabled,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    set_cell_disabled,
+    get_current_code,
+}) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
@@ -914,16 +942,42 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const is_copy_output_supported = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
         let cell_result = notebook?.cell_results?.[cell_id]
-        return !!cell_result && !cell_result.errored && !cell_result.queued && cell_result.output.mime === "text/plain" && cell_result.output.body
+        if (cell_result == null) return false
+
+        return (
+            (!cell_result.errored && cell_result.output.mime === "text/plain" && !!cell_result.output.body) ||
+            (cell_result.errored && cell_result.output.mime === "application/vnd.pluto.stacktrace+object")
+        )
     }
+
+    const strip_ansi_codes = (s) => (typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s)
 
     const copy_output = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
-        let cell_output = notebook?.cell_results?.[cell_id]?.output.body ?? ""
-        cell_output &&
-            navigator.clipboard.writeText(cell_output).catch((err) => {
+        let cell_result = notebook?.cell_results?.[cell_id]
+        if (cell_result == null) return
+
+        let cell_output =
+            cell_result.output.mime === "text/plain"
+                ? cell_result.output.body
+                : // @ts-ignore
+                  cell_result.output.body.plain_error
+
+        if (cell_output != null)
+            navigator.clipboard.writeText(strip_ansi_codes(cell_output)).catch(() => {
                 alert(`Error copying cell output`)
             })
+    }
+
+    const ask_ai = () => {
+        open_pluto_popup({
+            type: "info",
+            big: true,
+            css_class: "ai-context",
+            should_focus: true,
+            // source_element: button_ref.current,
+            body: html`<${AIContext} cell_id=${cell_id} current_code=${get_current_code()} />`,
+        })
     }
 
     useEventListener(
@@ -970,20 +1024,20 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         >
             ${open
                 ? html`<ul onMouseenter=${mouseenter}>
-                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+                      <${InputContextMenuItem} tag="delete" contents=${t("t_delete_cell_action")} title=${t("t_delete_cell_action")} onClick=${on_delete} setOpen=${setOpen} />
 
                       <${InputContextMenuItem}
-                          title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                          title=${running_disabled ? t("t_enable_and_run_cell") : t("t_disable_this_cell_and_all_cells_that_depend_on_it")}
                           tag=${running_disabled ? "enable_cell" : "disable_cell"}
-                          contents=${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                          contents=${running_disabled ? html`<b>${t("t_enable_cell_action")}</b>` : html`${t("t_disable_cell_action")}`}
                           onClick=${toggle_running_disabled}
                           setOpen=${setOpen}
                       />
                       ${any_logs
                           ? html`<${InputContextMenuItem}
-                                title=${show_logs ? "Show cell logs" : "Hide cell logs"}
+                                title=${show_logs ? t("t_show_logs_action_description") : t("t_hide_logs_action_description")}
                                 tag=${show_logs ? "hide_logs" : "show_logs"}
-                                contents=${show_logs ? "Hide logs" : "Show logs"}
+                                contents=${show_logs ? t("t_hide_logs_action") : t("t_show_logs_action")}
                                 onClick=${toggle_logs}
                                 setOpen=${setOpen}
                             />`
@@ -991,22 +1045,30 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                       ${is_copy_output_supported()
                           ? html`<${InputContextMenuItem}
                                 tag="copy_output"
-                                contents="Copy output"
-                                title="Copy the output of this cell to the clipboard."
+                                contents=${t("t_copy_output_action")}
+                                title=${t("t_copy_output_action_description")}
                                 onClick=${copy_output}
                                 setOpen=${setOpen}
                             />`
                           : null}
 
                       <${InputContextMenuItem}
-                          title=${skip_as_script
-                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          title=${skip_as_script ? t("t_enable_in_file_action_description") : t("t_disable_in_file_action_description")}
                           tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
-                          contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                          contents=${skip_as_script ? html`<b>${t("t_enable_in_file_action")}</b>` : html`${t("t_disable_in_file_action")}`}
                           onClick=${toggle_skip_as_script}
                           setOpen=${setOpen}
                       />
+
+                      ${pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features !== false
+                          ? html`<${InputContextMenuItem}
+                                tag="ask_ai"
+                                contents=${t("t_ask_ai_action")}
+                                title=${t("t_ask_ai_action_description")}
+                                onClick=${ask_ai}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
                   </ul>`
                 : html``}
         </div>

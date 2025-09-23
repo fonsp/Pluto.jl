@@ -177,6 +177,10 @@ pluto-tree-more {
     white-space: nowrap;
 }
 
+pluto-tree-more.disabled {
+    cursor: not-allowed;
+}
+
 pluto-tree-more::before {
     margin-left: 0.2em;
     margin-right: 0.5em;
@@ -280,11 +284,29 @@ jlerror .error-header {
 jlerror secret-h1 {
     font-size: 1.9rem;
     font-weight: 700;
+    color: var(--pluto-output-h-color);
 }
 jlerror > section {
     border-block-start: 3px dashed var(--pkg-terminal-border-color);
     margin-block-start: 1rem;
     padding-block-start: 1rem;
+}
+jlerror .stacktrace-waiting-to-view {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1rem 0 0 0;
+}
+jlerror .stacktrace-waiting-to-view button {
+    background: var(--white);
+    border: 3px solid var(--pkg-terminal-border-color);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1em;
+    color: var(--pluto-output-color);
+    font-family: var(--system-ui-font-stack);
+    cursor: pointer;
+    font-weight: 700;
 }
 jlerror > section > ol {
     line-height: 1.6;
@@ -325,7 +347,7 @@ jlerror > section .classical-frame s-span {
 }
 jlerror > section .classical-frame s-span .argument_name {
     color: var(--jlerror-mark-color);
-    color: var(--cm-color-var);
+    color: var(--cm-color-variable);
     color: var(--cm-color-type);
 }
 jlerror > section .frame-source {
@@ -437,7 +459,7 @@ jlerror .dont-panic {
     transform: rotate(6deg);
 }
 
-body.disable_ui jlerror .dont-panic {
+pluto-editor.disable_ui jlerror .dont-panic {
     display: none;
 }
 

@@ -82,8 +82,8 @@ function run_reactive_core!(
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
     new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, removed_cells)
 
-    # find (indirectly) deactivated cells and update their status
-    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
+    # find (directly and indirectly) deactivated cells and update their status
+    indirectly_deactivated = collect(topological_order_cached(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
 
     for cell in indirectly_deactivated
         cell.running = false
@@ -95,18 +95,22 @@ function run_reactive_core!(
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
+    old_order = topological_order_cached(old_topology, roots)
 
-    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    old_runnable = setdiff(old_order.runnable, already_run)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 
     new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
     # get the new topological order
-    new_order = topological_order(new_topology, new_roots)
+    new_order = topological_order_cached(new_topology, new_roots)
     new_runnable = setdiff(new_order.runnable, already_run)
-    to_run = setdiff!(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+    to_run = setdiff!(
+        union(new_runnable, old_runnable),
+        indirectly_deactivated,
+        keys(new_order.errable)
+    )::Vector{Cell} # TODO: think if old error cell order matters
 
 
     # change the bar on the sides of cells to "queued"
@@ -410,7 +414,7 @@ function update_save_run!(
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
-		original_pwd = pwd()
+		original_pwd = try pwd(); catch; end
 		offline_workspace = WorkspaceManager.make_workspace(
 			(
 				ServerSession(),
@@ -424,7 +428,7 @@ function update_save_run!(
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
 
-		cd(original_pwd)
+		isnothing(original_pwd) || cd(original_pwd)
 		to_run_online = setdiff(cells, to_run_offline)
 		
 		clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
@@ -642,7 +646,7 @@ end
 
 function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     skipped_cells = filter(is_skipped_as_script, notebook.cells)
-    indirectly_skipped = collect(topological_order(topology, skipped_cells))
+    indirectly_skipped = collect(topological_order_cached(topology, skipped_cells))
     for cell in notebook.cells
         cell.depends_on_skipped_cells = false
     end
@@ -653,11 +657,29 @@ end
 
 function update_disabled_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_disabled = collect(topological_order(topology, disabled_cells))
+    indirectly_disabled = collect(topological_order_cached(topology, disabled_cells))
     for cell in notebook.cells
         cell.depends_on_disabled_cells = false
     end
     for cell in indirectly_disabled
         cell.depends_on_disabled_cells = true
     end
+end
+
+
+import LRUCache
+
+const _cache_for_topological_order = LRUCache.LRU{UInt, TopologicalOrder{Cell}}(; maxsize = 10)
+
+function topological_order_cached(topology::NotebookTopology, roots::AbstractVector{Cell}; kwargs...)
+	h = hash((
+		# the `topology` object is designed to be `===` the same if the cell inputs dont change. So we should use objectid here
+		objectid(topology), 
+		# we don't just hash `roots` directly because thats quite a lot of work
+		objectid.(roots),
+		# we hash the kwargs
+		kwargs))
+	get!(_cache_for_topological_order, h) do
+		topological_order(topology, roots; kwargs...)
+	end
 end
