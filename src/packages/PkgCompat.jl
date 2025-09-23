@@ -10,6 +10,8 @@ import ..Pluto
 import Scratch
 import UUIDs
 import GracefulPkg
+import ..TempDirInScratch
+
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode, :complete_remote_package)
     const REPLMode = Pkg.REPLMode
@@ -88,14 +90,8 @@ else
     create_empty_ctx()
 end
 
-
-
-# By giving this fake Pkg ID, we create a scratch space that does not get tracked to a Project.toml (in .julia/logs/scratch_usage.toml). This means that it is considered "orphan in Scratch language" from the start, and it will get deleted by Pkg.gc when the file is older than 7 days.
-make_temp_dir_in_scratch() = Scratch.get_scratch!(Base.UUID("11111111-1111-1111-1111-111111111111"), "nb_env_$(UUIDs.uuid4())")
-
-
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), make_temp_dir_in_scratch())
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), TempDirInScratch.tempdir())
 
 # ⚠️ Internal API with fallback
 function load_ctx!(original::PkgContext)
