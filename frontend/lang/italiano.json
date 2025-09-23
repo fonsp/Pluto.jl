@@ -42,7 +42,7 @@
     "t_language_picker_description": "Cambia la lingua dell'interfaccia",
     "t_refresh_to_see_language_change_confirm": "Lingua cambiata! Vuoi aggiornare la pagina per vedere le modifiche?",
 
-    "t_anonymous_function_abbr": "Una (mini-)funzione che è definita senza la parola chiave 'function', ma usando -> o 'do'.",
+    "t_anonymous_function_abbr": "Una (mini-)funzione che è definita senza la parola chiave 'function', ma usando -> oppure 'do'.",
     "t_display_complete_type_information_of_this_function_call": "Mostra le informazioni complete dei tipi di questa chiamata di funzione",
     "t_multiple_expressions_in_one_cell": "Espressioni multiple in una cella",
     "t_how_would_you_like_to_fix_it": "Come vorresti risolvere questo problema?",
