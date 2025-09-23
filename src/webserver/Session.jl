@@ -39,7 +39,6 @@ const SESSION_UPDATE_LOOP_INTERVAL = Ref(2.0 * 60 * 60) # 2 hours
 const SESSION_UPDATE_LOOP_DELAY = Ref(15.0 * 60) # 15 minutes
 
 
-
 """
 The `ServerSession` keeps track of:
 
@@ -80,18 +79,6 @@ Base.@kwdef mutable struct ServerSession
     end
 end
 
-
-# kwarg constructor. Making Base.@kwdef by 
-function ServerSession(;
-    connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
-    notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
-    secret::String = String(rand(('a':'z') ∪ ('A':'Z') ∪ ('0':'9'), 8))
-    binder_token::Union{String,Nothing} = nothing
-    options::Configuration.Options = Configuration.Options()
-)
-    
-    return ServerSession(; secret=something)
-end
 
 function save_notebook(session::ServerSession, notebook::Notebook)
     

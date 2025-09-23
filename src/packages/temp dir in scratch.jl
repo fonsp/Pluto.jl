@@ -1,6 +1,7 @@
 module TempDirInScratch
 using Random
 using Dates
+import Scratch
 
 const ROOT_DIR_OVERRIDE = Ref{Union{Nothing, AbstractString}}(nothing)
 root() = @something(ROOT_DIR_OVERRIDE[], Scratch.@get_scratch!("pkg_envs"))
