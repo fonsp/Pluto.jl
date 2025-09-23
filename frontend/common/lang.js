@@ -16,6 +16,7 @@ import {
     polski,
     portugues_pt,
     suomi,
+    corporate_english,
 } from "./lang_imports.js"
 
 const without_empty_keys = (obj) => {
@@ -34,6 +35,9 @@ i18next.use(LanguageDetector).init({
         },
         "en": {
             translation: without_empty_keys(english),
+        },
+        "en-US-x-corp": {
+            translation: without_empty_keys(corporate_english),
         },
         "fi": {
             translation: without_empty_keys(suomi),

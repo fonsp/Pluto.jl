@@ -20,6 +20,9 @@ using InteractiveUtils
 # shared things between files:
 using UUIDs
 
+# for Pkg.precompile
+import Pkg
+
 
 const ObjectID = typeof(objectid("hello computer"))
 

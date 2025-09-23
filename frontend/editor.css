@@ -539,7 +539,7 @@ header#pluto-nav {
 }
 
 header#pluto-nav.show_export {
-    --header-height: 11.5em;
+    --header-height: 9.3rem;
     position: sticky;
     top: 0;
     transform: translateY(var(--header-height));
@@ -657,10 +657,13 @@ div.export_title {
     text-orientation: sideways-right;
     /* Not supported by Chrome: */
     /* writing-mode: sideways-lr; */
-    writing-mode: vertical-lr;
+    writing-mode: vertical-rl;
     transform: rotate(180deg);
     font-weight: 700;
     font-size: 1rem;
+    max-width: var(--header-height);
+    padding-inline: 0.5em;
+    text-align: center;
 }
 a.export_card header {
     margin-block: 0px;
@@ -3282,7 +3285,7 @@ footer #info {
     gap: 0.5rem;
     margin-right: 1rem;
     font-size: 0.75rem;
-    flex: 0 0 auto;
+    flex: 0 2 auto;
 }
 
 .language-picker label {
@@ -3300,6 +3303,8 @@ footer #info {
     font-size: inherit;
     color: var(--footer-color);
     cursor: pointer;
+    /* width: 78px; */
+    width: 100%;
 }
 
 .language-picker select:focus {

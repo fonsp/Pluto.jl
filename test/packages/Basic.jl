@@ -427,6 +427,8 @@ import Malt
         end
 
         @test index_order == [3, 2, 1]
+        
+        cleanup(🍭, notebook)
     end
 
     @testset "File format -- Backwards compat" begin
@@ -704,22 +706,14 @@ import Malt
             update_save_run!(🍭, notebook, notebook.cells[1])
             @test noerror(notebook.cells[1])
             
-            after_run = precomp_entries()
-            
-
             full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
-            
-            is_broken_idk_why = Sys.iswindows() && v"1.11.0-aaa" <= VERSION < v"1.12.0-aaa" && !match
-            is_broken_idk_why |= VERSION >= v"1.12.0-aaa" && !match
-
-            if !is_broken_idk_why
-                # There should be a log message about loading the cache.
-                @test occursin(r"Loading.*cache"i, full_logs)
-                # There should NOT be a log message about rejecting the cache.
-                @test !occursin(r"reject.*cache"i, full_logs)
-            end
+            # There should be a log message about loading the cache.
+            @test occursin(r"Loading.*cache"i, full_logs)
+            # There should NOT be a log message about rejecting the cache.
+            @test !occursin(r"reject.*cache"i, full_logs)
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+            after_run = precomp_entries()
             @test after_sync == after_run
             
             cleanup(🍭, notebook)

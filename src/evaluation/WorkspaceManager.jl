@@ -64,7 +64,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         Malt.Worker
     end
     
-    @debug "Creating workspace process" notebook.path length(notebook.cells)
+    @debug "Creating workspace process" notebook.path is_offline_renderer length(notebook.cells) exception=(ErrorException("test"), backtrace())
     try
         worker = create_workspaceprocess(WorkerType; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler), status=create_status)
         
@@ -162,6 +162,81 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
         copy!(LOAD_PATH, $(new_LP))
         Base.ACTIVE_PROJECT[] = $(new_AP)
     end)
+end
+
+
+
+function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
+    workspace = try
+        get_workspace((session, notebook))
+    catch e
+        e isa DiscardedWorkspaceException && return false
+        rethrow(e)
+    end
+    Malt.isrunning(workspace.worker) || return false
+
+    io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
+    
+    expr = quote
+        # This is just Pkg.precompile, but with extra stuff to relay stdout to the host process
+        import Pkg
+        let
+            buffer = Base.BufferStream()
+            running = Ref(true)
+            @async try
+                while running[] && !eof(buffer) && isreadable(buffer)
+                    newdata = readavailable(buffer)
+                    isopen(__precomp_io_writes_channel) || break
+                    isempty(newdata) || put!(__precomp_io_writes_channel, newdata)
+                    sleep(0.01)
+                end
+            catch e
+                println(stderr, "Error while relaying precompilation stdout: ", sprint(showerror, e, catch_backtrace()))
+            end
+            
+            out_stream = IOContext(
+                buffer,
+                :color => true,
+                # Look at that, I put a feature in Julia! 😎
+                # https://github.com/JuliaLang/julia/pull/58887
+                :force_fancyprint => true,
+            )
+            
+            try
+                Pkg.precompile(; already_instantiated=true, io=out_stream)
+            finally
+                running[] = false
+                println(buffer)
+                flush(buffer)
+                close(buffer)
+                put!(__precomp_io_writes_channel, "")
+                close(__precomp_io_writes_channel)
+            end
+        end
+    end
+    
+    running = Ref(true)
+    @async while running[]
+        newdata = take!(io_writes_channel)
+        write(io, newdata)
+        sleep(0.01)
+    end
+
+    try
+        withtoken(workspace.dowork_token) do
+            Malt.remote_eval_wait(workspace.worker, expr)
+        end
+    catch e
+        throw(PrecompilationFailedException(sprint(showerror, e)))
+    finally
+        running[] = false
+    end
+    
+    true
+end
+
+struct PrecompilationFailedException <: Exception
+    msg::String
 end
 
 function start_relaying_self_updates((session, notebook)::SN, run_channel)
@@ -299,7 +374,7 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
             
         Status.report_business_started!(status, Symbol("Starting process"))
         Status.report_business_planned!(status, Symbol("Loading notebook boot environment"))
-        
+
         worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
         
         Status.report_business_finished!(status, Symbol("Starting process"))
@@ -322,6 +397,14 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
     worker
 end
 
+const get_workspace_token = Token()
+
+struct DiscardedWorkspaceException <: Exception
+    notebook_id::UUID
+end
+
+Base.showerror(io::IO, e::DiscardedWorkspaceException) = print(io, "Cannot run code in this notebook: it has already shut down.")
+
 """
 Return the `Workspace` of `notebook`; will be created if none exists yet.
 
@@ -331,15 +414,17 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
     session, notebook = session_notebook
     if notebook.notebook_id in discarded_workspaces
         @debug "This should not happen" notebook.process_status
-        error("Cannot run code in this notebook: it has already shut down.")
+        throw(DiscardedWorkspaceException(notebook.notebook_id))
     end
 
-    task = if !allow_creation
-        get(active_workspaces, notebook.notebook_id, nothing)
-    else
-        get!(active_workspaces, notebook.notebook_id) do
-            🌸 = Pluto.@asynclog make_workspace(session_notebook)
-            yield(); 🌸
+    task = withtoken(get_workspace_token) do
+        if !allow_creation
+            get(active_workspaces, notebook.notebook_id, nothing)
+        else
+            get!(active_workspaces, notebook.notebook_id) do
+                🌸 = Pluto.@asynclog make_workspace(session_notebook)
+                yield(); 🌸
+            end
         end
     end
 
