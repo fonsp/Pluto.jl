@@ -1,5 +1,6 @@
 import TOML
 import UUIDs: UUID
+import .TempDirInScratch
 
 const _notebook_header = "### A Pluto.jl notebook ###"
 const _notebook_metadata_prefix = "#> "
@@ -294,7 +295,7 @@ function _read_notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dic
         ptoml_contents = lstrip(split(ptoml_code, "\"\"\"")[2])
         mtoml_contents = lstrip(split(mtoml_code, "\"\"\"")[2])
 
-        env_dir = mktempdir()
+        env_dir = TempDirInScratch.tempdir()
         write(joinpath(env_dir, "Project.toml"), ptoml_contents)
         write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
 

@@ -7,7 +7,11 @@ import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+import Scratch
+import UUIDs
 import GracefulPkg
+import ..TempDirInScratch
+
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode, :complete_remote_package)
     const REPLMode = Pkg.REPLMode
@@ -87,7 +91,7 @@ else
 end
 
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), mktempdir())
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), TempDirInScratch.tempdir())
 
 # ⚠️ Internal API with fallback
 function load_ctx!(original::PkgContext)

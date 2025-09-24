@@ -27,6 +27,7 @@ PlutoDependencyExplorer = "72656b73-756c-7461-726b-72656b6b696b"
 PrecompileSignatures = "91cefc8d-f054-46dc-8f8c-26e11d7c5411"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RegistryInstances = "2792f1a3-b283-48e8-9a74-f99dce5104f3"
 RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 Scratch = "6c6a2e73-6563-6170-7368-637461726353"
@@ -57,7 +58,6 @@ MsgPack = "1.1"
 Pkg = "1"
 PlutoDependencyExplorer = "~1.2"
 PrecompileSignatures = "3"
-# this next compat entry should match the Project.toml of PlutoRunner.
 PrecompileTools = "~1.2, ~1.3"
 REPL = "1"
 RegistryInstances = "0.1"
@@ -74,10 +74,9 @@ julia = "^1.10"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["DataFrames", "OffsetArrays", "Random", "Sockets", "Test", "TimerOutputs", "Memoize"]
+test = ["DataFrames", "OffsetArrays", "Sockets", "Test", "TimerOutputs", "Memoize"]
