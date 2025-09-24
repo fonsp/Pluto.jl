@@ -415,9 +415,10 @@ function update_save_run!(
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
 		original_pwd = try pwd(); catch; end
+		offline_session = ServerSession()
 		offline_workspace = WorkspaceManager.make_workspace(
 			(
-				ServerSession(),
+				offline_session,
 				notebook,
 			),
 			is_offline_renderer=true,
@@ -433,6 +434,7 @@ function update_save_run!(
 		
 		clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
 		
+		finalize(offline_session)
 		send_notebook_changes!(ClientRequest(; session, notebook))
 	end
 

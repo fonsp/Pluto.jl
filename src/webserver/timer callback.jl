@@ -1,6 +1,6 @@
 import .TempDirInScratch
 
-function timer_callback(session::ServerSession, timer::Timer)
+function timer_callback(session::ServerSession)
     
     # Update TempDirInScratch
     @info "# Update TempDirInScratch"

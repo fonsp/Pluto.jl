@@ -19,47 +19,41 @@ function tempdir(; allow_cleanup::Bool=true)
 end
 
 function cleanup(; max_age::Period=Hour(5))
+    current_time = nowtime()
     try
         for dir in readdir(root(); join=true)
             if isdir(dir)
-                last_time = recursive_stat(dir) |> unix2datetime
-                if last_time < now() - max_age
-                    @info "Deleting temp dir $dir"
-                    try
+                try
+                    last_time = recursive_stat(dir) |> unix2datetime
+                    if last_time < current_time - max_age
                         rm(dir; recursive=true)
-                    catch e
-                        @error "Error deleting temp dir $dir" exception=(e, catch_backtrace())
                     end
+                catch e
+                    @warn "Failed to delete temporary package environment dir $dir" exception=(e, catch_backtrace())
                 end
             end
         end
     catch e
-        @error "Error cleaning up temp dirs" exception=(e, catch_backtrace())
+        @warn "Error while cleaning up temporary package environment dirs" exception=(e, catch_backtrace())
     end
 end
 
 function recursive_stat(start::AbstractString)
 	local result = 0.0
-	
-    try
-        for (root, dirs, files) in walkdir(start)
-            function yo(s)
-                st = stat(joinpath(root,s))
-                result = max(
-                    result, 
-                    st.ctime,
-                    st.mtime,
-                )
-            end
-
-            foreach(yo, dirs)
-            foreach(yo, files)
-        end
-    catch e
-        @error "Error statting temp dir $start" exception=(e, catch_backtrace())
+    function yo(path)
+        st = stat(path)
+        result = max(
+            result, 
+            st.ctime,
+            st.mtime,
+        )
     end
-
-	return result
+    yo(start)
+    for (root, dirs, files) in walkdir(start)
+        foreach(yo, joinpath.((root,), dirs))
+        foreach(yo, joinpath.((root,), files))
+    end
+    result
 end
 
 function mark_as_current(dirname::AbstractString)
@@ -67,9 +61,20 @@ function mark_as_current(dirname::AbstractString)
         p = joinpath(dirname, "Project.toml")
         isfile(p) && touch(p)
     catch e
-        @error "Error marking temp dir $dirname as current" exception=(e, catch_backtrace())
+        @error "Error marking temporary package environment dir $dirname as current" exception=(e, catch_backtrace())
     end
 end
 
 
+function nowtime()
+    try
+        dir = Scratch.@get_scratch!("time_test")
+        file = joinpath(dir, "test.txt")
+        touch(file)
+        recursive_stat(dir) |> unix2datetime
+    catch e
+        @warn "Error getting current filesystem time, using fallback" exception=(e, catch_backtrace())
+        now(UTC)
+    end
+end
 end

@@ -35,7 +35,7 @@ end
 ###
 
 
-const SESSION_UPDATE_LOOP_INTERVAL = Ref(2.0 * 60 * 60) # 2 hours
+const SESSION_UPDATE_LOOP_INTERVAL = Ref(2.0 * 60 * 60) # 2 hours, this should be less than half of `max_age` of the `cleanup` function in `temp dir in scratch.jl`
 const SESSION_UPDATE_LOOP_DELAY = Ref(15.0 * 60) # 15 minutes
 
 
@@ -71,7 +71,7 @@ Base.@kwdef mutable struct ServerSession
             options,    
         )
         timer = Timer(SESSION_UPDATE_LOOP_DELAY[]; interval=SESSION_UPDATE_LOOP_INTERVAL[]) do _t
-            timer_callback(x, timer)
+            timer_callback(x)
         end
         finalizer(x) do _
             close(timer)
