@@ -12,7 +12,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
-import { DropRuler } from "./DropRuler.js"
+import { DropRuler, get_drop_index_for_paste } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
@@ -381,38 +381,6 @@ export class Editor extends Component {
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
-
-        this.get_drop_index_for_paste = () => {
-            const cell_nodes = Array.from(
-                this.props.pluto_editor_element.querySelectorAll(":scope > main > pluto-notebook > pluto-cell")
-            )
-
-            if (cell_nodes.length === 0) {
-                return 0
-            }
-
-            const last_cell = cell_nodes[cell_nodes.length - 1]
-            const cell_edges = cell_nodes.map((el) => el.offsetTop)
-            cell_edges.push(last_cell.offsetTop + last_cell.scrollHeight)
-
-            const main_element = this.props.pluto_editor_element.querySelector("main") ?? this.props.pluto_editor_element
-            const main_top = main_element.getBoundingClientRect().top + document.documentElement.scrollTop
-            const viewport_height = window.innerHeight ?? document.documentElement.clientHeight ?? 0
-            const middle_of_viewport = document.documentElement.scrollTop + viewport_height / 2
-            const editorY = middle_of_viewport - main_top
-
-            let best_index = 0
-            let best_distance = Infinity
-            for (let i = 0; i < cell_edges.length; i++) {
-                const distance = Math.abs(cell_edges[i] - editorY - 8)
-                if (distance < best_distance) {
-                    best_distance = distance
-                    best_index = i
-                }
-            }
-
-            return best_index
-        }
 
         // these are things that can be done to the local notebook
         this.real_actions = {
@@ -1466,7 +1434,7 @@ ${t("t_key_autosave_description")}`
             if (topaste) {
                 const deserializer = detect_deserializer(topaste)
                 if (deserializer != null) {
-                    const drop_index = this.get_drop_index_for_paste()
+                    const drop_index = get_drop_index_for_paste(this.props.pluto_editor_element)
                     this.actions.add_deserialized_cells(topaste, drop_index, deserializer)
                     e.preventDefault()
                 }
