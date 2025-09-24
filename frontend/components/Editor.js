@@ -12,7 +12,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
-import { DropRuler } from "./DropRuler.js"
+import { DropRuler, get_drop_index_for_paste } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
@@ -1434,7 +1434,8 @@ ${t("t_key_autosave_description")}`
             if (topaste) {
                 const deserializer = detect_deserializer(topaste)
                 if (deserializer != null) {
-                    this.actions.add_deserialized_cells(topaste, -1, deserializer)
+                    const drop_index = get_drop_index_for_paste(this.props.pluto_editor_element)
+                    this.actions.add_deserialized_cells(topaste, drop_index, deserializer)
                     e.preventDefault()
                 }
             }
