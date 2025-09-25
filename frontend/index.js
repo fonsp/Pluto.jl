@@ -1,7 +1,5 @@
-import { html, render } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
-
-import { Welcome } from "./components/welcome/Welcome.js"
+import Welcome from "./components/welcome/Welcome.svelte"
 
 const url_params = new URLSearchParams(window.location.search)
 
@@ -28,6 +26,31 @@ const launch_params = {
 }
 
 console.log("Launch parameters: ", launch_params)
+console.log("🎉 Svelte 版本正在运行！欢迎使用 Pluto.jl Svelte 版本")
 
-// @ts-ignore
-render(html`<${Welcome} launch_params=${launch_params} />`, document.querySelector("#app"))
+// 在页面上添加 Svelte 版本指示器（用于调试）
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', function() {
+        const indicator = document.createElement('div');
+        indicator.style.cssText = 'position:fixed;top:10px;right:10px;background:#ff6b6b;color:white;padding:5px 10px;border-radius:5px;font-size:12px;z-index:9999;';
+        indicator.textContent = '🔥 Svelte 版本';
+        document.body.appendChild(indicator);
+        
+        // 5秒后自动隐藏
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
+            }
+        }, 5000);
+    });
+}
+
+// 创建 Svelte 应用
+const app = new Welcome({
+    target: document.querySelector("#app") || document.body,
+    props: {
+        launch_params: launch_params
+    }
+})
+
+export default app

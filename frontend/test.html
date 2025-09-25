@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Svelte</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module">
+        import Test from './test.svelte';
+        
+        const app = new Test({
+            target: document.getElementById('app')
+        });
+        
+        export default app;
+    </script>
+</body>
+</html>

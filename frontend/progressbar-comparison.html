@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ProgressBar 组件对比测试</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background: #f5f5f5;
+            }
+            .comparison-container {
+                display: flex;
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+            .component-section {
+                flex: 1;
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .controls {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            button {
+                margin: 5px;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                background: #007bff;
+                color: white;
+                cursor: pointer;
+            }
+            button:hover {
+                background: #0056b3;
+            }
+            .status {
+                margin: 10px 0;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 12px;
+            }
+            .component-title {
+                font-weight: bold;
+                margin-bottom: 10px;
+                padding: 10px;
+                background: #e9ecef;
+                border-radius: 4px;
+            }
+            .preact-title {
+                background: #d1ecf1;
+                color: #0c5460;
+            }
+            .svelte-title {
+                background: #d4edda;
+                color: #155724;
+            }
+            loading-bar {
+                display: block;
+                height: 4px;
+                background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
+                position: fixed;
+                top: 0;
+                left: 0;
+                transition: width 0.3s ease, opacity 0.3s ease;
+                z-index: 1000;
+            }
+            loading-bar.slow {
+                background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+            }
+            loading-bar.fast {
+                background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            }
+            .test-results {
+                display: flex;
+                gap: 20px;
+                margin-top: 20px;
+            }
+            .result-panel {
+                flex: 1;
+                padding: 15px;
+                border-radius: 4px;
+                font-size: 12px;
+            }
+            .preact-results {
+                background: #d1ecf1;
+                border: 1px solid #bee5eb;
+            }
+            .svelte-results {
+                background: #d4edda;
+                border: 1px solid #c3e6cb;
+            }
+            .error {
+                color: #dc3545;
+                font-weight: bold;
+            }
+            .success {
+                color: #28a745;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>ProgressBar 组件对比测试</h1>
+        <p>同时测试Preact和Svelte版本的ProgressBar组件</p>
+
+        <div class="controls">
+            <h3>测试控制</h3>
+            <button onclick="testBinderLoading()">测试Binder加载</button>
+            <button onclick="testCellProgress()">测试单元格进度</button>
+            <button onclick="testClickHandlers()">测试点击处理</button>
+            <button onclick="testEdgeCases()">测试边界情况</button>
+            <button onclick="resetTest()">重置测试</button>
+            <button onclick="runFullComparison()">完整对比测试</button>
+        </div>
+
+        <div class="comparison-container">
+            <div class="component-section">
+                <div class="component-title preact-title">Preact ProgressBar</div>
+                <div class="status" id="preact-status">状态: 等待测试...</div>
+                <div class="status" id="preact-progress">进度: 无</div>
+                <div class="status" id="preact-render-time">渲染时间: -</div>
+                <div id="preact-container"></div>
+            </div>
+
+            <div class="component-section">
+                <div class="component-title svelte-title">Svelte ProgressBar</div>
+                <div class="status" id="svelte-status">状态: 等待测试...</div>
+                <div class="status" id="svelte-progress">进度: 无</div>
+                <div class="status" id="svelte-render-time">渲染时间: -</div>
+                <div id="svelte-container"></div>
+            </div>
+        </div>
+
+        <div class="test-results">
+            <div class="result-panel preact-results">
+                <h4>Preact 测试结果</h4>
+                <div id="preact-test-results">等待测试...</div>
+            </div>
+            <div class="result-panel svelte-results">
+                <h4>Svelte 测试结果</h4>
+                <div id="svelte-test-results">等待测试...</div>
+            </div>
+        </div>
+
+        <script type="module">
+            // 导入两个组件
+            import { ProgressBar as PreactProgressBar, scroll_to_busy_cell as preact_scroll_to_busy_cell } from "./components/ProgressBar.js"
+            import SvelteProgressBar from "./svelte-migration/ProgressBar.svelte"
+
+            // Mock数据
+            const mockNotebook = {
+                cell_results: {
+                    "cell-1": { cell_id: "cell-1", running: false, queued: false },
+                    "cell-2": { cell_id: "cell-2", running: false, queued: false },
+                    "cell-3": { cell_id: "cell-3", running: false, queued: false },
+                    "cell-4": { cell_id: "cell-4", running: false, queued: false },
+                },
+            }
+
+            const mockStatus = {
+                loading: false,
+                binder: false,
+            }
+
+            let backendLaunchPhase = 0
+            let preactInstance = null
+            let svelteInstance = null
+            let testResults = {
+                preact: [],
+                svelte: [],
+            }
+
+            // 工具函数
+            function updateStatus(type, status, progress = "无", renderTime = "-") {
+                document.getElementById(`${type}-status`).textContent = `状态: ${status}`
+                document.getElementById(`${type}-progress`).textContent = `进度: ${progress}`
+                document.getElementById(`${type}-render-time`).textContent = `渲染时间: ${renderTime}`
+            }
+
+            function addTestResult(type, result, isError = false) {
+                const resultDiv = document.getElementById(`${type}-test-results`)
+                const className = isError ? "error" : "success"
+                const resultText = isError ? "❌ 失败" : "✅ 成功"
+
+                resultDiv.innerHTML += `<div class="${className}">${resultText}: ${result}</div>`
+                testResults[type].push({ result, isError })
+            }
+
+            function measureRenderTime(fn) {
+                const start = performance.now()
+                const result = fn()
+                const end = performance.now()
+                return { result, renderTime: `${(end - start).toFixed(2)}ms` }
+            }
+
+            // 创建Preact组件实例
+            function createPreactInstance() {
+                const startTime = performance.now()
+
+                const props = {
+                    notebook: mockNotebook,
+                    backend_launch_phase: backendLaunchPhase,
+                    status: mockStatus,
+                }
+
+                try {
+                    const container = document.getElementById("preact-container")
+                    container.innerHTML = ""
+
+                    // Preact渲染
+                    const element = PreactProgressBar(props)
+                    container.appendChild(element)
+
+                    const renderTime = `${(performance.now() - startTime).toFixed(2)}ms`
+                    return { success: true, renderTime }
+                } catch (error) {
+                    return { success: false, error: error.message }
+                }
+            }
+
+            // 创建Svelte组件实例
+            function createSvelteInstance() {
+                const startTime = performance.now()
+
+                if (svelteInstance) {
+                    svelteInstance.$destroy()
+                }
+
+                try {
+                    const componentProps = {
+                        notebook: mockNotebook,
+                        backend_launch_phase: backendLaunchPhase,
+                        status: mockStatus,
+                    }
+
+                    svelteInstance = SvelteProgressBar({
+                        target: document.getElementById("svelte-container"),
+                        props: componentProps,
+                    })
+
+                    const renderTime = `${(performance.now() - startTime).toFixed(2)}ms`
+                    return { success: true, renderTime }
+                } catch (error) {
+                    return { success: false, error: error.message }
+                }
+            }
+
+            // 测试函数
+            window.testBinderLoading = function () {
+                updateStatus("preact", "测试Binder加载中...", "0%", "-")
+                updateStatus("svelte", "测试Binder加载中...", "0%", "-")
+
+                mockStatus.loading = true
+                mockStatus.binder = true
+                backendLaunchPhase = 0
+
+                const preactResult = createPreactInstance()
+                const svelteResult = createSvelteInstance()
+
+                if (preactResult.success) {
+                    updateStatus("preact", "Binder加载中", "0%", preactResult.renderTime)
+                    addTestResult("preact", "Binder加载初始化成功")
+                } else {
+                    addTestResult("preact", `Binder加载初始化失败: ${preactResult.error}`, true)
+                }
+
+                if (svelteResult.success) {
+                    updateStatus("svelte", "Binder加载中", "0%", svelteResult.renderTime)
+                    addTestResult("svelte", "Binder加载初始化成功")
+                } else {
+                    addTestResult("svelte", `Binder加载初始化失败: ${svelteResult.error}`, true)
+                }
+
+                // 模拟进度更新
+                let phase = 0
+                const interval = setInterval(() => {
+                    phase += 0.1
+                    backendLaunchPhase = Math.min(phase, 1)
+
+                    const progressPercent = Math.round(backendLaunchPhase * 100)
+                    updateStatus("preact", "Binder加载中", `${progressPercent}%`, "-")
+                    updateStatus("svelte", "Binder加载中", `${progressPercent}%`, "-")
+
+                    if (phase >= 1.1) {
+                        clearInterval(interval)
+                        mockStatus.loading = false
+                        mockStatus.binder = false
+
+                        updateStatus("preact", "Binder加载完成", "100%", "-")
+                        updateStatus("svelte", "Binder加载完成", "100%", "-")
+
+                        addTestResult("preact", "Binder加载完成")
+                        addTestResult("svelte", "Binder加载完成")
+                    }
+                }, 300)
+            }
+
+            window.testCellProgress = function () {
+                updateStatus("preact", "测试单元格进度...", "0/4", "-")
+                updateStatus("svelte", "测试单元格进度...", "0/4", "-")
+
+                mockStatus.loading = false
+                mockStatus.binder = false
+
+                // 重置单元格状态
+                Object.values(mockNotebook.cell_results).forEach((cell) => {
+                    cell.running = false
+                    cell.queued = false
+                })
+
+                const preactResult = createPreactInstance()
+                const svelteResult = createSvelteInstance()
+
+                if (preactResult.success) {
+                    addTestResult("preact", "单元格进度初始化成功")
+                } else {
+                    addTestResult("preact", `单元格进度初始化失败: ${preactResult.error}`, true)
+                }
+
+                if (svelteResult.success) {
+                    addTestResult("svelte", "单元格进度初始化成功")
+                } else {
+                    addTestResult("svelte", `单元格进度初始化失败: ${svelteResult.error}`, true)
+                }
+
+                // 模拟单元格执行
+                const cellIds = Object.keys(mockNotebook.cell_results)
+                let currentIndex = 0
+
+                const runNextCell = () => {
+                    if (currentIndex >= cellIds.length) {
+                        updateStatus("preact", "所有单元格执行完成", "4/4", "-")
+                        updateStatus("svelte", "所有单元格执行完成", "4/4", "-")
+                        addTestResult("preact", "所有单元格执行完成")
+                        addTestResult("svelte", "所有单元格执行完成")
+                        return
+                    }
+
+                    const cellId = cellIds[currentIndex]
+                    const cell = mockNotebook.cell_results[cellId]
+
+                    // 开始运行
+                    cell.running = true
+                    cell.queued = false
+
+                    const completed = currentIndex
+                    const total = cellIds.length
+                    updateStatus("preact", "单元格执行中", `${completed}/${total}`, "-")
+                    updateStatus("svelte", "单元格执行中", `${completed}/${total}`, "-")
+
+                    // 模拟执行时间
+                    setTimeout(() => {
+                        cell.running = false
+                        currentIndex++
+
+                        // 运行下一个单元格
+                        setTimeout(runNextCell, 500)
+                    }, 1500)
+                }
+
+                runNextCell()
+            }
+
+            window.testClickHandlers = function () {
+                updateStatus("preact", "测试点击处理...", "-", "-")
+                updateStatus("svelte", "测试点击处理...", "-", "-")
+
+                // 设置一些运行中的单元格
+                Object.values(mockNotebook.cell_results).forEach((cell, index) => {
+                    cell.running = index < 2
+                    cell.queued = false
+                })
+
+                mockStatus.loading = false
+                mockStatus.binder = false
+
+                const preactResult = createPreactInstance()
+                const svelteResult = createSvelteInstance()
+
+                if (preactResult.success) {
+                    addTestResult("preact", "点击处理初始化成功")
+                } else {
+                    addTestResult("preact", `点击处理初始化失败: ${preactResult.error}`, true)
+                }
+
+                if (svelteResult.success) {
+                    addTestResult("svelte", "点击处理初始化成功")
+                } else {
+                    addTestResult("svelte", `点击处理初始化失败: ${svelteResult.error}`, true)
+                }
+
+                // 创建模拟单元格用于测试滚动
+                setTimeout(() => {
+                    const mockCell = document.createElement("div")
+                    mockCell.className = "pluto-cell running"
+                    mockCell.id = "cell-1"
+                    mockCell.textContent = "模拟运行中的单元格 (用于测试滚动)"
+                    mockCell.style.padding = "20px"
+                    mockCell.style.margin = "20px 0"
+                    mockCell.style.background = "#e3f2fd"
+                    document.body.appendChild(mockCell)
+
+                    updateStatus("preact", "点击处理就绪", "点击进度条测试滚动", "-")
+                    updateStatus("svelte", "点击处理就绪", "点击进度条测试滚动", "-")
+
+                    addTestResult("preact", "点击处理测试就绪")
+                    addTestResult("svelte", "点击处理测试就绪")
+                }, 500)
+            }
+
+            window.testEdgeCases = function () {
+                updateStatus("preact", "测试边界情况...", "-", "-")
+                updateStatus("svelte", "测试边界情况...", "-", "-")
+
+                // 测试1: 空notebook
+                const emptyNotebook = { cell_results: {} }
+                const emptyStatus = { loading: false, binder: false }
+
+                try {
+                    const props = {
+                        notebook: emptyNotebook,
+                        backend_launch_phase: 0,
+                        status: emptyStatus,
+                    }
+
+                    const container = document.getElementById("preact-container")
+                    container.innerHTML = ""
+                    const element = PreactProgressBar(props)
+                    container.appendChild(element)
+
+                    addTestResult("preact", "空notebook处理成功")
+                } catch (error) {
+                    addTestResult("preact", `空notebook处理失败: ${error.message}`, true)
+                }
+
+                try {
+                    if (svelteInstance) {
+                        svelteInstance.$destroy()
+                    }
+
+                    svelteInstance = SvelteProgressBar({
+                        target: document.getElementById("svelte-container"),
+                        props: {
+                            notebook: emptyNotebook,
+                            backend_launch_phase: 0,
+                            status: emptyStatus,
+                        },
+                    })
+
+                    addTestResult("svelte", "空notebook处理成功")
+                } catch (error) {
+                    addTestResult("svelte", `空notebook处理失败: ${error.message}`, true)
+                }
+
+                // 测试2: null值处理
+                setTimeout(() => {
+                    try {
+                        const props = {
+                            notebook: null,
+                            backend_launch_phase: null,
+                            status: null,
+                        }
+
+                        const container = document.getElementById("preact-container")
+                        container.innerHTML = ""
+                        const element = PreactProgressBar(props)
+                        container.appendChild(element)
+
+                        addTestResult("preact", "null值处理成功")
+                    } catch (error) {
+                        addTestResult("preact", `null值处理失败: ${error.message}`, true)
+                    }
+
+                    try {
+                        if (svelteInstance) {
+                            svelteInstance.$destroy()
+                        }
+
+                        svelteInstance = SvelteProgressBar({
+                            target: document.getElementById("svelte-container"),
+                            props: {
+                                notebook: null,
+                                backend_launch_phase: null,
+                                status: null,
+                            },
+                        })
+
+                        addTestResult("svelte", "null值处理成功")
+                    } catch (error) {
+                        addTestResult("svelte", `null值处理失败: ${error.message}`, true)
+                    }
+                }, 1000)
+
+                updateStatus("preact", "边界情况测试完成", "-", "-")
+                updateStatus("svelte", "边界情况测试完成", "-", "-")
+            }
+
+            window.resetTest = function () {
+                updateStatus("preact", "等待测试...", "-", "-")
+                updateStatus("svelte", "等待测试...", "-", "-")
+
+                document.getElementById("preact-test-results").innerHTML = "等待测试..."
+                document.getElementById("svelte-test-results").innerHTML = "等待测试..."
+
+                testResults = { preact: [], svelte: [] }
+
+                // 重置所有状态
+                Object.values(mockNotebook.cell_results).forEach((cell) => {
+                    cell.running = false
+                    cell.queued = false
+                })
+
+                mockStatus.loading = false
+                mockStatus.binder = false
+                backendLaunchPhase = 0
+
+                // 清理实例
+                if (svelteInstance) {
+                    svelteInstance.$destroy()
+                    svelteInstance = null
+                }
+
+                document.getElementById("preact-container").innerHTML = ""
+                document.getElementById("svelte-container").innerHTML = ""
+
+                // 清理模拟元素
+                document.querySelectorAll(".pluto-cell").forEach((el) => el.remove())
+            }
+
+            window.runFullComparison = function () {
+                resetTest()
+
+                setTimeout(() => {
+                    testBinderLoading()
+
+                    setTimeout(() => {
+                        testCellProgress()
+
+                        setTimeout(() => {
+                            testClickHandlers()
+
+                            setTimeout(() => {
+                                testEdgeCases()
+
+                                setTimeout(() => {
+                                    // 生成对比报告
+                                    generateComparisonReport()
+                                }, 5000)
+                            }, 3000)
+                        }, 3000)
+                    }, 3000)
+                }, 1000)
+            }
+
+            function generateComparisonReport() {
+                const preactErrors = testResults.preact.filter((r) => r.isError).length
+                const svelteErrors = testResults.svelte.filter((r) => r.isError).length
+                const preactSuccess = testResults.preact.filter((r) => !r.isError).length
+                const svelteSuccess = testResults.svelte.filter((r) => !r.isError).length
+
+                const report = `
+                <h4>对比测试报告</h4>
+                <div style="margin: 10px 0;">
+                    <strong>Preact:</strong> 
+                    <span style="color: #28a745;">${preactSuccess} 成功</span>, 
+                    <span style="color: #dc3545;">${preactErrors} 失败</span>
+                </div>
+                <div style="margin: 10px 0;">
+                    <strong>Svelte:</strong> 
+                    <span style="color: #28a745;">${svelteSuccess} 成功</span>, 
+                    <span style="color: #dc3545;">${svelteErrors} 失败</span>
+                </div>
+                <div style="margin-top: 15px; font-weight: bold;">
+                    ${
+                        preactErrors === 0 && svelteErrors === 0
+                            ? '<span style="color: #28a745;">✅ 两个组件都通过了所有测试！</span>'
+                            : '<span style="color: #dc3545;">❌ 部分测试失败，需要进一步调试</span>'
+                    }
+                </div>
+            `
+
+                document.getElementById("preact-test-results").innerHTML += report
+                document.getElementById("svelte-test-results").innerHTML += report
+            }
+        </script>
+    </body>
+</html>

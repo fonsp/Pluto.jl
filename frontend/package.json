@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "@types/lodash-es": "^4.17.6"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.55.1"
   }
 }

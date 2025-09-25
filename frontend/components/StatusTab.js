@@ -1,11 +1,11 @@
 import { html, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { cl } from "../common/ClassTable.js"
-import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
+import { prettytime, useMillisSinceTruthy } from "../svelte-migration/RunArea-wrapper.js"
 import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { NotifyWhenDone } from "./NotifyWhenDone.js"
-import { scroll_to_busy_cell } from "./ProgressBar.js"
+import { scroll_to_busy_cell } from "../svelte-migration/ProgressBar-svelte-functions.js"
 import { t } from "../common/lang.js"
 
 /**

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>RunArea Svelte Component Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>RunArea Svelte Component Test</h1>
+    
+    <div id="runarea-container"></div>
+    
+    <script type="module">
+        import RunArea from './RunArea.svelte';
+        
+        // 创建一个简单的测试实例
+        const app = new RunArea({
+            target: document.getElementById('runarea-container'),
+            props: {
+                runtime: 1234567,
+                running: false,
+                queued: false,
+                code_differs: false,
+                running_disabled: true,
+                on_run: () => console.log('Run clicked'),
+                on_interrupt: () => console.log('Interrupt clicked'),
+                set_cell_disabled: (disabled) => console.log('Set cell disabled:', disabled),
+                depends_on_disabled_cells: false,
+                on_jump: () => console.log('Jump clicked')
+            }
+        });
+        
+        // 添加全局事件监听器来测试弹窗
+        window.addEventListener('open pluto popup', (event) => {
+            console.log('Popup event received:', event.detail);
+            alert('Popup content: ' + event.detail.body);
+        });
+    </script>
+</body>
+</html>

@@ -3,8 +3,8 @@ import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { Logs } from "./Logs.js"
-import { RunArea, useDebouncedTruth } from "./RunArea.js"
+import { Logs } from "../svelte-migration/Logs-wrapper.js"
+import { RunArea, useDebouncedTruth } from "../svelte-migration/RunArea-wrapper.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"

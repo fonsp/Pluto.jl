@@ -5,8 +5,8 @@ import _ from "../imports/lodash.js"
 import { useDialog } from "../common/useDialog.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { t, th } from "../common/lang.js"
-import { exportNotebookDesktop, WarnForVisisblePasswords } from "./ExportBanner.js"
-import { useMillisSinceTruthy } from "./RunArea.js"
+import { exportNotebookDesktop, WarnForVisisblePasswords } from "../svelte-migration/ExportBanner-utils.js"
+import { useMillisSinceTruthy } from "../svelte-migration/RunArea-wrapper.js"
 
 /**
  * @param {{

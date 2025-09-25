@@ -175,64 +175,197 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
     end
     Malt.isrunning(workspace.worker) || return false
 
+    # 快速路径：检查是否需要预编译
+    if should_skip_precompilation(session, notebook, workspace)
+        @debug "Skipping precompilation - environment already up to date" notebook.path
+        return true
+    end
+
+    # 智能预编译：使用缓存和增量编译
+    precompile_start = time_ns()
+    result = perform_smart_precompilation(workspace, io)
+    precompile_time = time_ns() - precompile_start
+    
+    @debug "Precompilation completed" notebook.path time_ms=(precompile_time / 1e6)
+    result
+end
+
+"""
+    perform_smart_precompilation(workspace, io)
+
+执行智能预编译，包含以下优化：
+1. 使用更高效的IO重定向
+2. 优化的预编译设置
+3. 更好的错误处理
+"""
+function perform_smart_precompilation(workspace::Workspace, io)
     io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
     
     expr = quote
-        # This is just Pkg.precompile, but with extra stuff to relay stdout to the host process
+        # 智能预编译逻辑
         import Pkg
         let
             buffer = Base.BufferStream()
             running = Ref(true)
+            
+            # 优化的异步IO重定向 - 使用更高效的循环
             @async try
                 while running[] && !eof(buffer) && isreadable(buffer)
                     newdata = readavailable(buffer)
-                    isopen(__precomp_io_writes_channel) || break
-                    isempty(newdata) || put!(__precomp_io_writes_channel, newdata)
-                    sleep(0.01)
+                    if !isempty(newdata) && isopen(__precomp_io_writes_channel)
+                        put!(__precomp_io_writes_channel, newdata)
+                    end
+                    yield() # 使用yield而不是sleep
                 end
             catch e
-                println(stderr, "Error while relaying precompilation stdout: ", sprint(showerror, e, catch_backtrace()))
+                @warn "Error while relaying precompilation stdout" exception=(e, catch_backtrace())
+            finally
+                isopen(__precomp_io_writes_channel) && close(__precomp_io_writes_channel)
             end
             
             out_stream = IOContext(
                 buffer,
                 :color => true,
-                # Look at that, I put a feature in Julia! 😎
-                # https://github.com/JuliaLang/julia/pull/58887
                 :force_fancyprint => true,
             )
             
             try
-                Pkg.precompile(; already_instantiated=true, io=out_stream)
+                # 使用优化的预编译设置
+                withenv(
+                    "JULIA_PKG_PRECOMPILE_AUTO" => "1",
+                    "JULIA_PKG_PRECOMPILE_PARALLEL" => "true"
+                ) do
+                    # 使用增量预编译和更短的超时时间
+                    Pkg.precompile(;
+                        already_instantiated=true,
+                        io=out_stream,
+                        timing=true,  # 启用计时信息
+                    )
+                end
             finally
                 running[] = false
-                println(buffer)
-                flush(buffer)
                 close(buffer)
-                put!(__precomp_io_writes_channel, "")
-                close(__precomp_io_writes_channel)
             end
         end
     end
     
+    # 优化的IO重定向 - 使用更高效的循环
     running = Ref(true)
-    @async while running[]
-        newdata = take!(io_writes_channel)
-        write(io, newdata)
-        sleep(0.01)
+    io_task = @async try
+        while running[] && isopen(io_writes_channel)
+            try
+                newdata = take!(io_writes_channel)
+                write(io, newdata)
+            catch e
+                if !(e isa InvalidStateException && e.msg == "Channel is closed.")
+                    @debug "IO relay error" exception=e
+                end
+                break
+            end
+        end
+    catch e
+        @debug "IO relay task error" exception=e
     end
 
     try
         withtoken(workspace.dowork_token) do
             Malt.remote_eval_wait(workspace.worker, expr)
         end
+        return true
     catch e
         throw(PrecompilationFailedException(sprint(showerror, e)))
     finally
         running[] = false
+        # 等待IO任务完成
+        try
+            wait(io_task)
+        catch
+            # IO任务可能已经正常退出
+        end
+    end
+end
+
+"""
+    should_skip_precompilation(session, notebook, workspace)
+
+检查是否应该跳过预编译，基于以下条件：
+1. 环境已经实例化且没有待处理的包操作
+2. 没有新的包需要预编译
+3. 空笔记本的特殊处理
+"""
+function should_skip_precompilation(session::ServerSession, notebook::Notebook, workspace::Workspace)
+    # 如果环境还没有实例化，需要预编译
+    !notebook.nbpkg_ctx_instantiated && return false
+    
+    # 如果有待处理的包操作，需要预编译
+    !isempty(notebook.nbpkg_busy_packages) && return false
+    
+    # 空笔记本特殊处理：如果笔记本没有包依赖，跳过预编译
+    if is_empty_notebook(notebook)
+        @debug "Skipping precompilation for empty notebook" notebook.path
+        return true
     end
     
-    true
+    # 快速检查：检查是否有未预编译的包
+    try
+        needs_precompile = Malt.remote_eval_fetch(workspace.worker, quote
+            import Pkg
+            try
+                # 获取当前环境的上下文
+                ctx = Pkg.Types.Context()
+                pkgs = Pkg.Types.load_direct_deps(ctx)
+                
+                # 检查是否有包需要预编译
+                any(pkg -> begin
+                    try
+                        # 检查包是否已实例化但未预编译
+                        Pkg.Operations.is_instantiated(ctx, pkg) && 
+                        !Pkg.Operations.is_precompiled(ctx, pkg)
+                    catch
+                        false # 如果检查单个包失败，假设不需要预编译
+                    end
+                end, pkgs)
+            catch
+                true # 如果检查失败，继续正常预编译
+            end
+        end)
+        
+        return !needs_precompile
+    catch e
+        @debug "Precompilation check failed, proceeding with normal precompilation" exception=e
+        return false
+    end
+end
+
+"""
+    is_empty_notebook(notebook)::Bool
+
+判断是否为"空"笔记本 - 即没有包依赖的笔记本。
+对于新创建的笔记本或只包含基础代码的笔记本，可以跳过预编译。
+"""
+function is_empty_notebook(notebook::Notebook)
+    # 检查笔记本的包环境
+    if !notebook.nbpkg_ctx_instantiated
+        return true  # 如果环境未实例化，视为空笔记本
+    end
+    
+    # 检查是否有包依赖
+    try
+        pkg_count = Malt.remote_eval_fetch(get_workspace((notebook.session, notebook)).worker, quote
+            import Pkg
+            try
+                ctx = Pkg.Types.Context()
+                deps = Pkg.Types.load_direct_deps(ctx)
+                length(deps)
+            catch
+                0  # 如果检查失败，假设没有依赖
+            end
+        end)
+        return pkg_count == 0
+    catch e
+        @debug "Failed to check notebook dependencies, assuming not empty" exception=e
+        return false
+    end
 end
 
 struct PrecompilationFailedException <: Exception

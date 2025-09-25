@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Diagnosis Test</title>
+    </head>
+    <body>
+        <div id="app"></div>
+
+        <script type="module">
+            console.log("开始诊断测试...")
+
+            try {
+                console.log("检查 Svelte 是否可用...")
+                console.log("window/svelte:", window.svelte)
+
+                console.log("尝试直接导入组件文件...")
+                const response = await fetch("./svelte-migration/ProgressBar.svelte")
+                const content = await response.text()
+                console.log("✓ 组件文件获取成功，长度:", content.length)
+                console.log("前200字符:", content.substring(0, 200))
+
+                // 尝试通过 Vite 的特殊导入方式
+                console.log("尝试 Vite 导入方式...")
+                const module = await import("./svelte-migration/ProgressBar.svelte?raw")
+                console.log("✓ Vite raw 导入成功:", typeof module.default)
+            } catch (error) {
+                console.error("✗ 导入失败:", error)
+                document.body.innerHTML = `<pre style="color: red;">${error.message}\n${error.stack}</pre>`
+            }
+        </script>
+    </body>
+</html>

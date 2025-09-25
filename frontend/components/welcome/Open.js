@@ -1,7 +1,7 @@
 import _ from "../../imports/lodash.js"
 import { html } from "../../imports/Preact.js"
 
-import { FilePicker } from "../FilePicker.js"
+import { FilePicker } from "../../svelte-migration/FilePicker-wrapper.js"
 import { PasteHandler } from "../PasteHandler.js"
 import { guess_notebook_location } from "../../common/NotebookLocationFromURL.js"
 import { t, th } from "../../common/lang.js"

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Svelte ProgressBar Integration Test</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background: #f5f5f5;
+            }
+            .test-container {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .controls {
+                margin-bottom: 20px;
+            }
+            button {
+                margin: 5px;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 4px;
+                background: #007bff;
+                color: white;
+                cursor: pointer;
+            }
+            button:hover {
+                background: #0056b3;
+            }
+            .status {
+                margin: 10px 0;
+                padding: 10px;
+                background: #f8f9fa;
+                border-radius: 4px;
+                font-family: monospace;
+            }
+            loading-bar {
+                display: block;
+                height: 4px;
+                background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
+                position: fixed;
+                top: 0;
+                left: 0;
+                transition: width 0.3s ease, opacity 0.3s ease;
+                z-index: 1000;
+            }
+            loading-bar.slow {
+                background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+            }
+            loading-bar.fast {
+                background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="test-container">
+            <h1>Svelte ProgressBar Integration Test</h1>
+            <p>测试Svelte组件是否能完全替换Preact版本</p>
+
+            <div class="controls">
+                <button onclick="testBinderLoading()">测试Binder加载</button>
+                <button onclick="testCellProgress()">测试单元格进度</button>
+                <button onclick="testMixedScenario()">测试混合场景</button>
+                <button onclick="testClickHandler()">测试点击处理</button>
+                <button onclick="resetTest()">重置测试</button>
+            </div>
+
+            <div class="status" id="status">状态: 等待测试...</div>
+            <div class="status" id="progress-info">进度信息: 无</div>
+            <div class="status" id="click-info">点击信息: 无</div>
+        </div>
+
+        <div id="svelte-app"></div>
+
+        <script type="module">
+            import ProgressBar from "./svelte-migration/ProgressBar.svelte"
+
+            // Mock数据
+            const mockNotebook = {
+                cell_results: {
+                    "cell-1": { cell_id: "cell-1", running: false, queued: false },
+                    "cell-2": { cell_id: "cell-2", running: false, queued: false },
+                    "cell-3": { cell_id: "cell-3", running: false, queued: false },
+                    "cell-4": { cell_id: "cell-4", running: false, queued: false },
+                },
+            }
+
+            const mockStatus = {
+                loading: false,
+                binder: false,
+            }
+
+            let backendLaunchPhase = 0
+            let componentInstance
+
+            // 创建组件实例
+            function createComponent() {
+                if (componentInstance) {
+                    componentInstance.$destroy()
+                }
+
+                const componentProps = {
+                    notebook: mockNotebook,
+                    backend_launch_phase: backendLaunchPhase,
+                    status: mockStatus,
+                }
+
+                componentInstance = ProgressBar({
+                    target: document.getElementById("svelte-app"),
+                    props: componentProps,
+                })
+
+                return componentInstance
+            }
+
+            // 全局测试函数
+            window.testBinderLoading = function () {
+                const status = document.getElementById("status")
+                const progressInfo = document.getElementById("progress-info")
+
+                status.textContent = "状态: 测试Binder加载中..."
+                mockStatus.loading = true
+                mockStatus.binder = true
+                backendLaunchPhase = 0
+
+                createComponent()
+
+                // 模拟Binder加载进度
+                let phase = 0
+                const interval = setInterval(() => {
+                    phase += 0.1
+                    backendLaunchPhase = Math.min(phase, 1)
+
+                    if (componentInstance) {
+                        componentInstance.$set({
+                            backend_launch_phase: backendLaunchPhase,
+                        })
+                    }
+
+                    progressInfo.textContent = `进度信息: Binder阶段 ${Math.round(backendLaunchPhase * 100)}%`
+
+                    if (phase >= 1.1) {
+                        clearInterval(interval)
+                        mockStatus.loading = false
+                        mockStatus.binder = false
+
+                        if (componentInstance) {
+                            componentInstance.$set({
+                                status: mockStatus,
+                            })
+                        }
+
+                        status.textContent = "状态: Binder加载完成"
+                    }
+                }, 200)
+            }
+
+            window.testCellProgress = function () {
+                const status = document.getElementById("status")
+                const progressInfo = document.getElementById("progress-info")
+
+                status.textContent = "状态: 测试单元格进度..."
+                mockStatus.loading = false
+                mockStatus.binder = false
+
+                // 重置单元格状态
+                Object.values(mockNotebook.cell_results).forEach((cell) => {
+                    cell.running = false
+                    cell.queued = false
+                })
+
+                createComponent()
+
+                // 模拟单元格执行
+                const cellIds = Object.keys(mockNotebook.cell_results)
+                let currentIndex = 0
+
+                const runNextCell = () => {
+                    if (currentIndex >= cellIds.length) {
+                        status.textContent = "状态: 所有单元格执行完成"
+                        progressInfo.textContent = "进度信息: 100% 完成"
+                        return
+                    }
+
+                    const cellId = cellIds[currentIndex]
+                    const cell = mockNotebook.cell_results[cellId]
+
+                    // 开始运行
+                    cell.running = true
+                    cell.queued = false
+
+                    if (componentInstance) {
+                        componentInstance.$set({
+                            notebook: mockNotebook,
+                        })
+                    }
+
+                    const completed = currentIndex
+                    const total = cellIds.length
+                    progressInfo.textContent = `进度信息: ${completed}/${total} 单元格完成`
+
+                    // 模拟执行时间
+                    setTimeout(() => {
+                        cell.running = false
+                        currentIndex++
+
+                        if (componentInstance) {
+                            componentInstance.$set({
+                                notebook: mockNotebook,
+                            })
+                        }
+
+                        // 运行下一个单元格
+                        setTimeout(runNextCell, 300)
+                    }, 1000)
+                }
+
+                // 开始执行
+                runNextCell()
+            }
+
+            window.testMixedScenario = function () {
+                const status = document.getElementById("status")
+                status.textContent = "状态: 测试混合场景..."
+
+                // 先Binder加载，然后单元格执行
+                testBinderLoading()
+
+                setTimeout(() => {
+                    testCellProgress()
+                }, 3000)
+            }
+
+            window.testClickHandler = function () {
+                const status = document.getElementById("status")
+                const clickInfo = document.getElementById("click-info")
+
+                status.textContent = "状态: 测试点击处理..."
+
+                // 设置一些运行中的单元格
+                Object.values(mockNotebook.cell_results).forEach((cell, index) => {
+                    cell.running = index < 2
+                    cell.queued = false
+                })
+
+                mockStatus.loading = false
+                mockStatus.binder = false
+
+                createComponent()
+
+                clickInfo.textContent = "点击信息: 请点击进度条测试滚动功能"
+
+                // 模拟pluto-cell元素
+                setTimeout(() => {
+                    const mockCell = document.createElement("div")
+                    mockCell.className = "pluto-cell running"
+                    mockCell.id = "cell-1"
+                    mockCell.textContent = "模拟运行中的单元格"
+                    mockCell.style.padding = "20px"
+                    mockCell.style.margin = "20px 0"
+                    mockCell.style.background = "#e3f2fd"
+                    document.body.appendChild(mockCell)
+
+                    clickInfo.textContent = "点击信息: 已创建模拟单元格，点击进度条应该会滚动到该单元格"
+                }, 500)
+            }
+
+            window.resetTest = function () {
+                const status = document.getElementById("status")
+                const progressInfo = document.getElementById("progress-info")
+                const clickInfo = document.getElementById("click-info")
+
+                status.textContent = "状态: 等待测试..."
+                progressInfo.textContent = "进度信息: 无"
+                clickInfo.textContent = "点击信息: 无"
+
+                // 重置所有状态
+                Object.values(mockNotebook.cell_results).forEach((cell) => {
+                    cell.running = false
+                    cell.queued = false
+                })
+
+                mockStatus.loading = false
+                mockStatus.binder = false
+                backendLaunchPhase = 0
+
+                createComponent()
+
+                // 清理模拟元素
+                document.querySelectorAll(".pluto-cell").forEach((el) => el.remove())
+            }
+
+            // 初始化组件
+            createComponent()
+
+            // 使scroll_to_busy_cell全局可用
+            window.scroll_to_busy_cell = function (notebook) {
+                if (componentInstance) {
+                    // 调用组件导出的函数
+                    return ProgressBar.scroll_to_busy_cell(notebook)
+                }
+            }
+        </script>
+    </body>
+</html>

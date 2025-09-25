@@ -1,72 +1,40 @@
 <!DOCTYPE html>
 <html>
+    <head>
+        <meta name="viewport" content="width=device-width" />
+        <meta charset="utf-8" />
 
-<head>
-    <meta name="viewport" content="width=device-width" />
-    <meta charset="utf-8" />
+        <meta name="pluto-insertion-spot-meta" />
 
-    <meta name="pluto-insertion-spot-meta">
+        <title>Pluto.jl</title>
+        <meta name="author" content="Fons van der Plas; Mikołaj Bochenński" />
+        <meta name="description" content="Pluto.jl notebooks" />
 
-    <title>Pluto.jl</title>
-    <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
-    <meta name="description" content="Pluto.jl notebooks" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="white" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928" />
+        <meta name="color-scheme" content="light dark" />
 
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928">
-    <meta name="color-scheme" content="light dark">
+        <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png" />
+        <link rel="pluto-logo-big" href="./img/logo.svg" />
+        <link rel="pluto-logo-small" href="./img/favicon_unsaturated.svg" />
 
-    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
-    <link rel="pluto-logo-big" href="./img/logo.svg" />
-    <link rel="pluto-logo-small" href="./img/favicon_unsaturated.svg" />
+        <link rel="stylesheet" href="welcome.css" />
+        <link rel="stylesheet" href="index.css" />
 
-    <link rel="stylesheet" href="welcome.css">
-    <link rel="stylesheet" href="index.css">
+        <meta name="pluto-insertion-spot-parameters" />
+        <script src="index.js" type="module" defer></script>
+        <script src="warn_old_browsers.js"></script>
 
-    <meta name="pluto-insertion-spot-parameters">
-    <script src="index.js" type="module" defer></script>
-    <script src="warn_old_browsers.js"></script>
+        <link rel="prefetch" href="editor.css" />
+        <link rel="prerender" href="editor.html" />
 
-    <link rel="prefetch" href="editor.css">
-    <link rel="prerender" href="editor.html">
+        <meta name="pluto-insertion-spot-preload" />
+    </head>
 
-    <meta name="pluto-insertion-spot-preload">
-</head>
-
-<body class="nosessions">
-    <loading-bar></loading-bar>
-    <div id="app">
-        <section id="title">
-            <h1>welcome to <img src="img/logo.svg"></h1>
-        </section>
-        <section id="mywork">
-            <div>
-                <h2>My work</h2>
-                <ul id="recent" class="not_yet_ready">
-                    <li class="new"><a href="new"><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a></li>
-                    <li><em>Loading...</em></li>
-                </ul>
-            </div>
-        </section>
-        <section id="open">
-            <div>
-                <h2>Open a notebook</h2>
-                <p><em>Loading...</em></p>
-            </div>
-        </section>
-        <section id="featured">
-            <div>
-                <div class="featured-source">
-                    <h1>Featured Notebooks</h1>
-                    <p>These notebooks from the Julia community show off what you can do with Pluto. Give it a try, you might learn something new!</p>
-                    <div class="collection">
-                        <h2>Loading...</h2>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
-</body>
-
+    <body class="nosessions">
+        <loading-bar></loading-bar>
+        <div id="app"></div>
+    </body>
 </html>

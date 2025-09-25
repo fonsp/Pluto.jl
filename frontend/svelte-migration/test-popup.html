@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Popup Svelte Component Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        
+        .test-button {
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .test-button:hover {
+            background-color: #005a9e;
+        }
+    </style>
+</head>
+<body>
+    <h1>Popup Svelte Component Test</h1>
+    
+    <button class="test-button" id="info-popup">显示信息弹窗</button>
+    <button class="test-button" id="warn-popup">显示警告弹窗</button>
+    <button class="test-button" id="nbpkg-popup">显示包管理弹窗</button>
+    <button class="test-button" id="close-popup">关闭弹窗</button>
+    
+    <div id="popup-container"></div>
+    
+    <script type="module">
+        import Popup from './Popup.svelte';
+        
+        // 创建一个模拟的notebook对象
+        const mockNotebook = {
+            notebook_id: 'test-notebook',
+            nbpkg: {
+                enabled: true,
+                busy_packages: [],
+                instantiated: true,
+                terminal_outputs: {}
+            }
+        };
+        
+        // 创建Popup组件实例
+        const app = new Popup({
+            target: document.getElementById('popup-container'),
+            props: {
+                notebook: mockNotebook,
+                disable_input: false
+            }
+        });
+        
+        // 添加测试按钮事件监听器
+        document.getElementById('info-popup').addEventListener('click', () => {
+            const event = new CustomEvent('open pluto popup', {
+                detail: {
+                    type: 'info',
+                    source_element: document.getElementById('info-popup'),
+                    body: '这是一个信息弹窗测试'
+                }
+            });
+            window.dispatchEvent(event);
+        });
+        
+        document.getElementById('warn-popup').addEventListener('click', () => {
+            const event = new CustomEvent('open pluto popup', {
+                detail: {
+                    type: 'warn',
+                    source_element: document.getElementById('warn-popup'),
+                    body: '这是一个警告弹窗测试'
+                }
+            });
+            window.dispatchEvent(event);
+        });
+        
+        document.getElementById('nbpkg-popup').addEventListener('click', () => {
+            const event = new CustomEvent('open pluto popup', {
+                detail: {
+                    type: 'nbpkg',
+                    source_element: document.getElementById('nbpkg-popup'),
+                    package_name: 'TestPackage',
+                    is_disable_pkg: false
+                }
+            });
+            window.dispatchEvent(event);
+        });
+        
+        document.getElementById('close-popup').addEventListener('click', () => {
+            const event = new CustomEvent('close pluto popup');
+            window.dispatchEvent(event);
+        });
+    </script>
+</body>
+</html>

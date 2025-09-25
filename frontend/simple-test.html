@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Simple ProgressBar Test</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                padding: 20px;
+            }
+            .controls {
+                margin: 20px 0;
+            }
+            button {
+                margin: 5px;
+                padding: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Simple ProgressBar Test</h1>
+        <div class="controls">
+            <button onclick="testProgress()">Test Progress</button>
+            <button onclick="testBinder()">Test Binder</button>
+            <button onclick="reset()">Reset</button>
+        </div>
+        <div id="app"></div>
+
+        <script type="module">
+            import ProgressBar from "./svelte-migration/ProgressBar-simple.svelte"
+
+            let props = {
+                notebook: { cell_results: {} },
+                backend_launch_phase: 0,
+                status: { loading: false, binder: false },
+            }
+
+            // 创建组件
+            const app = ProgressBar({
+                target: document.getElementById("app"),
+                props: props,
+            })
+
+            window.testProgress = function () {
+                props.notebook.cell_results["cell1"] = {
+                    cell_id: "cell1",
+                    running: true,
+                    queued: false,
+                }
+                // 更新props
+                Object.assign(app, props)
+            }
+
+            window.testBinder = function () {
+                props.status.loading = true
+                props.status.binder = true
+                props.backend_launch_phase = 2
+                Object.assign(app, props)
+            }
+
+            window.reset = function () {
+                props.notebook.cell_results = {}
+                props.status.loading = false
+                props.status.binder = false
+                props.backend_launch_phase = 0
+                Object.assign(app, props)
+            }
+
+            console.log("Simple test loaded")
+        </script>
+    </body>
+</html>

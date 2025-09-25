@@ -8,7 +8,7 @@ import { create_pluto_connection, ws_address_from_base } from "../common/PlutoCo
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
-import { FilePicker } from "./FilePicker.js"
+import { FilePicker } from "../svelte-migration/FilePicker-wrapper.js"
 import { Preamble } from "./Preamble.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
@@ -17,8 +17,8 @@ import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
-import { ExportBanner } from "./ExportBanner.js"
-import { Popup } from "./Popup.js"
+import { ExportBanner } from "../svelte-migration/ExportBanner-wrapper.js"
+import { Popup } from "../svelte-migration/Popup-wrapper.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import {
@@ -34,7 +34,7 @@ import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, Set
 import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
-import { ProgressBar } from "./ProgressBar.js"
+import { ProgressBar } from "../svelte-migration/ProgressBar-wrapper.js"
 import { NonCellOutput } from "./NonCellOutput.js"
 import { IsolatedCell } from "./Cell.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
@@ -46,7 +46,7 @@ import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
-import { LanguagePicker } from "./LanguagePicker.js"
+import { LanguagePicker } from "../svelte-migration/LanguagePicker-wrapper.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
 
@@ -71,7 +71,7 @@ const uuidv4 = () =>
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
 /**
- * @typedef {import('../imports/immer').Patch} Patch
+ * @typedef {import('../imports/immer.js').Patch} Patch
  * */
 
 const Main = ({ children }) => {
@@ -978,8 +978,8 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
-        /** @type {import('../common/PlutoConnection').PlutoConnection} */
-        this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
+        /** @type {import('../common/PlutoConnection.js').PlutoConnection} */
+        this.client = /** @type {import('../common/PlutoConnection.js').PlutoConnection} */ ({})
 
         this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
