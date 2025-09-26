@@ -19,6 +19,12 @@ export function createAdjustMenu(timeoutValue) {
     accAdjust.style.margin = "0px 0px 5px 15px"
 
     // Menu Items
+    const accItemAdjustBrightness = document.createElement("a")
+    accItemAdjustBrightness.href = "#"
+    accItemAdjustBrightness.className = "jv-bar-item jv-button"
+    accItemAdjustBrightness.innerText = "Brightness"
+    accItemAdjustBrightness.onclick = function () {}
+
     const accItemAdjustContrast = document.createElement("a")
     accItemAdjustContrast.href = "#"
     accItemAdjustContrast.className = "jv-bar-item jv-button"
@@ -38,6 +44,7 @@ export function createAdjustMenu(timeoutValue) {
     accItemAdjustColor.innerText += "Color"
     // Add onclick if needed
 
+    accAdjust.appendChild(accItemAdjustBrightness)
     accAdjust.appendChild(accItemAdjustContrast)
     accAdjust.appendChild(accItemAdjustColor)
 

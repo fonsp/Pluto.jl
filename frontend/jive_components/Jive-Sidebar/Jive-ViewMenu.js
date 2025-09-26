@@ -18,7 +18,35 @@ export function createViewMenu(timeoutValue) {
     accView.style.boxShadow = "none"
     accView.style.margin = "0px 0px 5px 15px"
 
-    // Add menu items here as needed
+    // Menu Items
+    const accItemViewZoom = document.createElement("a")
+    accItemViewZoom.href = "#"
+    accItemViewZoom.className = "jv-bar-item jv-button"
+    accItemViewZoom.innerText = "Zoom"
+    accItemViewZoom.onclick = function () {}
+
+    const accItemViewPan = document.createElement("a")
+    accItemViewPan.href = "#"
+    accItemViewPan.className = "jv-bar-item jv-button"
+    accItemViewPan.innerText = "Pan"
+    accItemViewPan.onclick = function () {}
+
+    const accItemViewFullscreen = document.createElement("a")
+    accItemViewFullscreen.href = "#"
+    accItemViewFullscreen.className = "jv-bar-item jv-button"
+    accItemViewFullscreen.innerText = "Fullscreen"
+    accItemViewFullscreen.onclick = function () {}
+
+    const accItemViewGrid = document.createElement("a")
+    accItemViewGrid.href = "#"
+    accItemViewGrid.className = "jv-bar-item jv-button"
+    accItemViewGrid.innerText = "Show Grid"
+    accItemViewGrid.onclick = function () {}
+
+    accView.appendChild(accItemViewZoom)
+    accView.appendChild(accItemViewPan)
+    accView.appendChild(accItemViewFullscreen)
+    accView.appendChild(accItemViewGrid)
 
     // Wrap
     const itemBarView = document.createElement("div")

@@ -60,7 +60,28 @@ $(@bind ${apply} confirm(MultiSelect(image_keys)) )"
         createCellWithCode(`record_plotly_shapes(${coords}["shape"])(${shps},${coords});`)
     }
 
+    const accItemEditCrop = document.createElement("a")
+    accItemEditCrop.href = "#"
+    accItemEditCrop.className = "jv-bar-item jv-button"
+    accItemEditCrop.innerText = "Crop"
+    accItemEditCrop.onclick = function () {}
+
+    const accItemEditResize = document.createElement("a")
+    accItemEditResize.href = "#"
+    accItemEditResize.className = "jv-bar-item jv-button"
+    accItemEditResize.innerText = "Resize"
+    accItemEditResize.onclick = function () {}
+
+    const accItemEditRotate = document.createElement("a")
+    accItemEditRotate.href = "#"
+    accItemEditRotate.className = "jv-bar-item jv-button"
+    accItemEditRotate.innerText = "Rotate"
+    accItemEditRotate.onclick = function () {}
+
     accEdit.appendChild(accItemEditAnnotate)
+    accEdit.appendChild(accItemEditCrop)
+    accEdit.appendChild(accItemEditResize)
+    accEdit.appendChild(accItemEditRotate)
 
     // Wrap
     const itemBarEdit = document.createElement("div")

@@ -18,7 +18,35 @@ export function createProcessMenu(timeoutValue) {
     accProcess.style.boxShadow = "none"
     accProcess.style.margin = "0px 0px 5px 15px"
 
-    // Add menu items here as needed
+    // Menu Items
+    const accItemProcessFilter = document.createElement("a")
+    accItemProcessFilter.href = "#"
+    accItemProcessFilter.className = "jv-bar-item jv-button"
+    accItemProcessFilter.innerText = "Apply Filter"
+    accItemProcessFilter.onclick = function () {}
+
+    const accItemProcessThreshold = document.createElement("a")
+    accItemProcessThreshold.href = "#"
+    accItemProcessThreshold.className = "jv-bar-item jv-button"
+    accItemProcessThreshold.innerText = "Threshold"
+    accItemProcessThreshold.onclick = function () {}
+
+    const accItemProcessSegment = document.createElement("a")
+    accItemProcessSegment.href = "#"
+    accItemProcessSegment.className = "jv-bar-item jv-button"
+    accItemProcessSegment.innerText = "Segment"
+    accItemProcessSegment.onclick = function () {}
+
+    const accItemProcessNormalize = document.createElement("a")
+    accItemProcessNormalize.href = "#"
+    accItemProcessNormalize.className = "jv-bar-item jv-button"
+    accItemProcessNormalize.innerText = "Normalize"
+    accItemProcessNormalize.onclick = function () {}
+
+    accProcess.appendChild(accItemProcessFilter)
+    accProcess.appendChild(accItemProcessThreshold)
+    accProcess.appendChild(accItemProcessSegment)
+    accProcess.appendChild(accItemProcessNormalize)
 
     // Wrap
     const itemBarProcess = document.createElement("div")
