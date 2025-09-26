@@ -1,4 +1,4 @@
-import { myAccFunc, createCellWithCode, createMDCellWithUI, getVarName, resolveAfterTimeout } from "./jive_helpers.js"
+import { myAccFunc, createCellWithCode, createMDCellWithUI, getVarName, resolveAfterTimeout } from "./Jive-Sidebar/jive_helpers.js"
 
 // @ts-nocheck
 /*
@@ -104,11 +104,11 @@ searchItem.addEventListener("search", function () {
 ///////////////// MENUS ///////////////////////
 
 ////////// IMPORT MENUS /////////////
-import { createFileMenu } from "./Jive-FileMenu.js"
-import { createAdjustMenu } from "./Jive-AdjustMenu.js"
-import { createEditMenu } from "./Jive-EditMenu.js"
-import { createProcessMenu } from "./Jive-ProcessMenu.js"
-import { createViewMenu } from "./Jive-ViewMenu.js"
+import { createFileMenu } from "./Jive-Sidebar/Jive-FileMenu.js"
+import { createAdjustMenu } from "./Jive-Sidebar/Jive-AdjustMenu.js"
+import { createEditMenu } from "./Jive-Sidebar/Jive-EditMenu.js"
+import { createProcessMenu } from "./Jive-Sidebar/Jive-ProcessMenu.js"
+import { createViewMenu } from "./Jive-Sidebar/Jive-ViewMenu.js"
 
 // FOLDERS
 const itemBarFile = createFileMenu(timeoutValue)
