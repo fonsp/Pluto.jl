@@ -50,12 +50,14 @@ end
   ╠═╡ =#
 
 # ╔═╡ f5e3ae7a-4059-457a-aa9a-94c91da8fce4
+#=╠═╡
 tmp = JIVECore.Files.loadImage!(image_data, image_keys)
 if ndims(image_data[tmp]) == 2
 	image_data[tmp]
 elseif ndims(image_data[tmp]) == 3
 	JIVECore.Visualize.gif(JIVECore.Process.autoContrast(image_data[tmp]))
 end
+  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╟─6b5a89b0-949c-11f0-21c8-5df5092224dd
