@@ -3263,6 +3263,7 @@ footer button {
     font-weight: 600;
     height: auto;
     font-size: 0.75rem;
+    flex-shrink: 0;
 }
 
 footer #info {
