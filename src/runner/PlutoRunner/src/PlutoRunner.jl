@@ -87,7 +87,6 @@ include("./display/DivElement.jl")
 include("./js/jslink.jl")
 include("./io/logging.jl")
 include("./io/stdout.jl")
-include("./precompile.jl")
 
 function __init__()
     original_stderr[] = stderr
