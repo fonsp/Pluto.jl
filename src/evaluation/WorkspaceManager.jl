@@ -202,14 +202,10 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
                 :force_fancyprint => true,
             )
             
-            pbep = $(Pluto.pluto_boot_environment_path[])
-            
             try
-                pushfirst!(LOAD_PATH, pbep)
                 Pkg.precompile(; already_instantiated=true, io=out_stream)
             finally
                 running[] = false
-                filter!(p -> p != pbep, LOAD_PATH)
                 println(buffer)
                 flush(buffer)
                 close(buffer)
