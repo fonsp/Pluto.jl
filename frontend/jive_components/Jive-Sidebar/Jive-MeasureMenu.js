@@ -66,7 +66,7 @@ export function createMeasureMenu(timeoutValue) {
             data-up="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-up-outline.svg">
     `
     accButtonMeasure.onclick = function () {
-        closeOtherAccordions(accMeasure.id)
+        closeOtherAccordions(accMeasure.id, "AccMeasure_")
         myAccFunc(accMeasure.id)
         updateAllChevrons()
     }

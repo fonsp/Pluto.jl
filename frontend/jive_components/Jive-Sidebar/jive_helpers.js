@@ -105,8 +105,8 @@ export function updateAllChevrons() {
     })
 }
 
-export function closeOtherAccordions(currentId) {
-    document.querySelectorAll('[id^="AccFile_"]').forEach((div) => {
+export function closeOtherAccordions(currentId, titlePrefix = "AccFile_") {
+    document.querySelectorAll(`[id^="${titlePrefix}"]`).forEach((div) => {
         if (div.id !== currentId && div.classList.contains("jv-show")) {
             div.classList.remove("jv-show")
             div.classList.add("jv-hide")

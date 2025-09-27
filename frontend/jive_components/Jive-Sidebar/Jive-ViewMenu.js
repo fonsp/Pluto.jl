@@ -26,7 +26,7 @@ function createAccordion(title, items, idSuffix) {
     items.forEach((item) => accContent.appendChild(item))
 
     accButton.onclick = function () {
-        closeOtherAccordions(accContent.id)
+        closeOtherAccordions(accContent.id, "AccProcess_")
         myAccFunc(accContent.id)
         updateAllChevrons()
     }
