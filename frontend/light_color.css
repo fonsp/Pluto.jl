@@ -1,266 +1,69 @@
 @media (prefers-color-scheme: light) {
     :root {
-        --image-filters: none;
-        --out-of-focus-opacity: 0.25;
+        --uva-theme: hsl(354, 42%, 56%); /* highlight/accent color */
+        --jive-sidebar: hsl(207deg 20.74% 70.38%); /* sidebar background */
 
         /* Color scheme */
         --main-bg-color: var(--nord-snow-storm-3);
-        --rule-color: rgba(0, 0, 0, 0.15);
-        --kbd-border-color: #dfdfdf;
+        --rule-color: rgba(0, 0, 0, 0.25);
+        --kbd-border-color: #c0c0c0;
         --header-bg-color: var(--nord-snow-storm-3);
-        --header-border-color: rgba(0, 0, 0, 0.1);
+        --header-border-color: rgba(0, 0, 0, 0.2);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
         --normal-cell: 0, 0, 0;
         --code-differs: 160, 130, 28;
         --error-color: 240, 168, 168;
 
-        /*Cells*/
-        --normal-cell-color: rgba(var(--normal-cell), 0.1);
-        --dark-normal-cell-color: rgba(var(--normal-cell), 0.2);
-        --selected-cell-color: rgba(40, 78, 189, 0.4);
-        --code-differs-cell-color: rgba(var(--code-differs), 0.68);
-        --error-cell-color: rgba(var(--error-color), 0.7);
+        /* Cells */
+        --normal-cell-color: rgba(var(--normal-cell), 0.15);
+        --dark-normal-cell-color: rgba(var(--normal-cell), 0.25);
+        --selected-cell-color: rgba(218, 0, 79, 0.4); /* uva-theme */
+        --code-differs-cell-color: rgba(218, 0, 79, 0.6); /* uva-theme */
+        --error-cell-color: rgba(var(--error-color), 0.85);
         --bright-error-cell-color: rgb(var(--error-color));
         --light-error-cell-color: rgba(var(--error-color), 0.05);
 
-        /*Export styling*/
-        --export-bg-color: var(--nord-aurora-red);
-        --export-color: rgb(228, 228, 228);
+        /* Export styling */
+        --export-bg-color: var(--uva-theme);
+        --export-color: white;
         --export-card-bg-color: var(--nord-snow-storm-3);
-        --export-card-title-color: rgba(0, 0, 0, 0.7);
-        --export-card-text-color: rgba(0, 0, 0, 0.5);
-        --export-card-shadow-color: #00000029;
+        --export-card-title-color: rgba(0, 0, 0, 0.8);
+        --export-card-text-color: rgba(0, 0, 0, 0.6);
+        --export-card-shadow-color: #00000040;
 
-        /*Frontmatter styling*/
-        --frontmatter-button-bg-color: white;
+        /* Frontmatter styling */
+        --frontmatter-button-bg-color: var(--uva-theme);
         --frontmatter-outline-color: hsl(230, 14%, 11%);
-        --frontmatter-input-bg-color: #fbfbfb;
-        --frontmatter-input-border-color: hsl(207deg 24% 87%);
+        --frontmatter-input-bg-color: #f9f9f9;
+        --frontmatter-input-border-color: hsl(207deg 24% 80%);
 
-        /*Pluto output styling */
-        --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
-        --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
-        --pluto-output-color: white;
-        --pluto-output-h-color: white;
-        --pluto-output-bg-color: var(--nord-snow-storm-3);
-        --a-underline: #00000059;
-        --blockquote-color: #555;
-        --blockquote-bg: #f2f2f2;
-        --admonition-title-color: white;
-        --jl-message-color: rgb(219 233 212);
-        --jl-message-accent-color: rgb(158, 200, 137);
-        --jl-info-color: rgb(214 227 244);
-        --jl-info-accent-color: rgb(148, 182, 226);
-        --jl-warn-color: rgb(236 234 213);
-        --jl-warn-accent-color: rgb(207, 199, 138);
-        --jl-danger-color: rgb(245 218 215);
-        --jl-danger-accent-color: rgb(226, 157, 148);
-        --jl-debug-color: rgb(245 218 215);
-        --jl-debug-accent-color: rgb(226, 157, 148);
-        --footnote-border-color: rgba(23, 115, 119, 0.15);
-        --table-border-color: rgba(0, 0, 0, 0.2);
-        --table-bg-hover-color: rgba(159, 158, 224, 0.15);
-        --pluto-tree-color: rgb(0 0 0 / 38%);
+        /* Sidebar */
+        --sidebar-bg-color: var(--jive-sidebar);
+        --sidebar-text-color: hsl(0, 0%, 10%);
+        --sidebar-border-color: rgba(0, 0, 0, 0.1);
 
-        /*pluto cell styling*/
-        --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
-        --selected-cell-bg-color: rgba(40, 78, 189, 0.24);
-        --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
-        --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
-        --skip-as-script-background-color: #ccc;
-        --depends-on-skip-as-script-background-color: #eee;
+        /* Top navbar & buttons highlight */
+        --nav-process-status-color: var(--uva-theme);
+        --footer-filepicker-focus-color: var(--uva-theme);
 
-        /* Pluto shoulders */
-        --shoulder-hover-bg-color: rgba(0, 0, 0, 0.05);
+        /* CodeMirror & code highlighting */
+        --cm-clickable-underline: var(--uva-theme);
+        --cm-selection-background: hsl(354, 42%, 70%); /* light uva-theme */
+        --cm-selection-background-blurred: hsl(354, 42%, 70%, 0.5);
 
-        /* Logs */
-        --pluto-logs-bg-color: hsl(0deg 0% 98%);
-        --pluto-logs-key-color: rgb(0 0 0 / 51%);
-        --pluto-logs-progress-fill: #ffffff;
-        --pluto-logs-progress-bg: #e7e7e7;
-        --pluto-logs-progress-border: hsl(210deg 16% 74%);
+        /* Buttons, links, active highlights */
+        --a-underline: var(--uva-theme);
+        --index-clickable-text-color: var(--uva-theme);
+        --pluto-logs-info-accent-color: var(--uva-theme);
 
-        --pluto-logs-info-color: white;
-        --pluto-logs-info-accent-color: inherit;
-        --pluto-logs-warn-color: rgb(236 234 213);
-        --pluto-logs-warn-accent-color: #665f26;
-        --pluto-logs-danger-color: rgb(245 218 215);
-        --pluto-logs-danger-accent-color: rgb(172 66 52);
-        --pluto-logs-debug-color: rgb(236 223 247);
-        --pluto-logs-debug-accent-color: rgb(100 50 179);
-
-        /*Top navbar styling*/
-        --nav-h1-text-color: black;
-        --nav-filepicker-color: #6f6f6f;
-        --nav-filepicker-border-color: #b2b2b2;
-        --nav-process-status-bg-color: white;
-        --nav-process-status-color: var(--pluto-output-h-color);
-
-        /*header*/
-        --restart-recc-header-color: rgba(114, 192, 255, 0.56);
-        --restart-recc-accent-color: rgba(114, 192, 255);
-        --restart-req-header-color: rgba(170, 41, 32, 0.56);
-        --dead-process-header-color: rgb(230 88 46 / 38%);
-        --loading-header-color: hsla(290, 10%, 80%, 0.5);
-        --disconnected-header-color: rgba(255, 169, 114, 0.56);
-        --binder-loading-header-color: hsl(51deg 64% 90% / 50%);
-
-        /*loading bar*/
-        --loading-grad-color-1: #f1dba9;
-        --loading-grad-color-2: #d7d7d0;
-
-        /*saveall container*/
-        --overlay-button-bg: #ffffff;
-        --overlay-button-border: hsl(0 4% 91% / 1);
-        --overlay-button-border-save: #f3f2f2;
-
-        /*input_context_menu*/
-        --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
-        --input-context-menu-bg-color: white;
-        --input-context-menu-soon-color: #55555544;
-        --input-context-menu-hover-bg-color: rgba(0, 0, 0, 0.1);
-        --input-context-menu-li-color: #6b6a6a;
-
-        /*Pkg status*/
-        --pkg-popup-bg: white;
-        --pkg-popup-border-color: #f0e4ee;
-        --pkg-popup-buttons-bg-color: white;
-        --black: black;
-        --white: white;
-        --pkg-terminal-bg-color: #232433;
-        --pkg-terminal-border-color: #c3c3c3;
-
-        /* run area*/
-        --pluto-runarea-bg-color: hsl(0, 0, 97%);
-        --pluto-runarea-span-color: hsl(353, 5%, 64%);
-
-        /*drop ruler*/
-        --dropruler-bg-color: rgba(0, 0, 0, 0.5);
-
-        /* jlerror */
-        --jlerror-header-color: #4f1616;
-        --jlerror-mark-bg-color: rgb(243 243 243);
-        --jlerror-a-bg-color: #f5efd9;
-        --jlerror-a-border-left-color: #704141;
-        --jlerror-mark-color: black;
-
-        /* helpbox */
-        --helpbox-bg-color: var(--nord-snow-storm-1);
-        --helpbox-box-shadow-color: #00000010;
-        --helpbox-header-bg-color: var(--nord-aurora-red);
-        --helpbox-header-tab-bg-color: var(--nord-snow-storm-3);
-        --helpbox-header-color: hsl(230, 14%, 11%);
-        --helpbox-search-bg-color: #fbfbfb;
-        --helpbox-search-border-color: hsl(207deg 24% 87%);
-        --helpbox-notfound-search-color: rgb(139, 139, 139);
-        --helpbox-text-color: black;
-        --code-section-bg-color: whitesmoke;
-        --code-section-bg-color: #f3f3f3;
-
-        --process-item-bg: var(--nord-snow-storm-3);
-        --process-busy: #ffcd70;
-        --process-finished: hsl(126deg 30% 60%);
-        --process-undefined: rgb(151, 151, 151);
-        --process-failed: hsl(0deg 72.62% 64.6%);
-        --process-notify-bg: hsl(44.86deg 50% 94%);
-
-        /*footer*/
-        --footer-color: #333333;
-        --footer-bg-color: #d7dcd3;
-        --footer-atag-color: black;
-        --footer-input-border-color: #818181;
-        --footer-filepicker-button-color: white;
-        --footer-filepicker-focus-color: var(--nord-aurora-red);
-        --footnote-border-color: rgba(23, 115, 119, 0.15);
-
-        /* undo delete cell*/
-        --undo-delete-box-shadow-color: #0083;
-
-        /*codemirror hints*/
-        --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
-        --cm-editor-li-aria-selected-bg-color: #16659d;
-        --cm-editor-li-aria-selected-color: white;
-        --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
-        --code-background: var(--nord-snow-storm-1);
-        --cm-code-differs-gutters-color: rgba(214, 172, 35, 0.2);
-        --cm-line-numbers-color: #8d86875e;
-        --cm-selection-background: hsl(214deg 100% 73% / 48%);
-        --cm-selection-background-blurred: hsl(214deg 0% 73% / 48%);
-        --cm-highlighted: #cbceb668;
-
-        /* code highlighting */
-        --cm-editor-text-color: #41323f;
-        --cm-comment-color: #e96ba8;
-        --cm-atom-color: #815ba4;
-        --cm-number-color: #815ba4;
-        --cm-property-color: #b67a48;
-        --cm-keyword-color: #ef6155;
-        --cm-string-color: #da5616;
-        --cm-var-color: #5668a4;
-        --cm-macro-color: #5c8c5f;
-        --cm-var2-color: #37768a;
-        --cm-builtin-color: #5e7ad3;
-        --cm-function-color: #cc80ac;
-        --cm-type-color: hsl(170deg 7% 56%);
-        --cm-bracket-color: #41323f;
-        --cm-tag-color: #ef6155;
-        --cm-link-color: #815ba4;
+        /* Keep errors, diffs, and other colors readable */
         --cm-error-bg-color: #ef6155;
         --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: black;
-        --cm-matchingBracket-bg-color: #1b4bbb21;
-        --cm-placeholder-text-color: rgba(0, 0, 0, 0.2);
-        --cm-clickable-underline: #ced2ef;
 
-        /*autocomplete menu*/
-        --autocomplete-menu-bg-color: white;
-
-        /* Landing colors */
-        --index-text-color: hsl(0, 0, 60);
-        --index-light-text-color: #838383;
-        --index-clickable-text-color: black;
-        --docs-binding-bg: #8383830a;
-        --index-card-bg: white;
-        --welcome-mywork-bg: hsl(35deg 66% 93%);
-        --welcome-newnotebook-bg: whitesmoke;
-        --welcome-recentnotebook-bg: white;
-        --welcome-recentnotebook-border: #dfdfdf;
-        --welcome-open-bg: #fbfbfb;
-        --welcome-card-author-backdrop: #ffffffb0;
-
-        /* HTML in codemirror! */
-        --cm-html-color: #48b685;
-        --cm-html-accent-color: #00ab85;
-        --cm-css-color: #876800;
-        --cm-css-accent-color: #696200;
-        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
-        --cm-md-color: #005a9b;
-        --cm-md-accent-color: #00a9d1;
-
-        /* Nord Colors: https://www.nordtheme.com/docs/colors-and-palettes */
-        --nord-polar-night-1: hsl(220, 16%, 22%);
-        --nord-polar-night-2: hsl(222, 16%, 28%);
-        --nord-polar-night-3: hsl(220, 17%, 32%);
-        --nord-polar-night-4: hsl(220, 16%, 36%);
-
+        /* Nord & other colors unchanged */
         --nord-snow-storm-1: hsl(219, 28%, 88%);
         --nord-snow-storm-2: hsl(218, 27%, 92%);
         --nord-snow-storm-3: hsl(218, 27%, 94%);
-
-        --nord-frost-1: hsl(179, 25%, 65%);
-        --nord-frost-2: hsl(193, 43%, 67%);
-        --nord-frost-3: hsl(210, 34%, 63%);
-        --nord-frost-4: hsl(213, 32%, 52%);
-
-        --nord-aurora-red: hsl(354, 42%, 56%); /* hsl(0deg 25% 65%); */
-        --nord-aurora-orange: hsl(14, 51%, 63%);
-        --nord-aurora-yellow: hsl(40, 71%, 73%);
-        --nord-aurora-green: hsl(92, 28%, 65%);
-        --nord-aurora-purple: hsl(311, 20%, 63%);
-
-        /* JIVEbook colors */
-        --uva-theme: hsl(354, 42%, 56%);
-        --jive-sidebar: hsl(207deg 20.74% 70.38%);
     }
 }
