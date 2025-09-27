@@ -1,26 +1,4 @@
-import { myAccFunc, createCellWithCode, createMDCellWithUI, getVarName, resolveAfterTimeout } from "./jive_helpers.js"
-
-function updateAllChevrons() {
-    // find all chevrons inside buttons
-    document.querySelectorAll("button img.chevron").forEach((img) => {
-        const btn = img.closest("button")
-        if (!btn) return
-        const content = btn.nextElementSibling // should be the accContent
-        if (!content) return
-        /** @type {HTMLImageElement} */
-        const imageElem = /** @type {HTMLImageElement} */ (img)
-        imageElem.src = content.classList.contains("jv-show") ? imageElem.dataset.up || "" : imageElem.dataset.down || ""
-    })
-}
-
-function closeOtherAccordions(currentId) {
-    document.querySelectorAll('[id^="AccFile_"]').forEach((div) => {
-        if (div.id !== currentId && div.classList.contains("jv-show")) {
-            div.classList.remove("jv-show")
-            div.classList.add("jv-hide")
-        }
-    })
-}
+import { myAccFunc, createCellWithCode, createMDCellWithUI, getVarName, resolveAfterTimeout, updateAllChevrons, closeOtherAccordions } from "./jive_helpers.js"
 
 function createAccordion(title, items, idSuffix) {
     const accButton = document.createElement("button")

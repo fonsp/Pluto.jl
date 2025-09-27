@@ -1,20 +1,14 @@
 // Accordion open/close
 export function myAccFunc(idString) {
-    var x = document.getElementById(idString)
-    if (x && x.className.indexOf("jv-show") == -1) {
-        x.className += " jv-show"
-        if (x.previousElementSibling) {
-            const name = x.previousElementSibling.getAttribute("name") || ""
-            x.previousElementSibling.innerHTML =
-                name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-up.svg"></img>'
-        }
-    } else if (x) {
-        x.className = x.className.replace(" jv-show", "")
-        if (x.previousElementSibling) {
-            const name = x.previousElementSibling.getAttribute("name") || ""
-            x.previousElementSibling.innerHTML =
-                name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
-        }
+    const x = document.getElementById(idString)
+    if (!x) return
+
+    if (!x.classList.contains("jv-show")) {
+        x.classList.add("jv-show")
+        x.classList.remove("jv-hide")
+    } else {
+        x.classList.remove("jv-show")
+        x.classList.add("jv-hide")
     }
 }
 
@@ -85,15 +79,37 @@ export function insertMD(title, text) {
 
 //   Create a new MD cell with PlutoUI code
 export async function createMDCellWithUI(title, textCode) {
-    const selection = getSelection();
+    const selection = getSelection()
     if (!selection || !selection.anchorNode) {
-        throw new Error("No selection or anchorNode found.");
+        throw new Error("No selection or anchorNode found.")
     }
-    const currentCell = getPlutoCell(selection.anchorNode);
+    const currentCell = getPlutoCell(selection.anchorNode)
     const cellCode = currentCell.querySelector("div[role='textbox'].cm-content")
     const beginDiv = insertMD(title, textCode)
     cellCode.firstElementChild.before(beginDiv)
     currentCell.querySelector("button.foldcode").click()
     currentCell.querySelector("button.runcell").click()
     currentCell.querySelector("button.add_cell.after").click()
+}
+
+export function updateAllChevrons() {
+    // find all chevrons inside buttons
+    document.querySelectorAll("button img.chevron").forEach((img) => {
+        const btn = img.closest("button")
+        if (!btn) return
+        const content = btn.nextElementSibling // should be the accContent
+        if (!content) return
+        /** @type {HTMLImageElement} */
+        const imageElem = /** @type {HTMLImageElement} */ (img)
+        imageElem.src = content.classList.contains("jv-show") ? imageElem.dataset.up || "" : imageElem.dataset.down || ""
+    })
+}
+
+export function closeOtherAccordions(currentId) {
+    document.querySelectorAll('[id^="AccFile_"]').forEach((div) => {
+        if (div.id !== currentId && div.classList.contains("jv-show")) {
+            div.classList.remove("jv-show")
+            div.classList.add("jv-hide")
+        }
+    })
 }

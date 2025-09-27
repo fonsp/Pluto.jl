@@ -105,14 +105,14 @@ searchItem.addEventListener("search", function () {
 
 ////////// IMPORT MENUS /////////////
 import { createFileMenu } from "./Jive-Sidebar/Jive-FileMenu.js"
-import { createAdjustMenu } from "./Jive-Sidebar/Jive-AdjustMenu.js"
+import { createMeasureMenu } from "./Jive-Sidebar/Jive-MeasureMenu.js"
 import { createEditMenu } from "./Jive-Sidebar/Jive-EditMenu.js"
 import { createProcessMenu } from "./Jive-Sidebar/Jive-ProcessMenu.js"
 import { createViewMenu } from "./Jive-Sidebar/Jive-ViewMenu.js"
 
 // FOLDERS
 const itemBarFile = createFileMenu(timeoutValue)
-const itemBarAdjust = createAdjustMenu(timeoutValue)
+const itemBarAdjust = createMeasureMenu(timeoutValue)
 const itemBarEdit = createEditMenu(timeoutValue)
 const itemBarProcess = createProcessMenu(timeoutValue)
 const itemBarView = createViewMenu(timeoutValue)
