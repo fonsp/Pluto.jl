@@ -1,5 +1,5 @@
 ﻿:root {
-    --sidebar-width: 12rem;
+    --sidebar-width: min(15vw, 220px);
 }
 
 nav#at_the_top img {
