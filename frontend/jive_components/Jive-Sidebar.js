@@ -72,7 +72,7 @@ searchItem.placeholder = "Search..."
 searchItem.id = "sideBarInput"
 searchItem.style.cssText = `
             border-radius: 12px;
-            margin: 10% auto 10% 2.5%;
+            margin: 5% auto 10% 2.5%;
         `
 searchItem.onkeyup = function () {
     var input, filter, a, i

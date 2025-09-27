@@ -38,8 +38,7 @@ md"""
 ---
 """
 
-# ╔═╡ be51e60c-7268-4d21-a11b-ed970c4fc347
-# ╠═╡ disabled = true
+# ╔═╡ f5e3ae7a-4059-457a-aa9a-94c91da8fce4
 #=╠═╡
 tmp = JIVECore.Files.loadImage!(image_data, image_keys)
 if ndims(image_data[tmp]) == 2
@@ -49,7 +48,8 @@ elseif ndims(image_data[tmp]) == 3
 end
   ╠═╡ =#
 
-# ╔═╡ f5e3ae7a-4059-457a-aa9a-94c91da8fce4
+# ╔═╡ be51e60c-7268-4d21-a11b-ed970c4fc347
+# ╠═╡ disabled = true
 #=╠═╡
 tmp = JIVECore.Files.loadImage!(image_data, image_keys)
 if ndims(image_data[tmp]) == 2

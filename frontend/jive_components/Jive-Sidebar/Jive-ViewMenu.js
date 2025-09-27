@@ -132,12 +132,12 @@ export function createViewMenu(timeoutValue) {
     ]
 
     // Add accordions to menu
-    accView.appendChild(createAccordion("👁️ View / Display", viewDisplayItems, "viewdisplay"))
-    accView.appendChild(createAccordion("🎚️ Contrast & Intensity", contrastItems, "contrast"))
-    accView.appendChild(createAccordion("🌈 Colormap & Channels", colormapItems, "colormap"))
-    accView.appendChild(createAccordion("🪟 Slice & Dimension Control", sliceItems, "slice"))
-    accView.appendChild(createAccordion("🏷️ Overlays & Annotations", overlayItems, "overlay"))
-    accView.appendChild(createAccordion("📐 Scale & Axes", scaleItems, "scale"))
+    accView.appendChild(createAccordion("👁️ Display", viewDisplayItems, "display"))
+    accView.appendChild(createAccordion("🎚️ Contrast", contrastItems, "contrast"))
+    accView.appendChild(createAccordion("🌈 Color", colormapItems, "color"))
+    accView.appendChild(createAccordion("🪟 Slice", sliceItems, "slice"))
+    accView.appendChild(createAccordion("🏷️ Overlays", overlayItems, "overlay"))
+    accView.appendChild(createAccordion("📐 Axes", scaleItems, "axes"))
 
     // Add a line at the end
     const hr = document.createElement("hr")
