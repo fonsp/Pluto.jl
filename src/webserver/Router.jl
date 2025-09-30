@@ -210,6 +210,34 @@ function http_router_for(session::ServerSession)
     end
     HTTP.register!(router, "POST", "/notebookupload", serve_notebookupload)
     
+    # File upload endpoint for saving files to /tmp
+    function serve_fileupload(request::HTTP.Request)
+        try
+            # Body data
+            body_data = HTTP.body(request)
+
+            # Header data
+            header_data = HTTP.headers(request)
+
+            filename = first(x[2] for x in header_data if x[1] == "Filename")
+
+            # Save image data to /tmp
+            tmp_path = tempdir() * '/' * filename
+
+            # Save file to /tmp
+            open(tmp_path, "w") do io
+                write(io, body_data)
+            end
+
+            println("File saved to: ", tmp_path)
+
+            return HTTP.Response(200, JSON.json(Dict("path" => tmp_path)))
+        catch e
+            return HTTP.Response(500, "Error processing file upload: $(sprint(showerror, e))")
+        end
+    end
+    HTTP.register!(router, "POST", "/upload", serve_fileupload)
+    
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))

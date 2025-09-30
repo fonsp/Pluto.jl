@@ -1,6 +1,7 @@
 import MsgPack
 import UUIDs: UUID
 import HTTP
+import JSON
 import Sockets
 import .PkgCompat
 
