@@ -11,9 +11,10 @@
     "src"
   ],
   "scripts": {
-    "build": "npm run clean && npm run rollup",
+    "build": "npm run clean && npm run rollup && npm run build:ui ",
+    "build:ui": "cd ../frontend-bundler && npm run build:ui",
     "rollup": "rollup -c",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist && rm -rf dist-ui",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },
@@ -38,6 +39,13 @@
         "editor.html",
         "error.jl.html"
       ]
+    },
+    "ui": {
+      "source": [
+        "./dist/ui.esm.js"
+      ],
+      "outputFormat": "esmodule",
+      "isLibrary": true
     }
   },
   "devDependencies": {
@@ -54,13 +62,9 @@
     "@types/react": "^19.1.10",
     "@types/ws": "^8.18.1",
     "@web/rollup-plugin-copy": "^0.5.1",
-    "ansi_up": "^6.0.6",
-    "dialog-polyfill": "^0.5.6",
-    "dompurify": "^3.2.7",
     "jsdom": "^26.1.0",
     "memfs": "^4.36.0",
     "path-browserify": "^1.0.1",
-    "preact": "^10.27.2",
     "rollup": "^4.46.2",
     "rollup-plugin-node-polyfills": "^0.2.1",
     "tslib": "^2.6.2",
@@ -85,10 +89,10 @@
       "default": "./dist/react.esm.js"
     },
     "./ui": {
-      "types": "./dist/standalone/integrations/react.d.ts",
-      "import": "./dist/ui/index.esm.js",
-      "require": "./dist/ui/index.js",
-      "default": "./dist/ui/index.esm.js"
+      "types": "./dist/ui.d.ts",
+      "import": "./dist/ui/ui.esm.js",
+      "require": "./dist/ui/ui.esm.js",
+      "default": "./dist/ui/ui.esm.js"
     }
   },
   "dependencies": {
@@ -109,12 +113,6 @@
       "optional": true
     },
     "react-dom": {
-      "optional": true
-    },
-    "preact": {
-      "optional": true
-    },
-    "preact/hooks": {
       "optional": true
     }
   }

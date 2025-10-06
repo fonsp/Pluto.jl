@@ -7,9 +7,11 @@
     "description": "",
     "scripts": {
         "clean": "rm -rf ../frontend-dist ../frontend-dist-static",
+        "clean:ui": "echo 'todo'",
         "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc --target pluto",
         "note about order": "super weird but index.html has to come before editor.html or the prefetch in index.html will not bundle correctly.",
         "build": "npm run clean && cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc --target pluto",
+        "build:ui": "npm run clean:ui && cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend/dist/ --config ../frontend-bundler/.parcelrc --target ui",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
@@ -28,6 +30,7 @@
     "devDependencies": {
         "@parcel/optimizer-blob-url": "^2.11.0",
         "@parcel/optimizer-data-url": "^2.11.0",
+        "@parcel/transformer-typescript-tsc": "^2.16.0",
         "@plutojl/posthtml-crossorigin": "^1.0.0",
         "@types/node": "^22",
         "posthtml": "^0.16.6",
