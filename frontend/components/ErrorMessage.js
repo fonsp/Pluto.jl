@@ -62,7 +62,7 @@ const DocLink = ({ frame }) => {
     const funcname = frame.func
     if (funcname === "") return null
 
-    const nb = pluto_actions.get_notebook()
+    const nb = pluto_actions?.get_notebook()
     const pkg_name = frame.source_package
     const builtin = ["Main", "Core", "Base"].includes(pkg_name ?? "")
     const installed = nb?.nbpkg?.installed_versions?.[frame.source_package ?? ""] != null
@@ -75,7 +75,7 @@ const DocLink = ({ frame }) => {
                 onClick=${(e) => {
                     e.preventDefault()
                     open_bottom_right_panel("docs")
-                    pluto_actions.set_doc_query(`${frame.parent_module}.${funcname}`)
+                    pluto_actions?.set_doc_query(`${frame.parent_module}.${funcname}`)
                 }}
                 >docs</a
             ></span
@@ -185,7 +185,7 @@ const LinePreview = ({ frame, num_context_lines = 2 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let cell_id = extract_cell_id(frame.file)
     if (cell_id) {
-        let code = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())?.cell_inputs[cell_id]?.code
+        let code = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions?.get_notebook())?.cell_inputs[cell_id]?.code
 
         if (code) {
             const lines = code.split("\n")
@@ -368,7 +368,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                     href="#"
                     onClick=${(e) => {
                         e.preventDefault()
-                        pluto_actions.wrap_remote_cell(cell_id, "begin")
+                        pluto_actions?.wrap_remote_cell(cell_id, "begin")
                     }}
                     >${th("t_wrap_all_code_in_a_begin_end_block")}</a
                 >`
@@ -379,7 +379,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                             href="#"
                             onClick=${(e) => {
                                 e.preventDefault()
-                                pluto_actions.split_remote_cell(cell_id, boundaries, true)
+                                pluto_actions?.split_remote_cell(cell_id, boundaries, true)
                             }}
                             >${t("t_split_this_cell_into_cells", { count: boundaries.length })}</a
                         >, or
@@ -473,7 +473,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
         {
             pattern: /^UndefVarError: (.*) not defined/,
             display: (/** @type{string} */ x) => {
-                const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
+                const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions?.get_notebook())
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
@@ -506,19 +506,19 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_interp })}</em></p>`
             },
             show_stacktrace: () => {
-                const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
+                const erred_upstreams = get_erred_upstreams(pluto_actions?.get_notebook(), cell_id)
                 return Object.keys(erred_upstreams).length === 0
             },
         },
         {
             pattern: /^ArgumentError: Package (.*) not found in current path/,
             display: (/** @type{string} */ x) => {
-                if (pluto_actions.get_notebook().nbpkg?.enabled === false) return default_rewriter.display(x)
+                if (pluto_actions?.get_notebook().nbpkg?.enabled === false) return default_rewriter.display(x)
 
                 const match = x.match(/^ArgumentError: Package (.*) not found in current path/)
                 const package_name = (match?.[1] ?? "").replaceAll("`", "")
 
-                const pkg_terminal_value = pluto_actions.get_notebook()?.nbpkg?.terminal_outputs?.[package_name]
+                const pkg_terminal_value = pluto_actions?.get_notebook()?.nbpkg?.terminal_outputs?.[package_name]
 
                 return html`${th("t_package_could_not_load", { package: package_name })}
                 ${th("t_package_could_not_load_things_you_could_try", { package: package_name })}
@@ -606,7 +606,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
-        ${pluto_actions.get_session_options?.()?.server?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
+        ${pluto_actions?.get_session_options?.()?.server?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
 
