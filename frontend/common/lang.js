@@ -11,7 +11,7 @@ import {
     french,
     japanese,
     nederlands,
-    norsk_bokmål,
+    norsk_bokmal,
     suomi,
 } from "./lang_imports.js"
 
@@ -42,7 +42,7 @@ i18next.use(LanguageDetector).init({
             translation: without_empty_keys(nederlands),
         },
         nb: {
-            translation: without_empty_keys(norsk_bokmål),
+            translation: without_empty_keys(norsk_bokmal),
         },
         ja: {
             translation: without_empty_keys(japanese),
