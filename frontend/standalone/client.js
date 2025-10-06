@@ -511,6 +511,21 @@ end`,
         }
     }
 
+    getBonds() {
+        return this.notebook_state.bonds
+    }
+    /**
+     *
+     * @param {string} name name of bound variable
+     * @param {*} value value (not in wrapper object)
+     */
+    async setBond(name, value) {
+        await this._update_notebook_state((notebook) => {
+            let new_bond = { value }
+            notebook.bonds[name] = new_bond
+        })
+    }
+
     /**
      * Get the current notebook state (equivalent to Editor.js this.state.notebook)
      *
@@ -966,7 +981,6 @@ end`,
                 throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
             }
             this.last_update_time = Date.now()
-            console.log({ state: notebook })
         } finally {
             this.pending_local_updates--
         }
