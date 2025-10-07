@@ -514,6 +514,7 @@ end`,
     getBonds() {
         return this.notebook_state.bonds
     }
+
     /**
      *
      * @param {string} name name of bound variable
@@ -524,6 +525,20 @@ end`,
             let new_bond = { value }
             notebook.bonds[name] = new_bond
         })
+    }
+
+    /**
+     *
+     * @param {string} symbol: the symbol to query for
+     */
+    async getDocs(symbol) {
+        const { message } = await this.client.send("docs", { query: symbol.replace(/^\?/, "") }, { notebook_id: this.notebook_id })
+        if (message.status === "👍") {
+            return message.doc
+        }
+        if (message.status === "⌛") {
+            return
+        }
     }
 
     /**
