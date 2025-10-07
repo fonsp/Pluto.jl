@@ -1,3 +1,5 @@
+export { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext } from "./common/PlutoContext.js"
+
 export { setup_mathjax } from "./common/SetupMathJax.js"
 
 export { StatusTab } from "./components/StatusTab.js"
