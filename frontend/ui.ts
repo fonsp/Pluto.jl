@@ -3,7 +3,7 @@ export { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext } fr
 export { setup_mathjax } from "./common/SetupMathJax.js"
 
 export { StatusTab } from "./components/StatusTab.js"
-export { CellOutput, OutputBody } from "./components/CellOutput.js"
+export { CellOutput, OutputBody, ANSITextOutput } from "./components/CellOutput.js"
 export { CellInput } from "./components/CellInput.js"
 
 export {
