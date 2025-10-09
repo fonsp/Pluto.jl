@@ -713,7 +713,7 @@ end`,
         return await new Promise((resolve, reject) => {
             let t = 0
             const cleanup = this.onUpdate((v) => {
-                if (v.type === "notebook_updated" && isTerminalStatus(getStatus(this, cell_id)) {
+                if (v.type === "notebook_updated" && isTerminalStatus(getStatus(this, cell_id))) {
                     resolve(getResult(this, cell_id))
                     cleanup()
                     clearTimeout(t)
