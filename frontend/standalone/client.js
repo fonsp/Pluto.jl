@@ -47,7 +47,7 @@
 import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { applyPatches, produceWithPatches } from "../imports/immer.js"
-import { getResult, getStatus } from "./getters.js"
+import { getResult, getStatus, isTerminalStatus } from "./getters.js"
 
 // vendored to drop unshakeable import
 export const empty_notebook_state = ({ notebook_id }) => ({
@@ -713,7 +713,7 @@ end`,
         return await new Promise((resolve, reject) => {
             let t = 0
             const cleanup = this.onUpdate((v) => {
-                if (v.type === "notebook_updated" && getStatus(this, cell_id) === "done") {
+                if (v.type === "notebook_updated" && isTerminalStatus(getStatus(this, cell_id))) {
                     resolve(getResult(this, cell_id))
                     cleanup()
                     clearTimeout(t)

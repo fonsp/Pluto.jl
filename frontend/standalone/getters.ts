@@ -6,6 +6,11 @@ export const STDOUT_LOG_LEVEL = "LogLevel(-555)"
 
 export type CellStatus = "queued" | "running" | "errored" | "done" | "pending"
 
+const terminalSet = new Set(["errored", "done"])
+export const isTerminalStatus = (status: CellStatus) => {
+    return terminalSet.has(status)
+}
+
 export function getResult(worker: Worker, cell_id: string) {
     return worker.notebook_state.cell_results[cell_id];
 }
@@ -17,7 +22,7 @@ export function getSnippetLogs(worker: Worker, cell_id: string) {
 export function getProgressLogs(worker: Worker, cell_id: string) {
     return (
         getSnippetLogs(worker, cell_id).filter((log) => {
-            return log.level === PROGRESS_LOG_LEVEL
+            return (log.level ?? "").toString() === PROGRESS_LOG_LEVEL
         }) ?? []
     )
 }
@@ -25,7 +30,7 @@ export function getProgressLogs(worker: Worker, cell_id: string) {
 export function getTerminalLogs(worker: Worker, cell_id: string) {
     return (
         getSnippetLogs(worker, cell_id).filter((log) => {
-            return log.level === STDOUT_LOG_LEVEL
+            return (log.level ?? "").toString() === STDOUT_LOG_LEVEL
         }) ?? []
     );
 }
