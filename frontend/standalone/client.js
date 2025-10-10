@@ -74,7 +74,7 @@ export const empty_notebook_state = ({ notebook_id }) => ({
  * @typedef CellData
  * @type {{
  *  input: import("../components/Editor.js").CellInputData,
- *  results: import("../components/Editor.js").CellResultData,
+ *  result: import("../components/Editor.js").CellResultData,
  * }}
  */
 
