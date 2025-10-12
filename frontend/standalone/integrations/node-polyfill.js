@@ -6,14 +6,15 @@
  */
 
 import { webcrypto } from "crypto";
+import { parseHTML } from "linkedom";
 import { WebSocket as NodeWebSocket } from "ws";
-import { JSDOM } from "jsdom";
 
-const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
-  url: "http://localhost:1234",
-  pretendToBeVisual: true,
-  resources: "usable",
-});
+// Simplified way for HTML
+const dom = parseHTML(`
+  <!doctype html>
+  <html lang="en">
+  </html>
+`);
 
 // Copy jsdom globals to Node.js global scope
 Object.assign(global, {
