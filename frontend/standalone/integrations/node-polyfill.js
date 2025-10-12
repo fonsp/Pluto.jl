@@ -12,7 +12,6 @@ import { JSDOM } from "jsdom"
 const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     url: "http://localhost:1234",
     pretendToBeVisual: true,
-    resources: "usable",
 })
 
 // Copy jsdom globals to Node.js global scope
