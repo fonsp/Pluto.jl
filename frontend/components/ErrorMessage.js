@@ -118,7 +118,6 @@ const StackFrameFilename = ({ frame, cell_id }) => {
 const at = html`<span> ${t("t_stack_frame_location")}${nbsp}</span>`
 
 const ignore_funccall = (/** @type {StackFrame} */ frame) => {
-    console.log("checking", frame.call, extract_cell_id(frame.file), frame.file)
     if (frame.call === "top-level scope") return true
     // In Julia 1.12, you sometimes get the top-level code (like calling sqrt(-1) in a cell) as a "macro expansion" when you run the cell again a second time. 🤷
     if (frame.call === "macro expansion" && !frame.file.includes("#@#==#") && extract_cell_id(frame.file) != null) return true
@@ -550,8 +549,6 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
         const from_another_cell = first_stack_from_here !== -1 && extract_cell_id(stacktrace[first_stack_from_here].file) !== cell_id
         set_stacktrace_waiting_to_view(!from_another_cell)
     }, [msg, stacktrace, cell_id])
-
-    console.log({ msg, stacktrace, cell_id })
 
     return html`<jlerror>
         <div class="error-header">
