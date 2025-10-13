@@ -159,7 +159,7 @@ const validFor = (/** @type {string} */ text) => {
 
 const not_explicit_and_too_boring = (/** @type {autocomplete.CompletionContext} */ ctx, allow_strings = false) => {
     if (ctx.explicit) return false
-    if (ctx.matchBefore(/[ =)+-/,*:'"]$/)) return true
+    if (ctx.matchBefore(/[\s=\)+-/,*:'\(;\[\]\{\}"]$/)) return true
     if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return true
     if (!allow_strings) {
         if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
