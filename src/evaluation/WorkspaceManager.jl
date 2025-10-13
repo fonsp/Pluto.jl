@@ -167,12 +167,17 @@ end
 
 
 function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
-    workspace = try
-        get_workspace((session, notebook))
+    workspace_task = try
+        get_workspace((session, notebook); async=true)
     catch e
         e isa DiscardedWorkspaceException && return false
         rethrow(e)
     end
+    if workspace_task === nothing || !istaskdone(workspace_task)
+        println(io, "Waiting for notebook process to start...")
+    end
+    
+    workspace = fetch(workspace_task)
     Malt.isrunning(workspace.worker) || return false
 
     io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
@@ -410,7 +415,7 @@ Return the `Workspace` of `notebook`; will be created if none exists yet.
 
 If `allow_creation=false`, then `nothing` is returned if no workspace exists, instead of creating one.
 """
-function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{Nothing,Workspace}
+function get_workspace(session_notebook::SN; allow_creation::Bool=true, async::Bool=false)::Union{Nothing,Workspace,Task}
     session, notebook = session_notebook
     if notebook.notebook_id in discarded_workspaces
         @debug "This should not happen" notebook.process_status
@@ -428,7 +433,7 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
         end
     end
 
-    isnothing(task) ? nothing : fetch(task)
+    isnothing(task) ? nothing : async ? task : fetch(task)
 end
 get_workspace(workspace::Workspace; kwargs...)::Workspace = workspace
 
