@@ -154,12 +154,12 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                             e.preventDefault()
                         }}
                         class="export_card"
-                        data-size=${getCurrentLanguage() === "el"
-                            ? "26"
+                        style=${getCurrentLanguage() === "el"
+                            ? "--size: 26ch"
                             : getCurrentLanguage() === "de"
-                            ? "24"
+                            ? "--size: 24ch"
                             : getCurrentLanguage() === "pt-PT"
-                            ? "26"
+                            ? "--size: 26ch"
                             : null}
                     >
                         <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
