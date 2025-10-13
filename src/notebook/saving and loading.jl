@@ -234,7 +234,7 @@ function _read_notebook_collected_cells!(@nospecialize(io::IO))
             # parse metadata
             metadata = try
                 create_cell_metadata(TOML.parse(join(metadata_toml_lines, "\n")))
-            catch
+            catch e
                 @error "Failed to parse embedded TOML content" cell_id exception=(e, catch_backtrace())
                 DEFAULT_CELL_METADATA
             end
