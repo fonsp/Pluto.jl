@@ -1222,7 +1222,7 @@ pluto-editor.is_recording > header#pluto-nav {
 .outline-frame-actions-container {
     position: fixed;
     top: 3px;
-    z-index: 1501;
+    z-index: 2010;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -1267,7 +1267,7 @@ div.recording-playback {
     width: min(500px, 90vw);
     position: fixed;
     bottom: 16px;
-    z-index: 1501;
+    z-index: 2010;
 }
 div.recording-playback audio {
     width: 100%;
