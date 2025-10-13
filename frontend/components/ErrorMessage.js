@@ -478,13 +478,18 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
-                const match = x.match(/UndefVarError: (.*) not defined/)
+                const match = x.match(/UndefVarError: (.*) not defined in (.*).*/)
                 let sym = (match?.[1] ?? "").replaceAll("`", "")
+                let module = (match?.[2] ?? "").replaceAll("`", "").replaceAll(/Main\.var\"workspace#\d+\"/g, "this notebook")
                 const undefvar_is_from_upstream = Object.values(notebook?.cell_dependencies ?? {}).some((map) =>
                     Object.keys(map.downstream_cells_map).includes(sym)
                 )
 
                 if (Object.keys(erred_upstreams).length === 0 || !undefvar_is_from_upstream) {
+                    if (sym && module) {
+                        return html` <p>UndefVarError: <code>${sym}</code> not defined in ${module}.</p>
+                            <p>${x.replace(/UndefVarError.*\n?/, "")}</p>`
+                    }
                     return html`<p>${x}</p>`
                 }
 
