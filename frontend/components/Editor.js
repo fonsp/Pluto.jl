@@ -1365,7 +1365,7 @@ ${control_name}${and}/:   ${t("t_key_ctrl_slash")}
 ${control_name}${and}M:   ${t("t_key_ctrl_m")}
 ${fold_prefix}${and}[:   ${t("t_key_ctrl_m")}
 ${fold_prefix}${and}]:   ${t("t_key_ctrl_m")}
-${ctrl_or_cmd_name}${and}Q:   ${t("t_key_ctrl_q")}
+${control_name}${and}Q:   ${t("t_key_ctrl_q")}
 
 ${t("t_key_selection_description")}
 ${ctrl_or_cmd_name}${and}C:   ${t("t_key_ctrl_c")}
