@@ -114,7 +114,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
 
         @async start_relaying_logs((session, notebook), remote_log_channel)
         @async start_relaying_self_updates((session, notebook), run_channel)
-        cd_workspace(workspace, notebook.path)
+        is_offline_renderer || cd_workspace(workspace, notebook.path)
         
         Status.report_business_finished!(init_status, Symbol(2))
         Status.report_business_started!(init_status, Symbol(3))
