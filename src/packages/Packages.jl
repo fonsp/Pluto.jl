@@ -463,17 +463,22 @@ const gracefulpkg_strats = filter!(collect(GracefulPkg.DEFAULT_STRATEGIES)) do s
     !(strat isa GracefulPkg.StrategyRemoveProject)
 end
 
+const gracefulpkg_strats_project_edit = [
+    GracefulPkg.StrategyDoNothing(),
+    GracefulPkg.StrategyRemoveManifest(),
+]
+
 
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
-function with_auto_fixes(f::Function, notebook::Notebook, iolistener::IOListener)
+function with_auto_fixes(f::Function, notebook::Notebook, iolistener::IOListener; strategies=gracefulpkg_strats)
     env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
     
     is_first = Ref(true)
     report = 
     with_io_setup(notebook, iolistener) do
-        GracefulPkg.gracefully(; env_dir, throw=false, strategies=gracefulpkg_strats) do
+        GracefulPkg.gracefully(; env_dir, throw=false, strategies) do
             try
                 if !is_first[]
                     PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
@@ -506,14 +511,12 @@ function overwrite_project_toml(
         return
     end
     
-    @assert notebook.nbpkg_ctx !== nothing
+    @assert notebook.nbpkg_ctx !== nothing "This notebook is not using the Pluto package manager."
     
     p = PkgCompat.project_file(notebook)
-    @assert original_project_toml == read(p, String)
-    
+    @assert original_project_toml == read(p, String) "The notebook environment was modified by another process during your edits. Please try again."
     
     ##############
-    
     
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_planned!(pkg_status, :write_project_toml)
@@ -521,7 +524,7 @@ function overwrite_project_toml(
     Status.report_business_planned!(pkg_status, :instantiate1)
     Status.report_business_planned!(pkg_status, :precompile)
     
-    
+    # TODO: put this in a separate function
     function iocallback(pkgs, s)
         notebook.nbpkg_busy_packages = pkgs
         for p in pkgs
@@ -532,47 +535,61 @@ function overwrite_project_toml(
     end
     
     iolistener = let
-        report_to = ["nbpkg_sync"]
+        report_to = ["nbpkg_sync", "nbpkg_edit"]
         IOListener(callback=(s -> iocallback(report_to, freeze_loading_spinners(s))))
     end
     iolistener_buffer = iolistener.buffer
     
-    
-    
     maybe_async(run_async) do
-        with_io_setup(notebook, iolistener) do
+        withtoken(pkg_token) do
+            withlogcapture(iolistener) do
+                with_io_setup(notebook, iolistener) do
+                    # PkgCompat.mark_original!(notebook.nbpkg_ctx)
+                    try
 
-            Status.report_business!(pkg_status, :write_project_toml) do
-                write(p, new_project_toml)
+                        Status.report_business!(pkg_status, :write_project_toml) do
+                            write(p, new_project_toml)
+                            
+                            PkgCompat.load_ctx!(notebook.nbpkg_ctx)
+                            PkgCompat._update_project_hash!(notebook.nbpkg_ctx)
+                        end
+                        
+                        Status.report_business!(pkg_status, :resolve) do
+                            with_auto_fixes(notebook, iolistener; strategies=gracefulpkg_strats_project_edit) do
+                                _resolve(notebook, iolistener)
+                            end
+                            
+                            PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
+                        end
+                        
+                        # 🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
+                        # if 🐧 || !notebook.nbpkg_ctx_instantiated
+                            Status.report_business!(pkg_status, :instantiate1) do
+                                _instantiate(notebook, iolistener)
+                            end
+                            Status.report_business!(pkg_status, :precompile) do
+                                _precompile(session, notebook, iolistener)
+                            end
+                        # end
+
+                        # if 🐧
+                            notebook.nbpkg_restart_required_msg = "Yes, something changed during project toml synchronization."
+                        # end
+                    catch e
+                        @error "PlutoPkg: Failed to synchronize project toml" notebook.path exception=(e, catch_backtrace())
+                        notebook.nbpkg_restart_required_msg = "Yes, something changed during project toml synchronization."
+                        Status.report_business_finished!(pkg_status, false)
+                    end
+                end
                 
-                PkgCompat.load_ctx!(notebook.nbpkg_ctx)
-                PkgCompat._update_project_hash!(notebook.nbpkg_ctx)
-            end
-            
-            
-        
-            Status.report_business!(pkg_status, :resolve) do
-                # with_auto_fixes(notebook, iolistener) do
-                    _resolve(notebook, iolistener)
-                # end
-            end
-            
-            
-            Status.report_business!(pkg_status, :instantiate1) do
-                _instantiate(notebook, iolistener)
-            end
-            
-            
-            Status.report_business!(pkg_status, :precompile) do
-                _precompile(session, notebook, iolistener)
+                stoplistening(iolistener)
+                Status.report_business_finished!(pkg_status)
             end
         end
-        
-        notebook.nbpkg_restart_required_msg = "Yes, something changed during project toml synchronization."
-        
-        
-        Status.report_business_finished!(pkg_status)
     end
+    
+    update_nbpkg_cache!(notebook)
+    send_notebook_changes!(ClientRequest(; session, notebook))
 end
 
 
