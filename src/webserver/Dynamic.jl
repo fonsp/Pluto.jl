@@ -567,6 +567,24 @@ responses[:nbpkg_available_versions] = function response_nbpkg_available_version
     ), nothing, nothing, 🙋.initiator))
 end
 
+responses[:nbpkg_get_project_toml] = function response_nbpkg_get_project_toml(🙋::ClientRequest)
+    require_notebook(🙋)
+    project_toml = PkgCompat.read_project_file(🙋.notebook)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🌟, Dict(
+        :project_toml => project_toml,
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:nbpkg_set_project_toml] = function response_nbpkg_set_project_toml(🙋::ClientRequest)
+    require_notebook(🙋)
+    project_toml_original = 🙋.body["project_toml_original"]
+    project_toml = 🙋.body["project_toml"]
+    overwrite_project_toml(🙋.session, 🙋.notebook, project_toml_original, project_toml)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🎃, Dict(
+        :ok => true,
+    ), nothing, nothing, 🙋.initiator))
+end
+
 responses[:all_registered_package_names] = function response_all_registered_package_names(🙋::ClientRequest)
     results = PkgCompat.registered_package_names()
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
@@ -579,3 +597,7 @@ responses[:pkg_update] = function response_pkg_update(🙋::ClientRequest)
     update_nbpkg(🙋.session, 🙋.notebook)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🦆, Dict(), nothing, nothing, 🙋.initiator))
 end
+
+
+
+

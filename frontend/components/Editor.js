@@ -721,6 +721,7 @@ export class Editor extends Component {
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
+                console.log("get_avaible_versions", message)
                 return message
             },
         }
@@ -1740,30 +1741,28 @@ ${t("t_key_autosave_description")}`
                     />
                     <${ProjectTomlEditor}
                         notebook=${notebook}
-                        remote_project_toml=${
-                            status.loading
-                                ? null
-                                : `
-[deps]
-FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-
-[compat]
-FileIO = "~1.15.0"
-Images = "~0.25.1"
-Plots = "~1.31.7"
-PlutoUI = "~0.7.40"
-
-[sources]
-PlutoUI = { path = "~/Documents/Pluto.jl", rev="some-branch-i-want-to-use" }
-`
-                        }
-                        set_remote_project_toml=${(newval) =>
-                            this.actions.update_notebook((nb) => {
-                                nb.metadata["asdfsfddsf"] = newval
-                            })} 
+                        get_remote_project_toml=${() => {
+                            return this.actions
+                                .send(
+                                    "nbpkg_get_project_toml",
+                                    {},
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    }
+                                )
+                                .then((res) => {
+                                    return res.message.project_toml
+                                })
+                        }}
+                        set_remote_project_toml=${(original_project_toml, newval) =>
+                            this.actions.send(
+                                "nbpkg_set_project_toml",
+                                {
+                                    project_toml_original: original_project_toml,
+                                    project_toml: newval,
+                                },
+                                { notebook_id: this.state.notebook.notebook_id }
+                            )} 
                     />
                     <${PlutoLandUpload}
                         notebook_id=${notebook.notebook_id}

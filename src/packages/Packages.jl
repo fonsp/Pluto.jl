@@ -497,6 +497,85 @@ function with_auto_fixes(f::Function, notebook::Notebook, iolistener::IOListener
     end
 end
 
+
+function overwrite_project_toml(
+    session::ServerSession, notebook::Notebook, original_project_toml::String, new_project_toml::String;
+    run_async::Bool=false,
+)
+    if strip(original_project_toml) == strip(new_project_toml)
+        return
+    end
+    
+    @assert notebook.nbpkg_ctx !== nothing
+    
+    p = PkgCompat.project_file(notebook)
+    @assert original_project_toml == read(p, String)
+    
+    
+    ##############
+    
+    
+    pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
+    Status.report_business_planned!(pkg_status, :write_project_toml)
+    Status.report_business_planned!(pkg_status, :resolve)
+    Status.report_business_planned!(pkg_status, :instantiate1)
+    Status.report_business_planned!(pkg_status, :precompile)
+    
+    
+    function iocallback(pkgs, s)
+        notebook.nbpkg_busy_packages = pkgs
+        for p in pkgs
+            notebook.nbpkg_terminal_outputs[p] = s
+        end
+        update_nbpkg_cache!(notebook)
+        send_notebook_changes!(ClientRequest(; session, notebook))
+    end
+    
+    iolistener = let
+        report_to = ["nbpkg_sync"]
+        IOListener(callback=(s -> iocallback(report_to, freeze_loading_spinners(s))))
+    end
+    iolistener_buffer = iolistener.buffer
+    
+    
+    
+    maybe_async(run_async) do
+        with_io_setup(notebook, iolistener) do
+
+            Status.report_business!(pkg_status, :write_project_toml) do
+                write(p, new_project_toml)
+                
+                PkgCompat.load_ctx!(notebook.nbpkg_ctx)
+                PkgCompat._update_project_hash!(notebook.nbpkg_ctx)
+            end
+            
+            
+        
+            Status.report_business!(pkg_status, :resolve) do
+                # with_auto_fixes(notebook, iolistener) do
+                    _resolve(notebook, iolistener)
+                # end
+            end
+            
+            
+            Status.report_business!(pkg_status, :instantiate1) do
+                _instantiate(notebook, iolistener)
+            end
+            
+            
+            Status.report_business!(pkg_status, :precompile) do
+                _precompile(session, notebook, iolistener)
+            end
+        end
+        
+        notebook.nbpkg_restart_required_msg = "Yes, something changed during project toml synchronization."
+        
+        
+        Status.report_business_finished!(pkg_status)
+    end
+end
+
+
 """
 Reset the package environment of a notebook. This will remove the `Project.toml` and `Manifest.toml` files from the notebook's secret package environment folder, and if `save` is `true`, it will then save the notebook without embedded Project and Manifest.
 
@@ -696,6 +775,8 @@ function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContex
         end
     end
 end
+
+with_io_setup(f::Function, notebook::Notebook, iolistener::Nothing) = f()
 
 function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)

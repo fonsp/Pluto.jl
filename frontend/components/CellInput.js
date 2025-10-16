@@ -366,7 +366,7 @@ export const CellInput = ({
             return true
         }
 
-        let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
+        let accept_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
             // I think this only gets called when we are not in an autocomplete situation, otherwise `tab_completion_command` is called. I think it only happens when you have a selection.
 
@@ -374,7 +374,7 @@ export const CellInput = ({
                 return false
             }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command?.run?.(cm)) {
+            if (accept_autocomplete_command?.run?.(cm)) {
                 return true
             }
 
@@ -1028,7 +1028,13 @@ const InputContextMenu = ({
         >
             ${open
                 ? html`<ul onMouseenter=${mouseenter}>
-                      <${InputContextMenuItem} tag="delete" contents=${t("t_delete_cell_action")} title=${t("t_delete_cell_action")} onClick=${on_delete} setOpen=${setOpen} />
+                      <${InputContextMenuItem}
+                          tag="delete"
+                          contents=${t("t_delete_cell_action")}
+                          title=${t("t_delete_cell_action")}
+                          onClick=${on_delete}
+                          setOpen=${setOpen}
+                      />
 
                       <${InputContextMenuItem}
                           title=${running_disabled ? t("t_enable_and_run_cell") : t("t_disable_this_cell_and_all_cells_that_depend_on_it")}

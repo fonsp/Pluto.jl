@@ -1,0 +1,8 @@
+[deps]
+PlutoTurtles = "67697473-756c-6b61-6172-6b407461726b"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+PlutoTurtles = "~1.0.1"
+PlutoUI = "~0.7.62"

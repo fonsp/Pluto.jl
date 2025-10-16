@@ -44,32 +44,35 @@ import { set_cm_value } from "./FilePicker.js"
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  remote_project_toml: String?,
- *  set_remote_project_toml: (newval: String) => Promise<void>,
+ *  get_remote_project_toml: () => Promise<String>,
+ *  set_remote_project_toml: (original_project_toml: String, newval: String) => Promise<void>,
  * }} props
  * */
-export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_project_toml }) => {
+export const ProjectTomlEditor = ({ notebook, get_remote_project_toml, set_remote_project_toml }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     const cm = useRef(/** @type {EditorView?} */ (null))
     const base = useRef(/** @type {any} */ (null))
 
-    const [dialog_ref, open, close, _toggle] = useDialog()
+    const [dialog_ref, open, close, _toggle, currently_open] = useDialog()
 
     const cancel = () => {
         const view = cm.current
         if (view != null) {
-            set_cm_value(view, remote_project_toml ?? "")
+            set_cm_value(view, "Loading...")
         }
         close()
     }
 
-    useEffect(() => {
-        const view = cm.current
-        if (view != null) {
-            set_cm_value(view, remote_project_toml ?? "")
+    const [original_project_toml, set_original_project_toml] = useState("")
+    useLayoutEffect(() => {
+        if (currently_open) {
+            get_remote_project_toml().then((remote_project_toml) => {
+                set_original_project_toml(remote_project_toml)
+                if (cm.current) set_cm_value(cm.current, remote_project_toml)
+            })
         }
-    }, [remote_project_toml])
+    }, [currently_open])
 
     const set_remote_project_toml_ref = useRef(set_remote_project_toml)
     set_remote_project_toml_ref.current = set_remote_project_toml
@@ -78,10 +81,10 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
         const view = cm.current
         if (view == null) return
         set_remote_project_toml_ref
-            .current(view.state.doc.toString())
+            .current(original_project_toml, view.state.doc.toString())
             .then(() => alert("Project TOML synchronized ✔\n\nThese parameters will be used in future exports."))
         close()
-    }, [close])
+    }, [close, original_project_toml])
 
     useEventListener(window, "open pluto project toml editor", open, [open])
 
@@ -98,11 +101,13 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
     nbpkg_ref.current = notebook.nbpkg
     const get_nbpkg = () => nbpkg_ref.current
 
+    const get_avaible_versions = (...args) => pluto_actions?.get_avaible_versions?.(...args)
+
     useLayoutEffect(() => {
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         cm.current = new EditorView({
             state: EditorState.create({
-                doc: remote_project_toml ?? "",
+                doc: "Loading...",
                 extensions: [
                     lineNumbers(),
                     highlightSpecialChars(),
@@ -151,8 +156,8 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
                             //
 
                             complete_remote_package_names(async (query) => (await pluto_actions?.send("package_completions", { query }))?.message?.results),
-                            complete_uuids(get_nbpkg, pluto_actions?.get_avaible_versions),
-                            complete_versions(get_nbpkg, pluto_actions?.get_avaible_versions),
+                            complete_uuids(get_nbpkg, get_avaible_versions),
+                            complete_versions(get_nbpkg, get_avaible_versions),
                         ],
                         activateOnCompletion: (completion) => completion.label.endsWith(" "),
 
@@ -160,9 +165,9 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
                         maxRenderedOptions: 512, // fons's magic number
                         optionClass: (c) => c.type ?? "",
                     }),
-                    keymap.of([...defaultKeymap, ...completionKeymap, ...historyKeymap]),
+                    keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
 
-                    update_button_decorations(pluto_actions?.get_avaible_versions),
+                    update_button_decorations(get_avaible_versions),
 
                     tab_help_plugin,
                 ],
@@ -177,7 +182,7 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
         <p>Here you can edit the Project.toml file for this notebook. <a href="https://pkgdocs.julialang.org/v1/compatibility/">Learn more →</a></p>
         <div class="project_toml_cm" ref=${base}></div>
 
-        <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save</button></div>
+        <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save & resolve</button></div>
     </dialog>`
 }
 
@@ -259,8 +264,6 @@ const complete_uuids =
 
         const available_versions = await get_avaible_versions({ package_name })
         if (available_versions == null) return null
-
-        console.warn({ from, to })
 
         return {
             from,
@@ -357,7 +360,6 @@ const three_stage_update = (current_entry, available_versions) => {
     })
 
     const current_semver_input = julia_semver_to_npm(current_entry.replace(/"/g, ""))
-    console.log({ current_semver_input })
 
     if (semver.validRange(current_semver_input) != null) {
         const latest_compatible_version = semver.maxSatisfying(available_versions, current_semver_input)
@@ -377,8 +379,6 @@ const UpdateWidget = ({ view, from, to, name, version, get_avaible_versions }) =
     useEffect(() => {
         get_avaible_versions({ package_name: name }).then((res) => {
             if (res == null) return
-            console.log({ r: res.versions })
-
             set_available(res.versions)
         })
     }, [name])
@@ -388,7 +388,6 @@ const UpdateWidget = ({ view, from, to, name, version, get_avaible_versions }) =
     }
 
     const stages = three_stage_update(version, available)
-    console.log({ stages })
     if (stages == null) return null
 
     return html`${stages.map(
