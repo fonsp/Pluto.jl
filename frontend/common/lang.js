@@ -10,6 +10,7 @@ import {
     ellinika,
     english,
     french,
+    italiano,
     japanese,
     nederlands,
     norsk_bokmål,
@@ -47,6 +48,9 @@ i18next.use(LanguageDetector).init({
         },
         "fr": {
             translation: without_empty_keys(french),
+        },
+        "it": {
+            translation: without_empty_keys(italiano),
         },
         "ja": {
             translation: without_empty_keys(japanese),
