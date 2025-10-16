@@ -45,7 +45,11 @@ begin
 			(String(name) => getfield(a, name), i + 1)
 		end
 	end
-
+	function Base.show(io::IO, t::ImmutableMarker)
+		print(io, typeof(t), "(")
+		show(io, t.source)
+		print(io, ")")
+	end
 end
 
 # ╔═╡ 55975e53-f70f-4b70-96d2-b144f74e7cde
@@ -84,15 +88,16 @@ begin
 		mutable_source::Vector{T}
 		length_at_time_of_creation::Int
 	end
-	AppendonlyMarker(arr) = AppendonlyMarker(arr, length(arr))
+	AppendonlyMarker(arr::Vector) = AppendonlyMarker(arr, length(arr))
+	
+	# We use a view here to ensure that if the source array got appended after creation, those newer elements are not accessible.
+	_contents(a::AppendonlyMarker) = view(a.mutable_source, 1:a.length_at_time_of_creation)
 	
 	# Poor mans vector-proxy
 	# I think this is enough for Pluto to show, and for msgpack to pack
-	function Base.size(arr::AppendonlyMarker)
-		return (arr.length_at_time_of_creation,)
-	end
-	Base.getindex(arr::AppendonlyMarker, index::Int) = arr.mutable_source[index]
-	Base.iterate(arr::AppendonlyMarker, args...) = Base.iterate(arr.mutable_source, args...)
+	Base.size(arr::AppendonlyMarker) = Base.size(_contents(arr))
+	Base.getindex(arr::AppendonlyMarker, index::Int) = Base.getindex(_contents(arr), index)
+	Base.iterate(arr::AppendonlyMarker, args...) = Base.iterate(_contents(arr), args...)
 end
 
 # ╔═╡ ef7032d1-a666-48a6-a56e-df175f5ed832

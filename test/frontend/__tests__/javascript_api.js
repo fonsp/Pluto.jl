@@ -8,6 +8,7 @@ import {
     setupPlutoBrowser,
     waitForPlutoToCalmDown,
     runAllChanged,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("JavaScript API", () => {
@@ -15,17 +16,17 @@ describe("JavaScript API", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
         await createNewNotebook(page)
     })
     afterEach(async () => {
@@ -113,7 +114,7 @@ describe("JavaScript API", () => {
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
         await waitForContentToBecome(page, `pluto-cell:nth-child(2) pluto-output`, "emitter")
-        page.waitForTimeout(2000)
+        new Promise((resolve) => setTimeout(resolve, 2000))
 
         // Send a custom event to increment value
         // Due to various optimizations this will take its time

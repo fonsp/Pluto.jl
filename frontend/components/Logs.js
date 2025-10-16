@@ -3,8 +3,9 @@ import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
 import { help_circle_icon } from "./Popup.js"
-import AnsiUp from "../imports/AnsiUp.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { t, th } from "../common/lang.js"
 
 const LOGS_VISIBLE_START = 60
 const LOGS_VISIBLE_END = 20
@@ -77,7 +78,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line, sanitize_htm
                     : [
                           ...grouped_progress_and_logs.slice(0, LOGS_VISIBLE_START).map(dot),
                           html`<pluto-log-truncated>
-                              ${grouped_progress_and_logs.length - LOGS_VISIBLE_START - LOGS_VISIBLE_END} logs not shown...
+                              ${t("t_logs_truncated", { count: grouped_progress_and_logs.length - LOGS_VISIBLE_START - LOGS_VISIBLE_END })}
                           </pluto-log-truncated>`,
                           ...grouped_progress_and_logs
                               .slice(-LOGS_VISIBLE_END)
@@ -125,7 +126,7 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
     }
 
     const mimepair_output = (pair) =>
-        html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
+        html`<${SimpleOutputBody} cell_id=${"cell_id_not_known"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
 
     useEffect(() => {
         return () => set_cm_highlighted_line(null)
@@ -143,14 +144,7 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
             >${is_progress
                 ? html`<${Progress} name="${msg[0]}" progress=${progress} />`
                 : is_stdout
-                ? html`<${MoreInfo}
-                          body=${html`${"This text was written to the "}
-                              <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a>${" while running the cell. "}<span
-                                  style="opacity: .5"
-                                  >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
-                              >`}
-                      />
-                      <${LogViewAnsiUp} value=${msg[0]} />`
+                ? html`<${MoreInfo} body=${th("t_logs_stdout")} /> <${LogViewAnsiUp} value=${msg[0]} />`
                 : html`${mimepair_output(msg)}${kwargs.map(
                       ([k, v]) => html`<pluto-log-dot-kwarg><pluto-key>${k}</pluto-key><pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>`
                   )}`}</pluto-log-dot
@@ -162,7 +156,7 @@ const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}}
     return html`<a
         class="stdout-info"
         target="_blank"
-        title="Click for more info"
+        title=${t("t_logs_click_for_more_info")}
         href="#"
         onClick=${(/** @type{Event} */ e) => {
             open_pluto_popup({
@@ -172,7 +166,7 @@ const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}}
             })
             e.preventDefault()
         }}
-        ><img alt="❔" src=${help_circle_icon} width="17"
+        ><img alt="❔" src=${help_circle_icon}
     /></a>`
 }
 
@@ -181,7 +175,7 @@ const LogViewAnsiUp = (/** @type {{value: string}} */ { value }) => {
 
     useEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        node_ref.current.innerHTML = ansi_to_html(value)
     }, [node_ref.current, value])
 
     return html`<pre ref=${node_ref}></pre>`

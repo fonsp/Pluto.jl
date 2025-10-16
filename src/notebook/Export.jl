@@ -20,7 +20,7 @@ function cdnified_html(filename::AbstractString;
     )
     should_use_bundled_cdn = version ∈ (nothing, PLUTO_VERSION) && pluto_cdn_root === nothing
     
-    something(
+    @something(
         if should_use_bundled_cdn
             try
                 original = read(project_relative_path("frontend-dist", filename), String)
@@ -36,7 +36,7 @@ function cdnified_html(filename::AbstractString;
                     URIs.resolvereference(cdn_root, url) |> string
                 end
             catch e
-                get(ENV, "JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING", "false") == "true" || @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
+                get(ENV, "JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING", "false") == "true" || @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork or development branch of Pluto." exception=(e,catch_backtrace()) maxlog=1
                 nothing
             end
         end,
@@ -94,6 +94,8 @@ function prefetch_statefile_html(statefile_js::AbstractString)
 end
 
 """
+This function takes the `editor.html` file from Pluto's source code, and uses string replacements to insert custom data. By inserting a statefile (and more), you can create an HTML file that will display a notebook when opened: this is how the Static HTML export works.
+
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
 """
 function generate_html(;
@@ -106,6 +108,9 @@ function generate_html(;
         slider_server_url_js::AbstractString="undefined", 
         binder_url_js::AbstractString=repr(default_binder_url),
         
+        recording_url_js::AbstractString="undefined",
+        recording_audio_url_js::AbstractString="undefined",
+
         disable_ui::Bool=true, 
         preamble_html_js::AbstractString="undefined",
         notebook_id_js::AbstractString="undefined", 
@@ -116,7 +121,7 @@ function generate_html(;
 
     cdnified = cdnified_editor_html(; version, pluto_cdn_root)
     
-    length(statefile_js) > 32000000 && @error "Statefile embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js)
+    (length(statefile_js) > 32000000 || length(recording_url_js) > 32000000 || length(recording_audio_url_js) > 32000000) && @error "Statefile or recording URL embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js) length(recording_url_js) length(recording_audio_url_js)
     
     parameters = """
     <script data-pluto-file="launch-parameters">
@@ -128,6 +133,8 @@ function generate_html(;
     window.pluto_binder_url = $(binder_url_js);
     window.pluto_statefile = $(statefile_js);
     window.pluto_preamble_html = $(preamble_html_js);
+    window.pluto_recording_url = $(recording_url_js);
+    window.pluto_recording_audio_url = $(recording_audio_url_js);
     </script>
     """
     

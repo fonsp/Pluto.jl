@@ -24,7 +24,7 @@ jobs:
             - name: 'Run CompatHelper'
               run: |
                   import CompatHelper
-                  CompatHelper.main()
+                  CompatHelper.main(; bump_compat_containing_equality_specifier=false)
               shell: julia --color=yes {0}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

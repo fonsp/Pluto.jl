@@ -2,6 +2,7 @@ import { html, useState, useEffect } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 import { scroll_cell_into_view } from "./Scroller.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { t, th } from "../common/lang.js"
 
 export const UndoDelete = ({ recently_deleted, on_click }) => {
     const [hidden, set_hidden] = useState(true)
@@ -19,25 +20,18 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
         }
     }, [recently_deleted])
 
-    let text = recently_deleted == null ? "" : recently_deleted.length === 1 ? "Cell deleted" : `${recently_deleted.length} cells deleted`
+    let text = recently_deleted == null ? "" : t("t_undo_delete", { count: recently_deleted.length })
 
     return html`
-        <nav
-            id="undo_delete"
-            inert=${hidden}
-            class=${cl({
-                hidden: hidden,
-            })}
-        >
+        <nav id="undo_delete" inert=${hidden} class=${cl({ hidden })}>
             ${text} (<a
                 href="#"
                 onClick=${(e) => {
                     e.preventDefault()
                     set_hidden(true)
-
                     on_click()
                 }}
-                >UNDO</a
+                ><strong>${t("t_undo_delete_link")}</strong></a
             >)
         </nav>
     `
@@ -55,15 +49,18 @@ export const RecentlyDisabledInfo = ({ notebook, recently_auto_disabled_cells })
             open_pluto_popup({
                 type: "info",
                 source_element: document.getElementById(reason[0]),
-                body: html`<a
+                body: th("t_auto_disabled", {
+                    another_cell: html`<a
                         href=${`#${cell_id}`}
                         onClick=${(e) => {
                             scroll_cell_into_view(cell_id)
                             e.preventDefault()
                             e.stopPropagation()
                         }}
-                        >Another cell</a
-                    >${` has been disabled because it also defined `}<code class="auto_disabled_variable">${reason[1]}</code>.`,
+                        >${t("t_auto_disabled_link")}</a
+                    >`,
+                    variable: html`<code class="auto_disabled_variable">${reason[1]}</code>`,
+                }),
             })
         })
     }, [recently_auto_disabled_cells])

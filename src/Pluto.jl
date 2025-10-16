@@ -14,7 +14,7 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_m
     @eval Base.Experimental.@max_methods 1
 end
 
-import FuzzyCompletions
+import Markdown
 import RelocatableFolders: @path
 const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
@@ -36,7 +36,7 @@ import Pkg
 import Scratch
 
 include_dependency("../Project.toml")
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
+const PLUTO_VERSION = pkgversion(@__MODULE__)
 const PLUTO_VERSION_STR = "v$(string(PLUTO_VERSION))"
 const JULIA_VERSION_STR = "v$(string(VERSION))"
 
@@ -50,6 +50,7 @@ include("./Configuration.jl")
 include("./evaluation/Tokens.jl")
 include("./evaluation/Throttled.jl")
 include("./runner/PlutoRunner/src/PlutoRunner.jl")
+include("./packages/temp dir in scratch.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
@@ -59,6 +60,7 @@ include("./notebook/saving and loading.jl")
 include("./notebook/frontmatter.jl")
 include("./notebook/Events.jl")
 include("./webserver/Session.jl")
+include("./webserver/timer callback.jl")
 include("./webserver/PutUpdates.jl")
 
 include("./analysis/Parse.jl")
@@ -69,7 +71,6 @@ include("./analysis/MoreAnalysis.jl")
 include("./evaluation/WorkspaceManager.jl")
 include("./evaluation/MacroAnalysis.jl")
 include("./packages/IOListener.jl")
-include("./packages/precompile_isolated.jl")
 include("./packages/Packages.jl")
 include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")
@@ -98,6 +99,44 @@ include("./precompile.jl")
 
 const pluto_boot_environment_path = Ref{String}()
 
+function julia_compat_issue(short::String)
+    if short == "1.13"
+        "Check [https://github.com/fonsp/Pluto.jl/issues/3389](https://github.com/fonsp/Pluto.jl/issues/3389)"
+    else
+        "Search [github.com/fonsp/Pluto.jl/issues](https://github.com/fonsp/Pluto.jl/issues) for `Julia $short`"
+    end
+end
+
+function warn_julia_compat()
+    if VERSION > v"1.12.9999"
+        short = "$(VERSION.major).$(VERSION.minor)"
+        msg = "# WARNING: Unsupported Julia version\nPluto (`$(PLUTO_VERSION)`) is running on a new version of Julia (`$(VERSION)`). Support for Julia $short will be added in a later Pluto release.\n\nYou can try:\n$(
+            "  1. Update Pluto using `Pkg.update(\"Pluto\")`.\n" *
+            "  1. If there is no newer version of Pluto yet, then you can **help us develop it**! _Julia $short compatibility takes a lot of work, and we would really appreciate your help! $(julia_compat_issue(short)) to see what still needs to be done. Not all compatibility issues are known – play around and try running `Pkg.test(\"Pluto\")`_.\n\n")$(
+            VERSION.prerelease === () && VERSION.build === () ?
+            "" :
+            # if using a build/prerelease, then the user is using a future Julia version that we don't support yet.
+            "!!! note\n\tPreview versions of Julia are not fully supported by Pluto.\n\n"
+        )"
+        
+        println()
+        println()
+        display(Markdown.parse(msg))
+        println()
+        println()
+    end
+    
+    bad_depots = filter(d -> !isabspath(expanduser(d)), DEPOT_PATH)
+    if !isempty(bad_depots)
+        @error """Pluto: The provided depot path is not an absolute path. Pluto will not be able to run correctly.
+        
+        Did you recently change the DEPOT path setting? Change your setting to use an absolute path.
+        
+        Do you not know what this means? Please get in touch! https://github.com/fonsp/Pluto.jl/issues
+        """ bad_depots DEPOT_PATH
+    end
+end
+
 function __init__()
     pluto_boot_environment_name = "pluto-boot-environment-$(VERSION)-$(PLUTO_VERSION)"
     pluto_boot_environment_path[] = Scratch.@get_scratch!(pluto_boot_environment_name)
@@ -125,17 +164,9 @@ function __init__()
             # create empty file to indicate that we've shown the banner
             write(fn, "");
         end
-
-        bad_depots = filter(d -> !isabspath(expanduser(d)), DEPOT_PATH)
-        if !isempty(bad_depots)
-            @error """Pluto: The provided depot path is not an absolute path. Pluto will not be able to run correctly.
-            
-            Did you recently change the DEPOT path setting? Change your setting to use an absolute path.
-            
-            Do you not know what this means? Please get in touch! https://github.com/fonsp/Pluto.jl/issues
-            """ bad_depots DEPOT_PATH
-        end
     end
+    
+    warn_julia_compat()
 end
 
 end

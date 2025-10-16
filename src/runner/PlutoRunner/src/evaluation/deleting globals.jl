@@ -136,16 +136,23 @@ Return whether the function has any methods left after deletion.
 function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
-    methods_table = typeof(f).name.mt
+    
     deleted_sigs = Set{Type}()
-    Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromcell(method, cell_id) && method.deleted_world == alive_world_val
+    
+    function handle_method(method)
+        if isfromcell(method, cell_id) && !is_method_deleted(method)
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
-
+    
+    if VERSION < v"1.12.0-0"
+        methods_table = typeof(f).name.mt
+        Base.visit(handle_method, methods_table) # iterates through all methods of `f`, including overridden ones            
+    else
+        foreach(handle_method, methods(f))
+    end
     
     if VERSION < v"1.12.0-0"
         # not necessary in Julia after https://github.com/JuliaLang/julia/pull/53415 💛
@@ -200,7 +207,16 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-const alive_world_val = methods(Base.sqrt).ms[1].deleted_world # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
+const alive_world_val = typemax(UInt) # This is true at least for julia 1.10 and 1.11, and it's not applicable for julia 1.12. See issue https://github.com/fonsp/Pluto.jl/issues/3259 for more details. # UInt and not UInt64 because of https://github.com/JuliaLang/julia/pull/58291/files#diff-882927c6e612596e22406ae0d06adcee88a9ec05e8b61ad81b48942e2cb266e9 and https://github.com/JuliaLang/julia/blob/422d05d1f8c185ad636deb0ab181aa41e3d424ea/src/jltypes.c#L3237
+
+
+# Check if a method has already been deleted/disabled
+is_method_deleted(method::Method) = @static if VERSION < v"1.12.0-beta4"
+    method.deleted_world !== alive_world_val
+else
+    # The dispatch status is set to 0 when a method is deleted. See the file `src/gc.f` changes in PR https://github.com/JuliaLang/julia/pull/58291 for more details.
+    method.dispatch_status == 0
+end
 
 
 

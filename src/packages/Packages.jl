@@ -4,7 +4,7 @@ import .PkgCompat
 import .PkgCompat: select, is_stdlib
 import Logging
 import LoggingExtras
-import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
+import GracefulPkg
 
 const tiers = unique((
     Pkg.PRESERVE_ALL_INSTALLED,
@@ -27,6 +27,7 @@ function use_plutopkg(topology::NotebookTopology)
         Symbol("Pkg.API.develop") ∈ node.references ||
         Symbol("Pkg.add") ∈ node.references ||
         Symbol("Pkg.API.add") ∈ node.references ||
+        Symbol("TestEnv.activate") ∈ node.references ||
         # https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
         Symbol("quickactivate") ∈ node.references ||
         Symbol("@quickactivate") ∈ node.references ||
@@ -40,10 +41,6 @@ PkgCompat.manifest_file(notebook::Notebook) = PkgCompat.manifest_file(PkgCompat.
 
 
 """
-```julia
-sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
-```
-
 Update the notebook package environment to match the notebook's code. This will:
 - Add packages that should be added (because they are imported in a cell).
 - Remove packages that are no longer needed.
@@ -57,7 +54,7 @@ function sync_nbpkg_core(
     on_terminal_output::Function=((args...) -> nothing), 
     cleanup_iolistener::Ref{Function}=Ref{Function}(_default_cleanup),
     lag::Real=0,
-    compiler_options::CompilerOptions=CompilerOptions(),
+    precompile_session::ServerSession,
 )
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
@@ -165,25 +162,15 @@ function sync_nbpkg_core(
                         
                         should_precompile_later = true
                         
-                        # First, we instantiate. This will:
-                        # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
-                        # - If no Manifest exists, resolve the environment and create one.
-                        # - Start downloading all registered packages, artifacts.
-                        # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
-                        # - Precompile all packages.                    
-                        Status.report_business!(pkg_status, :instantiate1) do
-                            with_auto_fixes(notebook) do
-                                _instantiate(notebook, iolistener)
+                        # Resolve the package environment, using GracefulPkg.jl to solve any issues
+                        Status.report_business!(pkg_status, :resolve) do
+                            with_auto_fixes(notebook, iolistener) do
+                                _resolve(notebook, iolistener)
                             end
                         end
                         
-                        # Second, we resolve. This will:
-                        # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
-                        # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
-                        Status.report_business!(pkg_status, :resolve) do
-                            with_auto_fixes(notebook) do
-                                _resolve(notebook, iolistener)
-                            end
+                        Status.report_business!(pkg_status, :instantiate1) do
+                            _instantiate(notebook, iolistener)
                         end
                     end
                     
@@ -271,7 +258,7 @@ function sync_nbpkg_core(
                     
                     if should_precompile_later
                         Status.report_business!(pkg_status, :precompile) do
-                            _precompile(notebook, iolistener, compiler_options)
+                            _precompile(precompile_session, notebook, iolistener)
                         end
                     end
 
@@ -345,7 +332,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 on_terminal_output=iocallback, 
                 cleanup_iolistener,
                 lag=session.options.server.simulated_pkg_lag,
-                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
+                precompile_session=session,
             )
 		end
 
@@ -380,7 +367,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
         showerror(stderr, e, bt)
         
         
-		error_text = e isa PrecompilationFailedException ? e.msg : sprint(showerror, e, bt)
+		error_text = e isa WorkspaceManager.PrecompilationFailedException ? e.msg : sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
             old = get(notebook.nbpkg_terminal_outputs, p, "")
 			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\e[1mPkg error!\e[22m\n" * error_text
@@ -450,23 +437,20 @@ function _instantiate(notebook::Notebook, iolistener::IOListener)
     notebook.nbpkg_ctx_instantiated = true
 end
 
-function _precompile(notebook::Notebook, iolistener::IOListener, compiler_options::CompilerOptions)
+function _precompile(session::ServerSession, notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
         phasemessage(iolistener, "Precompiling")
         @debug "PlutoPkg: Precompiling" notebook.path 
-        
-        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
-        precompile_isolated(env_dir; 
-            io=iolistener.buffer,
-            compiler_options,
-        )
+        success = WorkspaceManager.precompile_nbpkg((session, notebook); io=iolistener.buffer)
+        if !success
+            println(iolistener.buffer, "Precompilation skipped because the process has shut down.")
+        end
     end
     notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
 end
 
 function _resolve(notebook::Notebook, iolistener::IOListener)
-    startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
         phasemessage(iolistener, "Resolving")
         @debug "PlutoPkg: Resolving" notebook.path 
@@ -475,35 +459,41 @@ function _resolve(notebook::Notebook, iolistener::IOListener)
 end
 
 
+const gracefulpkg_strats = filter!(collect(GracefulPkg.DEFAULT_STRATEGIES)) do strat
+    !(strat isa GracefulPkg.StrategyRemoveProject)
+end
+
+
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
-function with_auto_fixes(f::Function, notebook::Notebook)
-    try
-        f()
-    catch e
-        @info "Operation failed. Updating registries and trying again..." exception=e
-        
-        PkgCompat.update_registries(; force=true)
-        try
-            f()
-        catch e
-            @warn "Operation failed. Removing Manifest and trying again..." exception=e
-            
-            reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-            notebook.nbpkg_ctx_instantiated = false
+function with_auto_fixes(f::Function, notebook::Notebook, iolistener::IOListener)
+    env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+    
+    is_first = Ref(true)
+    report = 
+    with_io_setup(notebook, iolistener) do
+        GracefulPkg.gracefully(; env_dir, throw=false, strategies=gracefulpkg_strats) do
             try
+                if !is_first[]
+                    PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
+                end
+
                 f()
-            catch e
-                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
-                
-                reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
-                notebook.nbpkg_ctx_instantiated = false
-                
-                f()
+            finally
+                is_first[] = false
             end
         end
+    end
+
+    steps = report.strategy_reports
+    
+    if any(x -> x.strategy isa GracefulPkg.StrategyLoosenCompat, steps)
+        notebook.nbpkg_ctx_instantiated = false
+    end
+    
+    if !GracefulPkg.is_success(report)
+        throw(GracefulPkg.NothingWorked(report))
     end
 end
 
@@ -540,7 +530,7 @@ function update_nbpkg_core(
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
     cleanup_iolistener::Ref{Function}=Ref{Function}(default_cleanup),
-    compiler_options::CompilerOptions=CompilerOptions(),
+    precompile_session::ServerSession,
 )
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
@@ -565,13 +555,10 @@ function update_nbpkg_core(
                 PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
                 if !notebook.nbpkg_ctx_instantiated
-                    with_auto_fixes(notebook) do
-                        _instantiate(notebook, iolistener)
-                    end
-                
-                    with_auto_fixes(notebook) do
+                    with_auto_fixes(notebook, iolistener) do
                         _resolve(notebook, iolistener)
                     end
+                    _instantiate(notebook, iolistener)
                 end
 
                 with_io_setup(notebook, iolistener) do
@@ -598,7 +585,7 @@ function update_nbpkg_core(
                 if should_instantiate_again
                     # Status.report_business!(pkg_status, :instantiate2) do
                     _instantiate(notebook, iolistener)
-                    _precompile(notebook, iolistener, compiler_options)
+                    _precompile(precompile_session, notebook, iolistener)
                     # end
                 end
 
@@ -645,7 +632,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 level, 
                 on_terminal_output=iocallback,
                 cleanup_iolistener,
-                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
+                precompile_session=session,
             )
 		end
 
@@ -712,7 +699,12 @@ end
 
 function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
-    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true, :sneaky_enable_tty => true)) do
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(
+        iolistener.buffer, 
+        :color => true, 
+        :force_fancyprint => true, # https://github.com/JuliaLang/julia/pull/58887
+        :sneaky_enable_tty => true, # fallback for the flag above
+    )) do
         withinteractive(false) do
             f()
         end

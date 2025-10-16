@@ -1,5 +1,5 @@
 import Base64
-
+import UUIDs: UUID
 
 const registered_bond_elements = Dict{Symbol, Any}()
 
@@ -79,7 +79,15 @@ struct Bond
     element::Any
     defines::Symbol
     unique_id::String
-    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, String(rand('a':'z', 12))) : error("""Cannot bind `$defines` to an object of type $(typeof(element)). Use `@bind` like this:
+ 
+    @bind $defines Slider(1:10)
+ 
+where `Slider(1:10)` can be any Pluto-compatible input widget, like those from PlutoUI.jl
+
+---
+
+💡 Are you writing your own bind widget? Make sure that it is an html-showable object: an object of type T for which Base.show(io::IO, ::MIME"text/html", x::T) is defined.""")
 end
 
 function create_bond(element, defines::Symbol, cell_id::UUID)
@@ -89,6 +97,7 @@ function create_bond(element, defines::Symbol, cell_id::UUID)
 end
 
 function Base.show(io::IO, m::MIME"text/html", bond::Bond)
+    # The attribute unique_id has no direct purpose. The only purpose is to force a re-render when it changes. It changes when the @bind expression re-runs (not just on macroexpand).
     Markdown.withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
         show(io, m, bond.element)
     end
@@ -133,11 +142,12 @@ end
 
 """
 Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value.
-Also turns off JuliaFormatter formatting to avoid issues with the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting
+Also turns off Runic and JuliaFormatter formatting to avoid issues with the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting or https://github.com/fredrikekre/Runic.jl?tab=readme-ov-file#toggle-formatting
 """
-const fake_bind = """macro bind(def, element)
+const fake_bind = """
+macro bind(def, element)
     #! format: off
-    quote
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = \$(esc(element))
         global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)

@@ -1,6 +1,5 @@
 import HTTP
 import Markdown: htmlesc
-import UUIDs: UUID
 import Pkg
 import MIMEs
 
@@ -24,7 +23,7 @@ const day = let
     day = 24hour
 end
 
-function default_404(req = nothing)
+function default_404_response(req = nothing)
     HTTP.Response(404, "Not found!")
 end
 
@@ -41,7 +40,7 @@ function asset_response(path; cacheable::Bool=false)
         cacheable && HTTP.setheader(response, "Cache-Control" => "public, max-age=$(30day), immutable")
         response
     else
-        default_404()
+        default_404_response()
     end
 end
 
@@ -73,19 +72,29 @@ function notebook_response(notebook; home_url="./", as_redirect=true)
     end
 end
 
-const found_is_pluto_dev = Ref{Union{Nothing,Bool}}(nothing)
+const found_is_pluto_dev = Ref{Union{Bool, Nothing}}()
+"""
+Is the Pluto package `dev`ed? Returns `false` for normal Pluto installation from the registry.
+"""
 function is_pluto_dev()
     if found_is_pluto_dev[] !== nothing
         return found_is_pluto_dev[]
     end
+
     found_is_pluto_dev[] = try
-        deps = Pkg.dependencies()
+        # is the package located in .julia/packages ?
+        if startswith(pkgdir(@__MODULE__), joinpath(get(DEPOT_PATH, 1, "zzz"), "packages"))
+            false
+        else
+            deps = Pkg.dependencies()
 
-        p_index = findfirst(p -> p.name == "Pluto", deps)
-        p = deps[p_index]
+            p_index = findfirst(p -> p.name == "Pluto", deps)
+            p = deps[p_index]
 
-        p.is_tracking_path
-    catch
+            p.is_tracking_path
+        end
+    catch e
+        @debug "is_pluto_dev failed" e
         false
     end
 end

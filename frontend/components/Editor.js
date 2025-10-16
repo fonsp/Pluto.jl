@@ -3,7 +3,7 @@ import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
+import { empty_notebook_state, is_editor_embedded_inside_editor, set_disable_ui_css } from "../editor.js"
 import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
@@ -12,7 +12,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
-import { DropRuler } from "./DropRuler.js"
+import { DropRuler, get_drop_index_for_paste } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
@@ -40,13 +40,16 @@ import { IsolatedCell } from "./Cell.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
-import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
+import { ViewCodeOrLaunchBackendButtons } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
 import { ProjectTomlEditor } from "./ProjectTomlEditor.js"
+import { LanguagePicker } from "./LanguagePicker.js"
+import { getCurrentLanguage, t, th } from "../common/lang.js"
+import { PlutoLandUpload } from "./PlutoLandUpload.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -94,7 +97,17 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
-    bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
+    inspecting_hidden_code: state.inspecting_hidden_code,
+    bonds_disabled: !(
+        // initializing, no answer yet
+        (
+            state.initializing ||
+            // connected to regular pluto server
+            state.connected ||
+            // connected to slider server
+            (launch_params.slider_server_url != null && (state.slider_server?.connecting || state.slider_server?.interactive))
+        )
+    ),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
@@ -163,13 +176,13 @@ const first_true_key = (obj) => {
  *  running: boolean,
  *  errored: boolean,
  *  runtime: number?,
- *  downstream_cells_map: { string: [string]},
- *  upstream_cells_map: { string: [string]},
+ *  downstream_cells_map: { [variable: string]: [string]},
+ *  upstream_cells_map: { [variable: string]: [string]},
  *  precedence_heuristic: number?,
  *  depends_on_disabled_cells: boolean,
  *  depends_on_skipped_cells: boolean,
  *  output: {
- *      body: string,
+ *      body: string | Object,
  *      persist_js_state: boolean,
  *      last_run_timestamp: number,
  *      mime: string,
@@ -184,9 +197,14 @@ const first_true_key = (obj) => {
 /**
  * @typedef CellDependencyData
  * @property {string} cell_id
- * @property {Map<string, Array<string>>} downstream_cells_map A map where the keys are the variables *defined* by this cell, and a value is the list of cell IDs that reference a variable.
- * @property {Map<string, Array<string>>} upstream_cells_map A map where the keys are the variables *referenced* by this cell, and a value is the list of cell IDs that define a variable.
+ * @property {Record<string, Array<string>>} downstream_cells_map A map where the keys are the variables *defined* by this cell, and a value is the list of cell IDs that reference a variable.
+ * @property {Record<string, Array<string>>} upstream_cells_map A map where the keys are the variables *referenced* by this cell, and a value is the list of cell IDs that define a variable.
  * @property {number} precedence_heuristic
+ */
+
+/**
+ * @typedef CellDependencyGraph
+ * @type {{ [uuid: string]: CellDependencyData }}
  */
 
 /**
@@ -248,7 +266,7 @@ const first_true_key = (obj) => {
  *  last_hot_reload_time: number,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData },
- *  cell_dependencies: { [uuid: string]: CellDependencyData },
+ *  cell_dependencies: CellDependencyGraph,
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
@@ -268,6 +286,7 @@ export const url_logo_small = get_included_external_source("pluto-logo-small")?.
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
  * preamble_element: preact.ReactElement?,
+ * pluto_editor_element: HTMLElement,
  * }}
  */
 
@@ -283,6 +302,7 @@ export const url_logo_small = get_included_external_source("pluto-logo-small")?.
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
+ * inspecting_hidden_code: boolean,
  * backend_launch_phase: ?number,
  * backend_launch_logs: ?string,
  * binder_session_url: ?string,
@@ -326,6 +346,7 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
+            inspecting_hidden_code: false,
             backend_launch_phase:
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
@@ -364,7 +385,9 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.real_actions = {
-            get_notebook: () => this?.state?.notebook || {},
+            get_notebook: () => this?.state?.notebook ?? {},
+            get_session_options: () => this.client.session_options,
+            get_launch_params: () => this.props.launch_params,
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
@@ -569,10 +592,10 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
-            confirm_delete_multiple: async (verb, cell_ids) => {
-                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+            confirm_delete_multiple: async (cell_ids) => {
+                if (cell_ids.length <= 1 || confirm(t("t_confirm_delete_multiple_cells", { count: cell_ids.length }))) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                        if (confirm(t("t_confirm_delete_multiple_interrupt_notebook"))) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
@@ -669,7 +692,7 @@ export class Editor extends Component {
                     notebook.bonds[name] = new_bond
                 })
             },
-            reshow_cell: (cell_id, objectid, dim) => {
+            reshow_cell: (cell_id, objectid, dim) =>
                 this.client.send(
                     "reshow_cell",
                     {
@@ -679,8 +702,7 @@ export class Editor extends Component {
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
-                )
-            },
+                ),
             request_js_link_response: (cell_id, link_id, input) => {
                 return this.client
                     .send(
@@ -833,7 +855,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                                 message.patches,
                                 empty_notebook_state({ notebook_id: this.state.notebook.notebook_id })
                             ).catch((e) => {
-                                alert("Oopsie!! please refresh your browser and everything will be alright!")
+                                alert(t("t_oopsie_pls_refresh"))
                                 throw e
                             })
                         } else if (message.patches.length !== 0) {
@@ -882,6 +904,8 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 })
             } catch (e) {}
 
+            if (this.props.launch_params.disable_ui !== true) check_access(this.client)
+
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
             // @ts-ignore
@@ -898,8 +922,11 @@ all patches: ${JSON.stringify(patches, null, 1)}
             this.setState({
                 initializing: false,
                 static_preview: false,
+                inspecting_hidden_code: false,
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
+
+            this.updateLang()
 
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
@@ -965,7 +992,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             }).then(on_establish_connection)
 
         this.on_disable_ui = () => {
-            set_disable_ui_css(this.state.disable_ui)
+            set_disable_ui_css(this.state.disable_ui, props.pluto_editor_element)
 
             // Pluto has three modes of operation:
             // 1. (normal) Connected to a Pluto notebook.
@@ -1172,7 +1199,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                if (!confirm(t("t_confirm_move_file", { old_path, new_path, interpolation: { escapeValue: false } }))) {
                     throw new Error("Declined by user")
                 }
             }
@@ -1222,9 +1249,9 @@ all patches: ${JSON.stringify(patches, null, 1)}
             window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
-        this.delete_selected = (verb) => {
+        this.delete_selected = () => {
             if (this.state.selected_cells.length > 0) {
-                this.actions.confirm_delete_multiple(verb, this.state.selected_cells)
+                this.actions.confirm_delete_multiple(this.state.selected_cells)
                 return true
             }
         }
@@ -1251,7 +1278,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             }
         }
 
-        this.serialize_selected = (cell_id = null) => {
+        this.serialize_selected = (/** @type {string?} */ cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
             if (cells_to_serialize.length) {
                 return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
@@ -1304,7 +1331,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             } else if (["BracketLeft", "BracketRight"].includes(e.code) && (is_mac_keyboard ? e.altKey && e.metaKey : e.ctrlKey && e.shiftKey)) {
                 this.fold_selected(e.code === "BracketLeft")
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                if (this.delete_selected("Delete")) {
+                if (this.delete_selected()) {
                     e.preventDefault()
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
@@ -1320,29 +1347,33 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
                 const fold_prefix = is_mac_keyboard ? `⌥${and}⌘` : `Ctrl${and}Shift`
 
+                const or = t("t_key_or")
+
                 alert(
                     `
-⇧${and}Enter:   run cell
-${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
-${ctrl_or_cmd_name}${and}S:   submit all changes
-Delete or Backspace:   delete empty cell
+⇧${and}Enter:   ${t("t_key_run")}
+${ctrl_or_cmd_name}${and}Enter:   ${t("t_key_run_add")}
+${ctrl_or_cmd_name}${and}S:   ${t("t_key_submit_all_changes")}
+Delete ${or} Backspace:   ${t("t_key_delete_or_backspace")}
 
-PageUp or fn${and}↑:   jump to cell above
-PageDown or fn${and}↓:   jump to cell below
-${alt_or_options_name}${and}↑:   move line/cell up
-${alt_or_options_name}${and}↓:   move line/cell down
+PageUp ${or} fn${and}↑:   ${t("t_key_page_up")}
+PageDown ${or} fn${and}↓:   ${t("t_key_page_down")}
+${control_name}${and}click:   ${t("t_key_ctrl_click")}
+${alt_or_options_name}${and}↑:   ${t("t_key_alt_up")}
+${alt_or_options_name}${and}↓:   ${t("t_key_alt_down")}
 
-${control_name}${and}M:   toggle markdown
-${fold_prefix}${and}[:   hide cell code
-${fold_prefix}${and}]:   show cell code
-${ctrl_or_cmd_name}${and}Q:   interrupt notebook
+${control_name}${and}/:   ${t("t_key_ctrl_slash")}
+${control_name}${and}M:   ${t("t_key_ctrl_m")}
+${fold_prefix}${and}[:   ${t("t_key_ctrl_m")}
+${fold_prefix}${and}]:   ${t("t_key_ctrl_m")}
+${control_name}${and}Q:   ${t("t_key_ctrl_q")}
 
-Select multiple cells by dragging a selection box from the space between cells.
-${ctrl_or_cmd_name}${and}C:   copy selected cells
-${ctrl_or_cmd_name}${and}X:   cut selected cells
-${ctrl_or_cmd_name}${and}V:   paste selected cells
+${t("t_key_selection_description")}
+${ctrl_or_cmd_name}${and}C:   ${t("t_key_ctrl_c")}
+${ctrl_or_cmd_name}${and}X:   ${t("t_key_ctrl_x")}
+${ctrl_or_cmd_name}${and}V:   ${t("t_key_ctrl_v")}
 
-The notebook file saves every time you run a cell.`
+${t("t_key_autosave_description")}`
                 )
                 e.preventDefault()
             } else if (e.key === "Escape") {
@@ -1404,7 +1435,8 @@ The notebook file saves every time you run a cell.`
             if (topaste) {
                 const deserializer = detect_deserializer(topaste)
                 if (deserializer != null) {
-                    this.actions.add_deserialized_cells(topaste, -1, deserializer)
+                    const drop_index = get_drop_index_for_paste(this.props.pluto_editor_element)
+                    this.actions.add_deserialized_cells(topaste, drop_index, deserializer)
                     e.preventDefault()
                 }
             }
@@ -1437,6 +1469,12 @@ The notebook file saves every time you run a cell.`
         })
     }
 
+    updateLang() {
+        const lang = this.state.notebook.metadata?.frontmatter?.language
+        document.documentElement.lang = lang ?? getCurrentLanguage()
+        console.error("Updated lang to", document.documentElement.lang)
+    }
+
     componentDidMount() {
         const lp = this.props.launch_params
         if (this.state.static_preview) {
@@ -1452,12 +1490,13 @@ The notebook file saves every time you run a cell.`
                     : // @ts-ignore
                       `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
             )
+            this.updateLang()
         } else {
             this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
         }
     }
 
-    componentDidUpdate(old_props, old_state) {
+    componentDidUpdate(/** @type {EditorProps} */ old_props, /** @type {EditorState} */ old_state) {
         //@ts-ignore
         window.editor_state = this.state
         //@ts-ignore
@@ -1469,7 +1508,7 @@ The notebook file saves every time you run a cell.`
             update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
         }
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
-            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
+            if (!is_editor_embedded_inside_editor(old_props.pluto_editor_element)) document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
         this.maybe_send_queued_bond_changes()
@@ -1492,13 +1531,17 @@ The notebook file saves every time you run a cell.`
         if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
             console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
         }
+
+        if (old_state.notebook.metadata?.frontmatter?.language !== new_state.notebook.metadata?.frontmatter?.language) {
+            this.updateLang()
+        }
     }
 
     componentWillUpdate(new_props, new_state) {
         this.cached_status = statusmap(new_state, this.props.launch_params)
 
         Object.entries(this.cached_status).forEach(([k, v]) => {
-            document.body.classList.toggle(k, v === true)
+            new_props.pluto_editor_element.classList.toggle(k, v === true)
         })
     }
 
@@ -1532,7 +1575,6 @@ The notebook file saves every time you run a cell.`
                 </${PlutoActionsContext.Provider}>
             `
         }
-
         const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
 
         const restart = async (maybe_confirm = false) => {
@@ -1541,7 +1583,9 @@ The notebook file saves every time you run a cell.`
                 !warn_about_untrusted_code ||
                 !maybe_confirm ||
                 source == null ||
-                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+                confirm(
+                    `${th("t_safe_preview_confirm_before_danger")} ${t("t_safe_preview_confirm_before")}\n\n${source}\n\n${t("t_safe_preview_confirm_after")}`
+                )
             ) {
                 await this.actions.update_notebook((notebook) => {
                     delete notebook.metadata.risky_file_source
@@ -1561,14 +1605,13 @@ The notebook file saves every time you run a cell.`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
-            
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     ${
                         status.static_preview && status.offer_local
                             ? html`<button
-                                  title="Go back"
+                                  title=${t("t_navigate_to_previous_page")}
                                   onClick=${() => {
                                       history.back()
                                   }}
@@ -1617,7 +1660,9 @@ The notebook file saves every time you run a cell.`
                             ${
                                 this.state.extended_components.CustomHeader == null &&
                                 (status.binder
-                                    ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    ? html`<pluto-filepicker
+                                          ><a href=${this.export_url("notebookfile")} target="_blank">${t("t_save_notebook_ellipsis")}</a></pluto-filepicker
+                                      >`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -1627,33 +1672,34 @@ The notebook file saves every time you run a cell.`
                                           suggest_new_file=${{
                                               base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                           }}
-                                          placeholder="Save notebook..."
-                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
+                                          placeholder=${t("t_save_notebook_ellipsis")}
+                                          button_label=${notebook.in_temp_dir
+                                              ? t("t_save_notebook_button_label_when_currently_not_saved")
+                                              : t("t_save_notebook_button_label_when_currently_saved")}
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
                             <div id="process_status">${
                                 status.binder && status.loading
-                                    ? "Loading binder..."
+                                    ? t("t_process_status_loading_binder")
                                     : statusval === "disconnected"
-                                    ? "Reconnecting..."
+                                    ? t("t_process_status_reconnecting")
                                     : statusval === "loading"
-                                    ? "Loading..."
+                                    ? t("t_process_status_loading")
                                     : statusval === "nbpkg_restart_required"
-                                    ? html`${restart_button("Restart notebook")}${" (required)"}`
+                                    ? th("t_process_restart_action_required", { restart_notebook: restart_button(t("t_process_restart_action")) })
                                     : statusval === "nbpkg_restart_recommended"
-                                    ? html`${restart_button("Restart notebook")}${" (recommended)"}`
+                                    ? th("t_process_restart_action_recommended", { restart_notebook: restart_button(t("t_process_restart_action")) })
                                     : statusval === "process_restarting"
-                                    ? "Process exited — restarting..."
+                                    ? th("t_process_restarting")
                                     : statusval === "process_dead"
-                                    ? html`${"Process exited — "}${restart_button("restart")}`
+                                    ? th("t_process_exited_restart_action", { restart_action_short: restart_button(t("t_process_restart_action_short")) })
                                     : statusval === "process_waiting_for_permission"
-                                    ? html`${restart_button("Run notebook code", true)}`
+                                    ? restart_button(t("t_process_give_permission_to_run_code"), true)
                                     : null
                             }</div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
+                            <button class="toggle_export" title=${t("t_export_action_ellipsis")} onClick=${() =>
+            this.setState({ export_menu_open: !export_menu_open })}><span></span></button>
                         </nav>
                     </header>
                     
@@ -1683,7 +1729,7 @@ The notebook file saves every time you run a cell.`
                                 })
                             )}
                     />
-                    <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
+                    <${ViewCodeOrLaunchBackendButtons} editor=${this} launch_params=${launch_params} status=${status} />
                     <${FrontMatterInput}
                         filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
@@ -1698,6 +1744,10 @@ The notebook file saves every time you run a cell.`
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
+                    />
+                    <${PlutoLandUpload}
+                        notebook_id=${notebook.notebook_id}
+                        notebookexport_url=${this.export_url("notebookexport")}
                     />
                     ${this.props.preamble_element}
                     <${Main}>
@@ -1714,6 +1764,7 @@ The notebook file saves every time you run a cell.`
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
+                            inspecting_hidden_code=${status.inspecting_hidden_code}
                             is_process_ready=${this.is_process_ready()}
                             process_waiting_for_permission=${status.process_waiting_for_permission}
                             sanitize_html=${status.sanitize_html}
@@ -1723,31 +1774,32 @@ The notebook file saves every time you run a cell.`
                             selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => this.setState({ scroller: enabled })}
                             serialize_selected=${this.serialize_selected}
+                            pluto_editor_element=${this.props.pluto_editor_element}
                         />
-                        ${
-                            this.state.disable_ui ||
-                            html`<${SelectionArea}
-                                cell_order=${this.state.notebook.cell_order}
-                                set_scroller=${(enabled) => {
-                                    this.setState({ scroller: enabled })
-                                }}
-                                on_selection=${(selected_cell_ids) => {
-                                    // @ts-ignore
-                                    if (
-                                        selected_cell_ids.length !== this.state.selected_cells.length ||
-                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                    ) {
-                                        this.setState({
-                                            selected_cells: selected_cell_ids,
-                                        })
-                                    }
-                                }}
-                            />`
-                        }
                         <${NonCellOutput} 
                             notebook_id=${this.state.notebook.notebook_id} 
                             environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
+                    ${
+                        this.state.disable_ui ||
+                        html`<${SelectionArea}
+                            cell_order=${this.state.notebook.cell_order}
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }}
+                            on_selection=${(selected_cell_ids) => {
+                                // @ts-ignore
+                                if (
+                                    selected_cell_ids.length !== this.state.selected_cells.length ||
+                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                ) {
+                                    this.setState({
+                                        selected_cells: selected_cell_ids,
+                                    })
+                                }
+                            }}
+                        />`
+                    }
                     <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
@@ -1783,12 +1835,15 @@ The notebook file saves every time you run a cell.`
                     <${SlideControls} />
                     <footer>
                         <div id="info">
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                            <span style="flex: 1"></span>
+                            <${LanguagePicker} />
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
+                            <span style="flex: 1 1 0%; min-width: 5ch;"></span>
                             <form id="feedback" action="#" method="post">
-                                <label for="opinion">🙋 How can we make <a href="https://plutojl.org/" target="_blank">Pluto.jl</a> better?</label>
-                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                                <button>Send</button>
+                                <label for="opinion">${th("t_how_can_we_improve", {
+                                    pluto: html`<a href="https://plutojl.org/" target="_blank">Pluto.jl</a>`,
+                                })}</label>
+                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder=${t("t_instant_feedback_ellipsis")} />
+                                <button>${t("t_instant_feedback_send")}</button>
                             </form>
                         </div>
                     </footer>
@@ -1799,10 +1854,26 @@ The notebook file saves every time you run a cell.`
     }
 }
 
+const check_access = (/** @type {import("../common/PlutoConnection.js").PlutoConnection} */ client) => {
+    // 2028 is the current domain expiry date for fonsp.com
+    if (new Date().getFullYear() < 2028 && window.location.hostname === "localhost") {
+        fetch("https://pluto-available.fonsp.com/", { priority: "low", headers: { "x-pluto-version": client.version_info.pluto } })
+            .then((res) => res.json())
+            .then(({ blocked, message }) => {
+                if (blocked) {
+                    document.body.innerHTML = ""
+                    client.kill(false)
+                }
+                if (message) alert(message)
+            })
+            .catch(() => {})
+    }
+}
+
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
 // TODO This is now stored locally, lets store it somewhere central 😈
-export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
+export const update_stored_recent_notebooks = (recent_path, /** @type {string | undefined} */ also_delete = undefined) => {
     if (recent_path != null && recent_path !== default_path) {
         const stored_string = localStorage.getItem("recent notebooks")
         const stored_list = stored_string != null ? JSON.parse(stored_string) : []

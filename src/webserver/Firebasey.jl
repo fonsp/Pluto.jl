@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.12
+# v0.20.4
 
 using Markdown
 using InteractiveUtils
@@ -139,19 +139,19 @@ md"### =="
   ╠═╡ =#
 
 # ╔═╡ 732fd744-acdb-4507-b1de-6866ec5563dd
-Base.hash(a::AddPatch) = hash([AddPatch, a.value, a.path])
+Base.hash(a::AddPatch, h::UInt) = hash((AddPatch, a.value, a.path), h)
 
 # ╔═╡ 17606cf6-2d0f-4245-89a3-746ad818a664
-Base.hash(a::RemovePatch) = hash([RemovePatch, a.path])
+Base.hash(a::RemovePatch, h::UInt) = hash((RemovePatch, a.path), h)
 
 # ╔═╡ c7ac7d27-7bf9-4209-8f3c-e4d52c543e29
-Base.hash(a::ReplacePatch) = hash([ReplacePatch, a.value, a.path])
+Base.hash(a::ReplacePatch, h::UInt) = hash((ReplacePatch, a.value, a.path), h)
 
 # ╔═╡ 042f7788-e996-430e-886d-ffb4f70dea9e
-Base.hash(a::CopyPatch) = hash([CopyPatch, a.from, a.path])
+Base.hash(a::CopyPatch, h::UInt) = hash((CopyPatch, a.from, a.path), h)
 
 # ╔═╡ 9d2dde5c-d404-4fbc-b8e0-5024303c8052
-Base.hash(a::MovePatch) = hash([MovePatch, a.from, a.path])
+Base.hash(a::MovePatch, h::UInt) = hash((MovePatch, a.from, a.path), h)
 
 # ╔═╡ f649f67c-aab0-4d35-a799-f398e5f3ecc4
 function Base.:(==)(a::AddPatch, b::AddPatch)
@@ -1036,6 +1036,16 @@ macro track(expr)
 end
   ╠═╡ =#
 
+# ╔═╡ db99e5c9-d8cd-4314-90e2-99976e81283d
+#=╠═╡
+@track example_patches[1] == example_patches[2]
+  ╠═╡ =#
+
+# ╔═╡ 2b342873-916c-4efb-b62c-b46a96bd6a2d
+#=╠═╡
+@track example_patches[2] == example_patches[2]
+  ╠═╡ =#
+
 # ╔═╡ 7b8ab89b-bf56-4ddf-b220-b4881f4a2050
 #=╠═╡
 @track Base.convert(JSONPatch, convert(Dict, add_patch)) == add_patch
@@ -1147,6 +1157,8 @@ end
 # ╠═aa81974a-7254-45e0-9bfe-840c4793147f
 # ╠═31188a03-76ba-40cf-a333-4d339ce37711
 # ╠═7524a9e8-1a6d-4851-b50e-19415f25a84b
+# ╟─db99e5c9-d8cd-4314-90e2-99976e81283d
+# ╟─2b342873-916c-4efb-b62c-b46a96bd6a2d
 # ╟─5ddfd616-db20-451b-bc1e-2ad52e0e2777
 # ╟─24e93923-eab9-4a7b-9bc7-8d8a1209a78f
 # ╟─09ddf4d9-5ccb-4530-bfab-d11b864e872a

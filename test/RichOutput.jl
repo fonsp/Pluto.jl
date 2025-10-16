@@ -3,6 +3,18 @@ import Pluto
 import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 
+function withref(f::Function, ref::Ref, x)
+    oldval = ref[]
+    try
+        ref[] = x
+        f()
+    finally
+        ref[] = oldval
+    end
+end
+
+
+
 @testset "Rich output" begin
 
     🍭 = ServerSession()
@@ -228,7 +240,21 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[4] |> noerror
         end
     end
+    
+        
+    @testset "Markdown" begin
+        notebook = Notebook([
+            Cell("md\"# Why we need more Δέντρα\""),
+        ])
+        update_run!(🍭, notebook, notebook.cells)
 
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[1].output.mime isa MIME"text/html"
+        r = notebook.cells[1].output.body
+        @test occursin("id=\"Why-we-need-more-Δέντρα\"", r)
+        @test occursin("Why we need more Δέντρα</h1>", r)
+    end
+    
     @testset "embed_display" begin
         🍭.options.evaluation.workspace_use_distributed = false
         notebook = Notebook([
@@ -394,6 +420,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             "\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend",
             "w(-4)",
             "error(" * sprint(Base.print_quoted, escape_me) * ")",
+            "6",
         ]
 
         notebook1 = Notebook([
@@ -414,6 +441,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test_nowarn update_run!(🍭, notebook, notebook.cells[1:5])
 
             @test occursinerror("DomainError", notebook.cells[1])
+            @test occursin("DomainError", notebook.cells[1].output.body[:plain_error])
             let
                 st = notebook.cells[1].output.body
                 @test length(st[:stacktrace]) == 4 # check in REPL
@@ -461,6 +489,29 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 st = notebook.cells[5].output.body
                 @test occursin(escape_me, st[:msg])
             end
+            
+            @testset "PlutoStaticHTML API" begin
+                
+                @testset "before" begin
+                    @test notebook.cells[6] |> noerror
+                    st = notebook.cells[1].output.body
+                    @test occursin(r"domain"i, st[:msg])
+                    @test st[:stacktrace] isa Vector
+                    @test st[:stacktrace][1] isa Dict
+                end
+                
+                @test 🍭.options.evaluation.workspace_use_distributed == false
+                withref(PlutoRunner.PRETTY_STACKTRACES, false) do
+                    update_run!(🍭, notebook, notebook.cells[1])
+                    
+                    @testset "after" begin
+                        @test notebook.cells[6] |> noerror
+                        st = notebook.cells[1].output.body
+                        @test occursin(r"domain"i, st[:msg])
+                        @test st[:stacktrace] isa Base.CapturedException
+                    end
+                end
+            end
 
             WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
@@ -468,3 +519,5 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
     end
 
 end
+
+

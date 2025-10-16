@@ -39,7 +39,7 @@ function format_output(val::CapturedException; context=default_iocontext)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end
 
-    stacktrace = if PRETTY_STACKTRACES[]
+    if PRETTY_STACKTRACES[]
         ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
         stack = [s for (s, _) in val.processed_bt]
 
@@ -47,7 +47,7 @@ function format_output(val::CapturedException; context=default_iocontext)
 
         function_wrap_index = findlast(frame_is_from_usercode, stack)
         internal_index = findfirst(frame_is_from_plutorunner, stack)
-        
+
         limit = if function_wrap_index !== nothing
             function_wrap_index
         elseif internal_index !== nothing
@@ -79,11 +79,20 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :parent_module => pm === nothing ? nothing : string(pm),
             )
         end
-    else
-        val
-    end
 
-    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
+        (
+            Dict{Symbol,Any}(
+                :msg => sprint(try_showerror, val.ex),
+                :stacktrace => pretty,
+                :plain_error => sprint() do io
+                    try_showerror(io, val.ex, val.processed_bt[1:something(limit, end)]; color=false)
+                end,
+            ),
+            MIME"application/vnd.pluto.stacktrace+object"()
+        )
+    else
+        Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => val), MIME"application/vnd.pluto.stacktrace+object"()
+    end
 end
 
 
@@ -104,11 +113,10 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.CodeInfo)
     "top-level scope"
 end
 
-function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
-    if linfo.def isa Method
+function pretty_stackcall(frame::Base.StackFrame, linfo::Union{Core.MethodInstance, Core.CodeInstance})
+    if linfo.def isa Union{Method,Core.MethodInstance}
         @static if isdefined(Base.StackTraces, :show_spec_linfo) && hasmethod(Base.StackTraces.show_spec_linfo, Tuple{IO, Base.StackFrame})
             sprint(Base.StackTraces.show_spec_linfo, frame; context=:backtrace => true)
-
         else
             split(string(frame), " at ") |> first
         end
@@ -137,9 +145,9 @@ end
 
 
 "Because even showerror can error... 👀"
-function try_showerror(io::IO, e, args...)
+function try_showerror(io::IO, e, args...; color::Bool=true)
     try
-        showerror(IOContext(io, :color => true), e, args...)
+        showerror(IOContext(io, :color => color), e, args...)
     catch show_ex
         print(io, "\nFailed to show error:\n\n")
         try_showerror(io, show_ex, stacktrace(catch_backtrace()))

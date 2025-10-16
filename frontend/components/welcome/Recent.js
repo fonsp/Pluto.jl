@@ -5,6 +5,7 @@ import * as preact from "../../imports/Preact.js"
 import { cl } from "../../common/ClassTable.js"
 import { link_edit, link_open_path } from "./Open.js"
 import { ProcessStatus } from "../../common/ProcessStatus.js"
+import { t, th } from "../../common/lang.js"
 
 /**
  * @typedef CombinedNotebook
@@ -141,7 +142,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
         const running = nb.entry != null
         if (running) {
             if (client == null) return
-            if (confirm(nb.entry?.process_status === ProcessStatus.waiting_for_permission ? "Close notebook session?" : "Shut down notebook process?")) {
+            if (
+                confirm(nb.entry?.process_status === ProcessStatus.waiting_for_permission ? t("t_close_notebook_session") : t("t_shut_down_notebook_process"))
+            ) {
                 set_notebook_state(nb.path, {
                     running: false,
                     transitioning: true,
@@ -175,13 +178,21 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
         document.body.classList.toggle("nosessions", !(combined_notebooks == null || combined_notebooks.length > 0))
     }, [combined_notebooks])
 
+    const on_clear_click = (/** @type {CombinedNotebook} */ nb) => {
+        // Remove from localStorage
+        remove_notebook_from_storage(nb.path)
+
+        // Remove from component state
+        set_combined_notebooks((prevstate) => prevstate?.filter((n) => n.path !== nb.path) ?? null)
+    }
+
     /// RENDER
 
     const all_paths = combined_notebooks?.map((nb) => nb.path)
 
     let recents =
         combined_notebooks == null
-            ? html`<li class="not_yet_ready"><em>Loading...</em></li>`
+            ? html`<li class="not_yet_ready"><em>${t("t_loading_ellipses")}</em></li>`
             : combined_notebooks.map((nb) => {
                   const running = nb.entry != null
                   return html`<li
@@ -196,9 +207,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                           onclick=${() => on_session_click(nb)}
                           title=${running
                               ? nb.entry?.process_status === ProcessStatus.waiting_for_permission
-                                  ? "Stop session"
-                                  : "Shut down notebook"
-                              : "Start notebook in background"}
+                                  ? t("t_stop_notebook_session")
+                                  : t("t_shut_down_notebook")
+                              : t("t_start_notebook_in_background")}
                       >
                           <span class="ionicon"></span>
                       </button>
@@ -215,20 +226,34 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                           }}
                           >${shortest_path(nb.path, all_paths)}</a
                       >
+                      ${!running && !nb.transitioning
+                          ? html`<button
+                                class="clear-btn"
+                                onclick=${(e) => {
+                                    e.preventDefault()
+                                    e.stopPropagation()
+                                    on_clear_click(nb)
+                                }}
+                                title=${t("t_remove_from_recent_notebooks")}
+                                aria-label=${t("t_remove_from_recent_notebooks")}
+                            >
+                                ${t("t_FORGET")}
+                            </button>`
+                          : null}
                   </li>`
               })
 
     if (CustomRecent == null) {
         return html`
-            <h2>My work</h2>
+            <h2>${t("t_my_work")}</h2>
             <ul id="recent" class="show_scrollbar">
                 <li class="new">
                     <a
                         href="new"
                         onClick=${(e) => {
-                            on_start_navigation("new notebook")
+                            on_start_navigation(t("t_loading_something_new_notebook"))
                         }}
-                        ><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a
+                        ><button><span class="ionicon"></span></button>${th("t_newnotebook")}</a
                     >
                 </li>
                 ${recents}
@@ -244,4 +269,10 @@ const get_stored_recent_notebooks = () => {
     const storedData = storedString != null ? JSON.parse(storedString) : []
     const storedList = storedData instanceof Array ? storedData : []
     return storedList.map(entry_notrunning)
+}
+
+const remove_notebook_from_storage = (path) => {
+    const stored_recent_notebooks = get_stored_recent_notebooks()
+    const updated_notebooks = stored_recent_notebooks.filter((nb) => nb.path !== path)
+    localStorage.setItem("recent notebooks", JSON.stringify(updated_notebooks.map((nb) => nb.path)))
 }

@@ -1,7 +1,6 @@
-import { html, Component, useState, useRef, useEffect, useLayoutEffect } from "../imports/Preact.js"
+import { html, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
 import {
     EditorState,
@@ -12,11 +11,10 @@ import {
     history,
     autocomplete,
     drawSelection,
-    Compartment,
-    StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
 import { tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import _ from "../imports/lodash.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -50,7 +48,7 @@ if (is_desktop) {
 /**
  * @param {{
  *  value: String,
- *  suggest_new_file: {base: String},
+ *  suggest_new_file?: {base: String},
  *  button_label: String,
  *  placeholder: String,
  *  on_submit: (new_path: String) => Promise<void>,
@@ -60,12 +58,16 @@ if (is_desktop) {
  * }} props
  */
 export const FilePicker = ({ value, suggest_new_file, button_label, placeholder, on_submit, on_desktop_submit, client, clear_on_blur }) => {
-    const [is_button_disabled, set_is_button_disabled] = useState(true)
+    const [current_value, set_current_value] = useState(value)
+
     const [url_value, set_url_value] = useState("")
     const forced_value = useRef("")
     /** @type {import("../imports/Preact.js").Ref<HTMLElement>} */
     const base = useRef(/** @type {any} */ (null))
     const cm = useRef(/** @type {EditorView?} */ (null))
+
+    const is_button_disabled = current_value.length === 0 || current_value === forced_value.current
+    const suggest_button = current_value !== forced_value.current && current_value.endsWith(".jl")
 
     const suggest_not_tmp = () => {
         const current_cm = cm.current
@@ -153,7 +155,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                     }),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
-                            set_is_button_disabled(update.state.doc.length === 0)
+                            set_current_value(update.state.doc.toString())
                         }
                     }),
                     EditorView.theme(
@@ -272,30 +274,46 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
               </div>
           </div>`
         : html`
-              <pluto-filepicker ref=${base} onfocusout=${onBlur}>
+              <pluto-filepicker class=${suggest_button ? "suggest_button" : ""} ref=${base} onfocusout=${onBlur}>
                   <button onClick=${onSubmit} disabled=${is_button_disabled}>${button_label}</button>
               </pluto-filepicker>
           `
 }
 
+const dirname = (/** @type {string} */ str) => {
+    // using regex /\/|\\/
+    const idx = [...str.matchAll(/[\/\\]/g)].map((r) => r.index)
+    return idx.length > 0 ? str.slice(0, idx[idx.length - 1] + 1) : str
+}
+
+const basename = (/** @type {string} */ str) => (str.split("/").pop() ?? "").split("\\").pop() ?? ""
+
+/**
+ * @param {{
+ *  client: import("../common/PlutoConnection.js").PlutoConnection,
+ *  suggest_new_file?: {base: String},
+ * }} props
+ *
+ * @returns {autocomplete.CompletionSource}
+ */
 const pathhints =
     ({ client, suggest_new_file }) =>
-    (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        const cursor = ctx.state.selection.main.to
-        const oldLine = ctx.state.doc.toString()
+    (ctx) => {
+        const query_full = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
+        const query = dirname(query_full)
 
         return client
             .send("completepath", {
-                query: oldLine,
+                query,
             })
             .then((update) => {
-                const queryFileName = (oldLine.split("/").pop() ?? "").split("\\").pop() ?? ""
+                const queryFileName = basename(query_full)
 
                 const results = update.message.results
-                const from = utf8index_to_ut16index(oldLine, update.message.start)
-                const to = utf8index_to_ut16index(oldLine, update.message.stop)
+                const from = utf8index_to_ut16index(query, update.message.start)
 
-                if (results.length >= 1 && results[0] == queryFileName) {
+                // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                if (results.includes(queryFileName)) {
                     return null
                 }
 
@@ -304,7 +322,7 @@ const pathhints =
                     return {
                         label: r,
                         type: dir ? "dir" : "file",
-                        boost: dir ? 1 : 0,
+                        boost: dir ? 40 : 0,
                     }
                 })
 
@@ -326,7 +344,7 @@ const pathhints =
                                     label: suggestedFileName + " (new)",
                                     apply: suggestedFileName,
                                     type: "file new",
-                                    boost: -99,
+                                    boost: 20,
                                 })
                             }
                             break
@@ -334,10 +352,21 @@ const pathhints =
                     }
                 }
 
+                const startpos = ctx.pos
+                const validFor = (/** @type {string} */ text, from, to) => {
+                    return (
+                        to >= startpos &&
+                        /[\p{L}\p{Nl}\p{Sc}\d_!-\.]*$/u.test(text) &&
+                        // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                        !results.includes(basename(text))
+                    )
+                }
+
                 return {
                     options: styledResults,
                     from: from,
-                    to: to,
+                    to: ctx.state.doc.length,
+                    validFor: suggest_new_file ? undefined : validFor,
                 }
             })
     }

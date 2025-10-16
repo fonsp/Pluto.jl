@@ -427,6 +427,8 @@ import Malt
         end
 
         @test index_order == [3, 2, 1]
+        
+        cleanup(🍭, notebook)
     end
 
     @testset "File format -- Backwards compat" begin
@@ -639,30 +641,38 @@ import Malt
         compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
         @assert isdir(compilation_dir)
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
-        precomp_entries() = readdir(mkpath(compilation_dir_testA))
+        precomp_entries() = isdir(compilation_dir_testA) ? readdir(compilation_dir_testA) : String[]
         
         
         @testset "Match compiler options: $(match)" for match in [true, false]
-            # clear cache
-            let
-                # sleep workaround for https://github.com/JuliaLang/julia/issues/34700
-                sleep(3)
+            let # clear compilation cache   
+                Sys.iswindows() && sleep(3) # workaround for https://github.com/JuliaLang/julia/issues/34700
                 isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
             end
-            @test precomp_entries() == []
             
             before_sync = precomp_entries()
+            @test before_sync == []
             
             🍭 = ServerSession()
-            # make compiler settings of the worker (not) match the server settings
+            # make compiler settings of the worker match or not match the server settings
             let
                 # you can find out which settings are relevant for cache validation by looking at the field names of `Base.CacheFlags`.
                 flip = !match
+                
+                @test Base.JLOptions().use_pkgimages in 0:2
+                @test Base.JLOptions().check_bounds in 0:1
+                @test Base.JLOptions().opt_level in 0:3
+                @test Base.JLOptions().can_inline in 0:1
+                
+                arg_value_from_int(x::Integer) = ("no", "yes", "existing")[x + 1] # this is how the command line argument values map to the JLOptions Integer values
+                dontmatch(current_setting::Integer) = current_setting == 0 ? arg_value_from_int(1) : arg_value_from_int(0)
 
-                🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
+                🍭.options.compiler.pkgimages = (match ? arg_value_from_int : dontmatch)(Base.JLOptions().use_pkgimages)
                 🍭.options.compiler.check_bounds = (flip ⊻ Base.JLOptions().check_bounds == 1) ? "yes" : "no"
-                🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
                 🍭.options.compiler.optimize = match ? Base.JLOptions().opt_level : 3 - Base.JLOptions().opt_level
+                if VERSION < v"1.12.0-aaa" # https://github.com/JuliaLang/julia/issues/58229
+                    🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
+                end
                 # cant set the debug level but whatevs
             end
             
@@ -696,17 +706,14 @@ import Malt
             update_save_run!(🍭, notebook, notebook.cells[1])
             @test noerror(notebook.cells[1])
             
-            after_run = precomp_entries()
-            
-
             full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
-
             # There should be a log message about loading the cache.
             @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
             @test !occursin(r"reject.*cache"i, full_logs)
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+            after_run = precomp_entries()
             @test after_sync == after_run
             
             cleanup(🍭, notebook)

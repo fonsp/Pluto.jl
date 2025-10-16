@@ -22,6 +22,18 @@ import Pkg
         @test PkgCompat.package_exists("Dates")
 
         @test PkgCompat.is_stdlib("Dates")
+        @test PkgCompat.is_stdlib("Markdown")
+        @test PkgCompat.is_stdlib("Sockets")
+        @test PkgCompat.is_stdlib("MbedTLS_jll")
+        @test PkgCompat.is_stdlib("Test")
+        @test PkgCompat.is_stdlib("Pkg")
+        @test PkgCompat.is_stdlib("Random")
+        @test PkgCompat.is_stdlib("FileWatching")
+        @test PkgCompat.is_stdlib("Distributed")
+        # upgradable stdlibs:
+        @test PkgCompat.is_stdlib("Statistics")
+        @test PkgCompat.is_stdlib("DelimitedFiles")
+
         @test !PkgCompat.is_stdlib("PlutoUI")
 
 
@@ -72,16 +84,11 @@ import Pkg
     end
 
     @testset "Completions" begin
-        cs = PkgCompat.package_completions("Hyper")
+        cs = PkgCompat.registered_package_names()
         @test "HypertextLiteral" ∈ cs
         @test "Hyperscript" ∈ cs
 
-        cs = PkgCompat.package_completions("Date")
         @test "Dates" ∈ cs
-
-        cs = PkgCompat.package_completions("Dateskjashdfkjahsdfkjh")
-
-        @test isempty(cs)
     end
 
     @testset "Compat manipulation" begin
