@@ -54,6 +54,18 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
+function package_name_to_complete(str)
+	matches = match(r"(import|using) ([a-zA-Z0-9]+)$", str)
+	matches === nothing ? nothing : matches[2]
+end
+
+responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
+    results = PkgCompat.package_completions(🙋.body["query"])
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
+        :results => results,
+    ), nothing, nothing, 🙋.initiator))
+end
+
 responses[:complete] = function response_complete(🙋::ClientRequest)
     try require_notebook(🙋) catch; return; end
     query = 🙋.body["query"]

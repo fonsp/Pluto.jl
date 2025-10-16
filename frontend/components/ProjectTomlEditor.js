@@ -1,21 +1,18 @@
-import { html, useRef, useLayoutEffect, useState, useEffect, useCallback } from "../imports/Preact.js"
+import { html, useRef, useLayoutEffect, useState, useEffect, useCallback, useContext } from "../imports/Preact.js"
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import _ from "../imports/lodash.js"
 
 // @ts-ignore
-import { default as toml_lib } from "https://cdn.jsdelivr.net/npm/smol-toml@1.3.0/dist/index.js"
+import semver from "https://esm.sh/semver@7.6.3"
 
 import {
     EditorState,
-    EditorSelection,
     EditorView,
     placeholder as Placeholder,
     keymap,
     history,
     autocomplete,
     drawSelection,
-    Compartment,
-    StateEffect,
     StreamLanguage,
     toml,
     highlightSpecialChars,
@@ -24,52 +21,67 @@ import {
     closeBrackets,
     rectangularSelection,
     indentUnit,
-    defaultHighlightStyle,
     syntaxHighlighting,
     syntaxTree,
     linter,
     historyKeymap,
     defaultKeymap,
+    ViewPlugin,
+    Decoration,
 } from "../imports/CodemirrorPlutoSetup.js"
 let { autocompletion, completionKeymap } = autocomplete
 
 //@ts-ignore
-import immer from "../imports/immer.js"
 import { useDialog } from "../common/useDialog.js"
-import { FeaturedCard } from "./welcome/FeaturedCard.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { tab_help_plugin } from "./CellInput/tab_help_plugin.js"
-import { pluto_syntax_color_any, pluto_syntax_colors_julia } from "./CellInput.js"
+import { pluto_syntax_color_any } from "./CellInput.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
+import { ReactWidget } from "./CellInput/ReactWidget.js"
+import { set_cm_value } from "./FilePicker.js"
 
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  remote_project_toml: Record<String,any>?,
- *  set_remote_project_toml: (newval: Record<String,any>) => Promise<void>,
+ *  remote_project_toml: String?,
+ *  set_remote_project_toml: (newval: String) => Promise<void>,
  * }} props
  * */
 export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_project_toml }) => {
-    const [project_toml, set_project_toml] = useState(remote_project_toml ?? {})
+    let pluto_actions = useContext(PlutoActionsContext)
 
-    useEffect(() => {
-        set_project_toml(remote_project_toml ?? {})
-    }, [remote_project_toml])
+    const cm = useRef(/** @type {EditorView?} */ (null))
+    const base = useRef(/** @type {any} */ (null))
 
     const [dialog_ref, open, close, _toggle] = useDialog()
 
     const cancel = () => {
-        set_project_toml(remote_project_toml ?? {})
+        const view = cm.current
+        if (view != null) {
+            set_cm_value(view, remote_project_toml ?? "")
+        }
         close()
     }
+
+    useEffect(() => {
+        const view = cm.current
+        if (view != null) {
+            set_cm_value(view, remote_project_toml ?? "")
+        }
+    }, [remote_project_toml])
 
     const set_remote_project_toml_ref = useRef(set_remote_project_toml)
     set_remote_project_toml_ref.current = set_remote_project_toml
 
     const submit = useCallback(() => {
-        set_remote_project_toml_ref.current(project_toml).then(() => alert("Project TOML synchronized ✔\n\nThese parameters will be used in future exports."))
+        const view = cm.current
+        if (view == null) return
+        set_remote_project_toml_ref
+            .current(view.state.doc.toString())
+            .then(() => alert("Project TOML synchronized ✔\n\nThese parameters will be used in future exports."))
         close()
-    }, [project_toml, close])
+    }, [close])
 
     useEventListener(window, "open pluto project toml editor", open, [open])
 
@@ -82,9 +94,6 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
         [submit]
     )
 
-    const cm = useRef(/** @type {EditorView?} */ (null))
-    const base = useRef(/** @type {any} */ (null))
-
     const nbpkg_ref = useRef(notebook.nbpkg)
     nbpkg_ref.current = notebook.nbpkg
     const get_nbpkg = () => nbpkg_ref.current
@@ -93,26 +102,7 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         cm.current = new EditorView({
             state: EditorState.create({
-                doc: `name = "Example"
-description = ""
-authors = ["Fons van der Plas"]
-version = "1.30.2"
-
-[deps]
-FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-
-[compat]
-FileIO = "~1.15.0"
-Images = "~0.25.2"
-Plots = "~1.31.7"
-PlutoUI = "~0.7.40"
-
-[sources]
-PlutoUI = { path = "~/Documents/Pluto.jl", rev="some-branch-i-want-to-use" }
-`,
+                doc: remote_project_toml ?? "",
                 extensions: [
                     lineNumbers(),
                     highlightSpecialChars(),
@@ -153,15 +143,26 @@ PlutoUI = { path = "~/Documents/Pluto.jl", rev="some-branch-i-want-to-use" }
                     // EditorView.updateListener.of(onCM6Update),
 
                     Placeholder("This is a TOML file. You can set metadata for your project here."),
-                    regexpLinter(get_nbpkg),
+                    // regexpLinter(get_nbpkg),
                     autocompletion({
                         activateOnTyping: true,
-                        override: [complete_anyword, complete_package_names(get_nbpkg)],
+
+                        override: [
+                            //
+
+                            complete_remote_package_names(async (query) => (await pluto_actions?.send("package_completions", { query }))?.message?.results),
+                            complete_uuids(get_nbpkg, pluto_actions?.get_avaible_versions),
+                            complete_versions(get_nbpkg, pluto_actions?.get_avaible_versions),
+                        ],
+                        activateOnCompletion: (completion) => completion.label.endsWith(" "),
+
                         defaultKeymap: false, // We add these manually later, so we can override them if necessary
                         maxRenderedOptions: 512, // fons's magic number
                         optionClass: (c) => c.type ?? "",
                     }),
                     keymap.of([...defaultKeymap, ...completionKeymap, ...historyKeymap]),
+
+                    update_button_decorations(pluto_actions?.get_avaible_versions),
 
                     tab_help_plugin,
                 ],
@@ -173,50 +174,49 @@ PlutoUI = { path = "~/Documents/Pluto.jl", rev="some-branch-i-want-to-use" }
 
     return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-frontmatter pluto-project_toml">
         <h1>Project.toml</h1>
-        <p>
-            If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and
-            social media.
-        </p>
+        <p>Here you can edit the Project.toml file for this notebook. <a href="https://pkgdocs.julialang.org/v1/compatibility/">Learn more →</a></p>
         <div class="project_toml_cm" ref=${base}></div>
 
         <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save</button></div>
     </dialog>`
 }
 
-const regexpLinter = (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) =>
-    linter((view) => {
-        /** @type {import("../imports/CodemirrorPlutoSetup.js").Diagnostic[]} */
-        let diagnostics = []
-        syntaxTree(view.state)
-            .cursor()
-            .iterate((node) => {
-                if (node.name !== "propertyName") return
-                const sec = current_toml_section(view.state, node.from)
-                if (sec !== "deps" && sec !== "compat" && sec !== "sources") return
-                const name = view.state.sliceDoc(node.from, node.to)
+// TODO: this does not work for new packaes... maybe not useful.
+// const regexpLinter = (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) =>
+//     linter((view) => {
+//         /** @type {import("../imports/CodemirrorPlutoSetup.js").Diagnostic[]} */
+//         let diagnostics = []
+//         syntaxTree(view.state)
+//             .cursor()
+//             .iterate((node) => {
+//                 if (node.name !== "propertyName") return
+//                 const sec = current_toml_section(view.state, node.from)
+//                 if (sec !== "deps" && sec !== "compat" && sec !== "sources") return
+//                 const name = view.state.sliceDoc(node.from, node.to)
 
-                const pkg = get_nbpkg()
-                if (pkg == null) return
+//                 const pkg = get_nbpkg()
+//                 if (pkg == null) return
 
-                if (pkg.installed_versions[name] != null) return
+//                 const ver = pkg.installed_versions[name]
+//                 if (ver != null) return
 
-                diagnostics.push({
-                    from: node.from,
-                    to: node.to,
-                    severity: "warning",
-                    message: `Package ${name} is not installed`,
-                    // actions: [
-                    //     {
-                    //         name: "Remove",
-                    //         apply(view, from, to) {
-                    //             view.dispatch({ changes: { from, to } })
-                    //         },
-                    //     },
-                    // ],
-                })
-            })
-        return diagnostics
-    })
+//                 diagnostics.push({
+//                     from: node.from,
+//                     to: node.to,
+//                     severity: "warning",
+//                     message: `Package ${name} is not used in this notebook.`,
+//                     // actions: [
+//                     //     {
+//                     //         name: "Remove",
+//                     //         apply(view, from, to) {
+//                     //             view.dispatch({ changes: { from, to } })
+//                     //         },
+//                     //     },
+//                     // ],
+//                 })
+//             })
+//         return diagnostics
+//     })
 
 const current_toml_section = (/** @type {EditorState} */ state, pos) => {
     const before = state.sliceDoc(0, pos)
@@ -225,39 +225,243 @@ const current_toml_section = (/** @type {EditorState} */ state, pos) => {
     return sections[sections.length - 1][1]
 }
 
-const complete_package_names =
+/**
+ * Match something like `Dates = "~10.0`
+ */
+const package_str_entry_regex = /(\w+)\s*\=\s*(\"[\w-\.\=\~\>\<\^≥≤,\s]*\"?)?/
+
+const complete_package_field = (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const match = ctx.matchBefore(package_str_entry_regex)
+    if (match == null) return null
+
+    const yo = match.text.match(package_str_entry_regex)
+    if (yo == null) return null
+    const [package_name, partial_str] = yo.slice(1)
+
+    const node = syntaxTree(ctx.state).resolve(ctx.pos, -1)
+    if (node.name !== "string") return null
+
+    const from = node.name === "string" ? node.from : ctx.pos
+    const to = node.name === "string" ? node.to : undefined
+
+    return { package_name, partial_str, from, to }
+}
+
+const complete_uuids =
+    (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg, get_avaible_versions) =>
+    async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        const sec = current_toml_section(ctx.state, ctx.pos)
+        if (!(sec === "deps" || sec === "weakdeps")) return null
+
+        const res = complete_package_field(ctx)
+        if (res == null) return null
+        const { package_name, partial_str, from, to } = res
+
+        const available_versions = await get_avaible_versions({ package_name })
+        if (available_versions == null) return null
+
+        console.warn({ from, to })
+
+        return {
+            from,
+            to,
+            options: available_versions.uuids.map((id) => ({ label: `"${id}"`, type: "uuid" })),
+        }
+    }
+
+const complete_versions =
+    (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg, get_avaible_versions) =>
+    async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        const sec = current_toml_section(ctx.state, ctx.pos)
+        if (!(sec === "compat")) return null
+
+        const res = complete_package_field(ctx)
+        if (res == null) return null
+        const { package_name, from, to } = res
+
+        const available_versions = await get_avaible_versions({ package_name })
+        if (available_versions == null) return null
+
+        const latest = _.last(available_versions.versions)
+        if (latest == "stdlib" || latest == null) return null
+
+        return {
+            from,
+            to,
+            options: [
+                // just one option
+                {
+                    label: `"~${latest}"`,
+                    detail: "Latest",
+                },
+            ],
+        }
+    }
+
+const complete_used_package_names =
     (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         const sec = current_toml_section(ctx.state, ctx.pos)
-        console.log(sec)
         if (!(sec === "deps" || sec === "compat" || sec === "sources")) return null
 
         const pkg = get_nbpkg()
-        console.log(pkg)
-
         if (pkg == null) return null
 
         return autocomplete.completeFromList(Object.keys(pkg.installed_versions))(ctx)
     }
-const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    let node = syntaxTree(ctx.state).resolve(ctx.pos, -1)
-    console.log(node)
 
-    return null
-    console.log("before ", current_toml_section(ctx.state, ctx.pos))
-    // if (match_latex_symbol_complete(ctx)) return null
-    // if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    // if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
+const complete_remote_package_names = (package_completions) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const sec = current_toml_section(ctx.state, ctx.pos)
+    if (!(sec === "deps" || sec === "compat" || sec === "sources")) return null
 
-    const results_from_cm = await autocomplete.completeAnyWord(ctx)
-    if (results_from_cm === null) return null
+    const name_token = ctx.tokenBefore(["propertyName"])
+    if (name_token == null) return null
 
-    // const last_token = ctx.tokenBefore(["Identifier", "Number"])
-    // if (last_token == null || last_token.type?.name === "Number") return null
+    const remote_list = await package_completions(name_token.text)
+    if (remote_list == null) return null
 
-    return {
-        from: results_from_cm.from,
-        // commitCharacters: julia_commit_characters(ctx),
-
-        options: results_from_cm.options,
-    }
+    const at_end_of_line = ctx.state.doc.lineAt(ctx.pos).to === ctx.pos
+    return autocomplete.completeFromList(remote_list.map((s) => (at_end_of_line ? `${s} = ` : s)))(ctx)
 }
+
+const julia_semver_to_npm = (julia_semver) =>
+    julia_semver
+        // commas become ||
+        .split(",")
+        .map((part) => {
+            part = part.trim()
+            if (part.match(/^\d/)) {
+                // tilde is default
+                return `^${part}`
+            }
+            return part
+        })
+        .join(" || ")
+
+const test_julia_semver_to_npm = (a, b) => console.assert(julia_semver_to_npm(a) === b, a, b, julia_semver_to_npm(a))
+
+test_julia_semver_to_npm("1.0", "^1.0")
+test_julia_semver_to_npm("1.0.0,~1.2", "^1.0.0 || ~1.2")
+test_julia_semver_to_npm("<1.0.0, 1.2", "<1.0.0 || ^1.2")
+test_julia_semver_to_npm("<1.0, 12", "<1.0 || ^12")
+
+const three_stage_update = (current_entry, available_versions) => {
+    if (available_versions == null) return null
+    const latest = _.last(available_versions)
+    if (latest == "stdlib" || latest == null) return null
+
+    const results = []
+
+    results.push({
+        label: `Latest (${latest})`,
+        entry: `~${latest}`,
+    })
+
+    const current_semver_input = julia_semver_to_npm(current_entry.replace(/"/g, ""))
+    console.log({ current_semver_input })
+
+    if (semver.validRange(current_semver_input) != null) {
+        const latest_compatible_version = semver.maxSatisfying(available_versions, current_semver_input)
+        if (latest_compatible_version != null && latest_compatible_version !== latest) {
+            results.push({
+                label: `Latest compatible (${latest_compatible_version})`,
+                entry: `~${latest_compatible_version}`,
+            })
+        }
+    }
+
+    return results.reverse().filter((r) => !_.isEqual(semver.validRange(r.entry), semver.validRange(current_semver_input)))
+}
+
+const UpdateWidget = ({ view, from, to, name, version, get_avaible_versions }) => {
+    const [available, set_available] = useState(null)
+    useEffect(() => {
+        get_avaible_versions({ package_name: name }).then((res) => {
+            if (res == null) return
+            console.log({ r: res.versions })
+
+            set_available(res.versions)
+        })
+    }, [name])
+
+    if (available == null) {
+        return html`<span>Loading...</span>`
+    }
+
+    const stages = three_stage_update(version, available)
+    console.log({ stages })
+    if (stages == null) return null
+
+    return html`${stages.map(
+        ({ entry, label }) => html`<button
+            onClick=${() => {
+                view.dispatch({
+                    changes: {
+                        from,
+                        to,
+                        insert: `"${entry}"`,
+                    },
+                })
+            }}
+        >
+            ${label}
+        </button>`
+    )}`
+}
+
+const decs = (/** @type {EditorView} */ view, get_avaible_versions) => {
+    const widgets = []
+
+    for (let { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+            from,
+            to,
+            enter: (node) => {
+                if (node.name == "string") {
+                    const sec = current_toml_section(view.state, node.from)
+                    if (sec !== "compat") return
+
+                    const line = view.state.doc.lineAt(node.from)
+                    const rematch = line.text.match(package_str_entry_regex)
+                    if (rematch == null) return
+
+                    const [name, version] = rematch.slice(1)
+
+                    let deco = Decoration.widget({
+                        // widget: new ReactWidget(html`<span style=${{ opacity: 0.2 }}>${name} at ${version}</span>`),
+                        widget: new ReactWidget(html` <${UpdateWidget}
+                            view=${view}
+                            from=${node.from}
+                            to=${node.to}
+                            name=${name}
+                            version=${version}
+                            get_avaible_versions=${get_avaible_versions}
+                        />`),
+                        side: 1,
+                    })
+                    widgets.push(deco.range(node.to))
+                }
+            },
+        })
+    }
+
+    return Decoration.set(widgets)
+}
+
+const update_button_decorations = (get_avaible_versions) =>
+    ViewPlugin.fromClass(
+        class {
+            decorations
+
+            constructor(view) {
+                this.decorations = decs(view, get_avaible_versions)
+            }
+
+            update(update) {
+                if (update.docChanged || update.viewportChanged || syntaxTree(update.startState) != syntaxTree(update.state))
+                    this.decorations = decs(update.view, get_avaible_versions)
+            }
+        },
+        {
+            decorations: (v) => v.decorations,
+        }
+    )

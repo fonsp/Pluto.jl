@@ -1740,9 +1740,29 @@ ${t("t_key_autosave_description")}`
                     />
                     <${ProjectTomlEditor}
                         notebook=${notebook}
-                        set_remote_frontmatter=${(newval) =>
+                        remote_project_toml=${
+                            status.loading
+                                ? null
+                                : `
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+
+[compat]
+FileIO = "~1.15.0"
+Images = "~0.25.1"
+Plots = "~1.31.7"
+PlutoUI = "~0.7.40"
+
+[sources]
+PlutoUI = { path = "~/Documents/Pluto.jl", rev="some-branch-i-want-to-use" }
+`
+                        }
+                        set_remote_project_toml=${(newval) =>
                             this.actions.update_notebook((nb) => {
-                                nb.metadata["frontmatter"] = newval
+                                nb.metadata["asdfsfddsf"] = newval
                             })} 
                     />
                     <${PlutoLandUpload}

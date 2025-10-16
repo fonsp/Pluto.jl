@@ -4054,7 +4054,7 @@ pluto-cell.hooked_up > pluto-output {
     width: min(31rem, 90vw);
     color: var(--export-color);
     background: var(--export-bg-color);
-    border-radius: 1em;
+    border-radius: 0.7em;
     padding: 1em 1.5em;
 }
 .pluto-project_toml {
