@@ -28,6 +28,8 @@ import {
     syntaxHighlighting,
     syntaxTree,
     linter,
+    historyKeymap,
+    defaultKeymap,
 } from "../imports/CodemirrorPlutoSetup.js"
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -69,7 +71,7 @@ export const ProjectTomlEditor = ({ notebook, remote_project_toml, set_remote_pr
         close()
     }, [project_toml, close])
 
-    useEventListener(window, "open pluto project toml editor", open)
+    useEventListener(window, "open pluto project toml editor", open, [open])
 
     useEventListener(
         window,
@@ -159,7 +161,7 @@ PlutoUI = { path = "~/Documents/Pluto.jl", rev="some-branch-i-want-to-use" }
                         maxRenderedOptions: 512, // fons's magic number
                         optionClass: (c) => c.type ?? "",
                     }),
-                    keymap.of(completionKeymap),
+                    keymap.of([...defaultKeymap, ...completionKeymap, ...historyKeymap]),
 
                     tab_help_plugin,
                 ],
