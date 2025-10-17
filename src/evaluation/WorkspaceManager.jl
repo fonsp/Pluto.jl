@@ -173,11 +173,12 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
         e isa DiscardedWorkspaceException && return false
         rethrow(e)
     end
-    if workspace_task === nothing || !istaskdone(workspace_task)
-        println(io, "Waiting for notebook process to start...")
+    not_ready_yet = workspace_task === nothing || !istaskdone(workspace_task)
+    if not_ready_yet
+        print(io, "Waiting for notebook process to start... ")
     end
-    
     workspace = fetch(workspace_task)
+    not_ready_yet && println(io, "✅")
     Malt.isrunning(workspace.worker) || return false
 
     io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))

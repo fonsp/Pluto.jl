@@ -43,6 +43,8 @@ init_process
 
 pkg
 
+write_project_toml
+
 analysis
 waiting_for_others
 resolve

@@ -92,7 +92,7 @@ function report_business!(f::Function, parent::Business, name::Symbol)
         f()
         success = true
     finally
-        report_business_finished!(parent, name, success)
+        return report_business_finished!(parent, name, success)
     end
 end
 

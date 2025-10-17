@@ -30,7 +30,7 @@ const assert_not_null = (x) => {
     }
 }
 
-const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, scroll = true) => {
+export const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, scroll = true) => {
     cm.dispatch({
         changes: { from: 0, to: cm.state.doc.length, insert: value },
         selection: EditorSelection.cursor(value.length),

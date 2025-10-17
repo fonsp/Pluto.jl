@@ -19,8 +19,7 @@ else
     const REPLMode = Base.get_extension(Pkg, :REPLExt)
 end
 
-# Should be in Base
-flatmap(args...) = vcat(map(args...)...)
+const flatmap = collect ∘ Iterators.flatmap
 
 # Should be in Base
 function select(f::Function, xs)
@@ -352,6 +351,20 @@ function package_versions(package_name::AbstractString)::Vector
 			["latest"]
 		end
     end
+end
+
+"""
+Return a Vector of UUIDs for the given package name. Returns an empty Vector if the package was not found.
+"""
+function package_uuids(package_name::AbstractString)::Vector{Base.UUID}
+	try
+		flatmap(_parsed_registries[]) do reg
+			RegistryInstances.uuids_from_name(reg, package_name)
+		end
+	catch e
+		@warn "Pkg compat: failed to get package UUIDs." exception=(e,catch_backtrace())
+		Base.UUID[]
+	end
 end
 
 # ✅ "Public" API using RegistryInstances

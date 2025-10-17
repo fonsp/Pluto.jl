@@ -558,11 +558,49 @@ end
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
     # require_notebook(🙋)
     all_versions = PkgCompat.package_versions(🙋.body["package_name"])
+    uuids = PkgCompat.package_uuids(🙋.body["package_name"])
     url = PkgCompat.package_url(🙋.body["package_name"])
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
         :versions => string.(all_versions),
+        :uuids => string.(uuids),
         :url => url,
     ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:nbpkg_get_project_toml] = function response_nbpkg_get_project_toml(🙋::ClientRequest)
+    require_notebook(🙋)
+    project_toml = PkgCompat.read_project_file(🙋.notebook)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🌟, Dict(
+        :project_toml => project_toml,
+        :pkg_token_available => isready(pkg_token),
+        :notebook_token_available => isready(🙋.notebook.executetoken),
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:nbpkg_set_project_toml] = function response_nbpkg_set_project_toml(🙋::ClientRequest)
+    require_notebook(🙋)
+    project_toml_original = 🙋.body["project_toml_original"]
+    project_toml = 🙋.body["project_toml"]
+    backup = get(🙋.body, "backup", true)
+    
+    try
+        edit_project_toml(
+            🙋.session, 🙋.notebook, 
+            project_toml_original, project_toml; 
+            run_async=true,
+            save=!🙋.session.options.server.disable_writing_notebook_files,
+            backup,
+        )
+        
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🎃, Dict(
+            :ok => true,
+        ), nothing, nothing, 🙋.initiator))
+    catch ex
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🎃, Dict(
+            :ok => false,
+            :why_not => sprint(showerror, ex),
+        ), nothing, nothing, 🙋.initiator))
+    end
 end
 
 responses[:all_registered_package_names] = function response_all_registered_package_names(🙋::ClientRequest)
@@ -577,3 +615,7 @@ responses[:pkg_update] = function response_pkg_update(🙋::ClientRequest)
     update_nbpkg(🙋.session, 🙋.notebook)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🦆, Dict(), nothing, nothing, 🙋.initiator))
 end
+
+
+
+

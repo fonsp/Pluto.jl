@@ -46,6 +46,7 @@ import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
+import { ProjectTomlEditor } from "./ProjectTomlEditor.js"
 import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
@@ -721,6 +722,7 @@ export class Editor extends Component {
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
+                console.log("get_avaible_versions", message)
                 return message
             },
         }
@@ -1737,6 +1739,9 @@ ${t("t_key_autosave_description")}`
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
+                    />
+                    <${ProjectTomlEditor}
+                        notebook=${notebook}
                     />
                     <${PlutoLandUpload}
                         notebook_id=${notebook.notebook_id}
