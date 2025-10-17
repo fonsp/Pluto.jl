@@ -44,11 +44,9 @@ import { set_cm_value } from "./FilePicker.js"
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  get_remote_project_toml: () => Promise<String>,
- *  set_remote_project_toml: (original_project_toml: String, newval: String) => Promise<void>,
  * }} props
  * */
-export const ProjectTomlEditor = ({ notebook, get_remote_project_toml, set_remote_project_toml }) => {
+export const ProjectTomlEditor = ({ notebook }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     const cm = useRef(/** @type {EditorView?} */ (null))
@@ -57,32 +55,66 @@ export const ProjectTomlEditor = ({ notebook, get_remote_project_toml, set_remot
     const [dialog_ref, open, close, _toggle, currently_open] = useDialog()
 
     const cancel = () => {
-        const view = cm.current
-        if (view != null) {
-            set_cm_value(view, "Loading...")
-        }
         close()
     }
 
     const [original_project_toml, set_original_project_toml] = useState("")
     useLayoutEffect(() => {
         if (currently_open) {
-            get_remote_project_toml().then((remote_project_toml) => {
-                set_original_project_toml(remote_project_toml)
-                if (cm.current) set_cm_value(cm.current, remote_project_toml)
-            })
+            return pluto_actions
+                .send(
+                    "nbpkg_get_project_toml",
+                    {},
+                    {
+                        notebook_id: notebook.notebook_id,
+                    }
+                )
+                .then((res) => {
+                    const { project_toml, pkg_token_available, notebook_token_available } = res.message
+
+                    if (!notebook_token_available) {
+                        alert("Please wait for all cells to finish executing.")
+                        close()
+                        return
+                    }
+                    if (!pkg_token_available) {
+                        alert("Please wait for all package operations to finish (also in other notebooks).")
+                        close()
+                        return
+                    }
+
+                    set_original_project_toml(project_toml)
+                    if (cm.current) set_cm_value(cm.current, project_toml)
+                })
+        } else {
+            if (cm.current) set_cm_value(cm.current, "Loading...")
         }
     }, [currently_open])
-
-    const set_remote_project_toml_ref = useRef(set_remote_project_toml)
-    set_remote_project_toml_ref.current = set_remote_project_toml
 
     const submit = useCallback(() => {
         const view = cm.current
         if (view == null) return
-        set_remote_project_toml_ref
-            .current(original_project_toml, view.state.doc.toString())
-            .then(() => alert("Project TOML synchronized ✔\n\nThese parameters will be used in future exports."))
+
+        pluto_actions
+            .send(
+                "nbpkg_set_project_toml",
+                {
+                    project_toml_original: original_project_toml,
+                    project_toml: view.state.doc.toString(),
+                },
+                { notebook_id: notebook.notebook_id }
+            )
+            .then((res) => {
+                const { ok, why_not } = res.message
+                if (ok) {
+                    alert("Project TOML synchronized ✔\n\nView the Status tab for logs.")
+                } else {
+                    throw new Error(why_not)
+                }
+            })
+            .catch((err) => {
+                alert(`Project TOML synchronization failed: ${err}`)
+            })
         close()
     }, [close, original_project_toml])
 
@@ -155,7 +187,7 @@ export const ProjectTomlEditor = ({ notebook, get_remote_project_toml, set_remot
                         override: [
                             //
 
-                            complete_remote_package_names(async (query) => (await pluto_actions?.send("package_completions", { query }))?.message?.results),
+                            complete_remote_package_names(() => pluto_actions.send("all_registered_package_names").then(({ message }) => message.results)),
                             complete_uuids(get_nbpkg, get_avaible_versions),
                             complete_versions(get_nbpkg, get_avaible_versions),
                         ],

@@ -572,6 +572,8 @@ responses[:nbpkg_get_project_toml] = function response_nbpkg_get_project_toml(�
     project_toml = PkgCompat.read_project_file(🙋.notebook)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🌟, Dict(
         :project_toml => project_toml,
+        :pkg_token_available => isready(pkg_token),
+        :notebook_token_available => isready(🙋.notebook.executetoken),
     ), nothing, nothing, 🙋.initiator))
 end
 
@@ -579,10 +581,26 @@ responses[:nbpkg_set_project_toml] = function response_nbpkg_set_project_toml(�
     require_notebook(🙋)
     project_toml_original = 🙋.body["project_toml_original"]
     project_toml = 🙋.body["project_toml"]
-    overwrite_project_toml(🙋.session, 🙋.notebook, project_toml_original, project_toml)
-    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🎃, Dict(
-        :ok => true,
-    ), nothing, nothing, 🙋.initiator))
+    backup = get(🙋.body, "backup", true)
+    
+    try
+        edit_project_toml(
+            🙋.session, 🙋.notebook, 
+            project_toml_original, project_toml; 
+            run_async=true,
+            save=!🙋.session.options.server.disable_writing_notebook_files,
+            backup,
+        )
+        
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🎃, Dict(
+            :ok => true,
+        ), nothing, nothing, 🙋.initiator))
+    catch ex
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🎃, Dict(
+            :ok => false,
+            :why_not => sprint(showerror, ex),
+        ), nothing, nothing, 🙋.initiator))
+    end
 end
 
 responses[:all_registered_package_names] = function response_all_registered_package_names(🙋::ClientRequest)

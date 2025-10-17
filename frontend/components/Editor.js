@@ -1741,28 +1741,6 @@ ${t("t_key_autosave_description")}`
                     />
                     <${ProjectTomlEditor}
                         notebook=${notebook}
-                        get_remote_project_toml=${() => {
-                            return this.actions
-                                .send(
-                                    "nbpkg_get_project_toml",
-                                    {},
-                                    {
-                                        notebook_id: this.state.notebook.notebook_id,
-                                    }
-                                )
-                                .then((res) => {
-                                    return res.message.project_toml
-                                })
-                        }}
-                        set_remote_project_toml=${(original_project_toml, newval) =>
-                            this.actions.send(
-                                "nbpkg_set_project_toml",
-                                {
-                                    project_toml_original: original_project_toml,
-                                    project_toml: newval,
-                                },
-                                { notebook_id: this.state.notebook.notebook_id }
-                            )} 
                     />
                     <${PlutoLandUpload}
                         notebook_id=${notebook.notebook_id}
