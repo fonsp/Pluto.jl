@@ -2424,6 +2424,7 @@ pkg-popup .toggle-terminal {
 }
 
 pkg-terminal {
+    position: relative;
     display: block;
     /* width: 20rem; */
     cursor: text;
@@ -2484,6 +2485,46 @@ pkg-popup.showterminal pkg-terminal {
     100% {
         transform: rotate(360deg);
     }
+}
+
+button.open-big-terminal {
+    position: absolute;
+    right: 0.1em;
+    bottom: 0.2em;
+    background: none;
+    border: none;
+}
+
+button.open-big-terminal::after {
+    content: "";
+    display: inline-block;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/expand-outline.svg");
+    filter: invert(1);
+    width: 1em;
+    height: 1em;
+    background-size: 1em;
+    cursor: pointer;
+}
+
+dialog.big-pkg-terminal {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 0 31px #0000007a;
+    background: var(--pkg-terminal-bg-color);
+}
+
+dialog.big-pkg-terminal > div {
+    display: flex;
+    flex-direction: column;
+}
+dialog.big-pkg-terminal button {
+    place-self: end;
+    margin-top: 1em;
+}
+
+dialog.big-pkg-terminal pkg-terminal > .scroller {
+    max-height: calc(100vh - 9em);
+    max-width: 91ch;
 }
 
 /* RUNAREA */
