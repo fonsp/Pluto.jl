@@ -50,6 +50,7 @@ import { ProjectTomlEditor } from "./ProjectTomlEditor.js"
 import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
+import { BigPkgTerminal } from "./PkgTerminalView.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1745,6 +1746,9 @@ ${t("t_key_autosave_description")}`
                     <${PlutoLandUpload}
                         notebook_id=${notebook.notebook_id}
                         notebookexport_url=${this.export_url("notebookexport")}
+                    />
+                    <${BigPkgTerminal}
+                        notebook=${notebook}
                     />
                     ${this.props.preamble_element}
                     <${Main}>
