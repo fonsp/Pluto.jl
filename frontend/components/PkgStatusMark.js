@@ -53,6 +53,15 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 
     const package_name_pretty = html`<a class="package-name" href=${package_url}><b>${package_name}</b></a> `
 
+    const nbsp = "\u00A0"
+    const edit = html`${nbsp}<button
+            title="Edit package versions"
+            class="edit_package_version"
+            onClick=${() => window.dispatchEvent(new CustomEvent("open pluto project toml editor"))}
+        >
+            ✏️
+        </button>`
+
     if (is_disable_pkg) {
         const f_name = package_name
         status = "disable_pkg"
@@ -69,21 +78,21 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 
                 hint_raw = t("t_pkg_will_be_installed", { package: `${package_name} (v${_.last(available_versions)})` })
                 hint = th("t_pkg_will_be_installed", {
-                    package: html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>`,
+                    package: html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}${edit}</pkg-version></header>`,
                 })
             } else if (busy) {
                 status = "busy"
 
                 hint_raw = t("t_pkg_is_installing", { package: `${package_name} (v${chosen_version})` })
                 hint = th("t_pkg_is_installing", {
-                    package: html`<header>${package_name_pretty}${" "}<pkg-version>v${chosen_version}</pkg-version></header>`,
+                    package: html`<header>${package_name_pretty}${" "}<pkg-version>v${chosen_version}${edit}</pkg-version></header>`,
                 })
             } else {
                 status = "installed"
 
                 hint_raw = t("t_pkg_is_installed", { package: `${package_name} (v${chosen_version})` })
                 hint = th("t_pkg_is_installed", {
-                    package: html`<header>${package_name_pretty}${" "}<pkg-version>v${chosen_version}</pkg-version></header>`,
+                    package: html`<header>${package_name_pretty}${" "}<pkg-version>v${chosen_version}${edit}</pkg-version></header>`,
                 })
 
                 offer_update = can_update(chosen_version, available_versions)
@@ -104,7 +113,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
                 hint_raw = t("t_pkg_will_be_installed_in_notebook", { package: `${package_name} (v${_.last(available_versions)})` })
 
                 hint = th("t_pkg_will_be_installed_in_notebook", {
-                    package: html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>`,
+                    package: html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}${edit}</pkg-version></header>`,
                 })
             }
         }

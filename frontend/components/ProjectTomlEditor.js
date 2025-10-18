@@ -51,7 +51,7 @@ export const ProjectTomlEditor = ({ notebook }) => {
 
     const cm = useRef(/** @type {EditorView?} */ (null))
     const base = useRef(/** @type {any} */ (null))
-
+    const backup_checkbox_ref = useRef(/** @type {HTMLInputElement?} */ (null))
     const [dialog_ref, open, close, _toggle, currently_open] = useDialog()
 
     const cancel = () => {
@@ -61,6 +61,7 @@ export const ProjectTomlEditor = ({ notebook }) => {
     const [original_project_toml, set_original_project_toml] = useState("")
     useLayoutEffect(() => {
         if (currently_open) {
+            if (backup_checkbox_ref.current) backup_checkbox_ref.current.checked = true
             return pluto_actions
                 .send(
                     "nbpkg_get_project_toml",
@@ -95,12 +96,15 @@ export const ProjectTomlEditor = ({ notebook }) => {
         const view = cm.current
         if (view == null) return
 
+        const backup = backup_checkbox_ref.current?.checked
+
         pluto_actions
             .send(
                 "nbpkg_set_project_toml",
                 {
                     project_toml_original: original_project_toml,
                     project_toml: view.state.doc.toString(),
+                    backup,
                 },
                 { notebook_id: notebook.notebook_id }
             )
@@ -209,11 +213,12 @@ export const ProjectTomlEditor = ({ notebook }) => {
         base.current.insertBefore(current_cm.dom, base.current.firstElementChild)
     }, [])
 
-    return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-frontmatter pluto-project_toml">
+    return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-project_toml">
         <h1>Project.toml</h1>
-        <p>Here you can edit the Project.toml file for this notebook. <a href="https://pkgdocs.julialang.org/v1/compatibility/">Learn more →</a></p>
+        <p>Here you can edit the Project.toml file for this notebook. <a href="https://pkgdocs.julialang.org/v1/compatibility/">What is Project.toml?</a></p>
         <div class="project_toml_cm" ref=${base}></div>
 
+        <label class="pkg-backup"><input type="checkbox" ref=${backup_checkbox_ref} /> Create a backup of the notebook before saving?</label>
         <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save & resolve</button></div>
     </dialog>`
 }

@@ -4090,16 +4090,56 @@ pluto-cell.hooked_up > pluto-output {
     gap: 0.3em 1em;
 }
 
+/* Frontmatter input and Project.toml editor */
+
 .pluto-modal {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
     color: var(--export-color);
     background: var(--export-bg-color);
-    border-radius: 0.7em;
-    padding: 1em 1.5em;
+    border-radius: 1.8em;
+    padding: 1.3em 1.9em;
+    border: none;
+    box-shadow: 0 0 55px #00000052;
 }
-.pluto-project_toml {
-    width: min(45rem, 90vw);
+.pluto-modal h1 {
+    color: white;
+    font-weight: 900;
+    margin-block-start: 0.3em;
+}
+
+.pluto-modal :is(a) {
+    color: var(--export-color);
+    text-decoration-color: var(--export-color);
+}
+
+.pluto-modal button {
+    cursor: pointer;
+    background-color: var(--frontmatter-button-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-button-bg-color);
+    font-weight: 500;
+}
+
+.pluto-modal button:hover {
+    border-color: var(--frontmatter-input-border-color);
+}
+
+.pluto-modal input {
+    background-color: var(--frontmatter-input-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-input-border-color);
+    padding: 0.3em 0.5em;
+}
+.pluto-modal label {
+    font-weight: 500;
+}
+
+.pluto-modal .final {
+    display: flex;
+    margin-top: 0.5rem;
+    justify-content: flex-end;
+    gap: 0.5em;
 }
 
 .pluto-frontmatter .card-preview {
@@ -4115,25 +4155,6 @@ pluto-cell.hooked_up > pluto-output {
     color: var(--black);
 }
 
-.pluto-frontmatter button {
-    cursor: pointer;
-    background-color: var(--frontmatter-button-bg-color);
-    border-radius: 0.5em;
-    border: 2px solid var(--frontmatter-button-bg-color);
-    font-weight: 500;
-}
-
-.pluto-frontmatter button:hover {
-    border-color: var(--frontmatter-input-border-color);
-}
-
-.pluto-frontmatter input {
-    background-color: var(--frontmatter-input-bg-color);
-    border-radius: 0.5em;
-    border: 2px solid var(--frontmatter-input-border-color);
-    padding: 0.3em 0.5em;
-}
-
 .pluto-frontmatter input:invalid {
     outline-color: red;
     border-color: red;
@@ -4141,10 +4162,6 @@ pluto-cell.hooked_up > pluto-output {
 
 .pluto-frontmatter rbl-tag-input {
     color: var(--black);
-}
-
-.pluto-frontmatter label {
-    font-weight: 500;
 }
 
 .pluto-frontmatter .deletefield {
@@ -4165,14 +4182,16 @@ pluto-cell.hooked_up > pluto-output {
 }
 
 .pluto-frontmatter .final {
-    display: flex;
     margin-top: 2rem;
-    justify-content: flex-end;
-    gap: 0.5em;
+}
+
+.pluto-project_toml {
+    width: min(45rem, 90vw);
 }
 
 .pluto-project_toml .cm-editor {
     font-family: var(--julia-mono-font-stack);
+    margin-block-end: 2rem;
 }
 
 /*  Styles for markdown copy Button*/
