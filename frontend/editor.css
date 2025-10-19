@@ -714,18 +714,36 @@ pluto-editor.static_preview button.toggle_export {
     background-size: contain;
     filter: var(--image-filters);
     vertical-align: -0.1em;
+}
+
+.ionicon-icon-margin {
     margin-inline-start: 0.4ch;
 }
 
+/* You need to add all icon links */
 .ionicon-icon[data-icon="download-outline"] {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/download-outline.svg");
 }
-
 .ionicon-icon[data-icon="cloud-upload-outline"] {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-upload-outline.svg");
 }
 .ionicon-icon[data-icon="trash-bin-outline"] {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/trash-bin-outline.svg");
+}
+.ionicon-icon[data-icon="arrow-up-circle-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg");
+}
+.ionicon-icon[data-icon="document-text-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
+}
+.ionicon-icon[data-icon="open-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/open-outline.svg");
+}
+.ionicon-icon[data-icon="help-circle-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg");
+}
+.ionicon-icon[data-icon="pencil-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pencil-outline.svg");
 }
 
 dialog.export-html-dialog {
@@ -2372,7 +2390,7 @@ pkg-popup.busy {
 pkg-version {
     font-family: monospace;
     font-size: 0.75rem;
-    opacity: 0.5;
+    color: var(--pkg-version-color);
 }
 
 pkg-popup .pkg-buttons {

@@ -722,7 +722,6 @@ export class Editor extends Component {
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
-                console.log("get_avaible_versions", message)
                 return message
             },
         }

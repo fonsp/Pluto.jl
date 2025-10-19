@@ -184,16 +184,6 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     <span></span>
                 </button>
                 <button
-                    title="Edit Project.toml"
-                    class="toggle_frontmatter_edit toggle_project_toml_edit TODO"
-                    onClick=${() => {
-                        onClose()
-                        window.dispatchEvent(new CustomEvent("open pluto project toml editor"))
-                    }}
-                >
-                    <span></span>
-                </button>
-                <button
                     title=${t("t_start_presentation")}
                     class="toggle_presentation"
                     onClick=${() => {

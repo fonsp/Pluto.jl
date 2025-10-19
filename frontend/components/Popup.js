@@ -8,13 +8,8 @@ import { useDebouncedTruth } from "./RunArea.js"
 import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 import { pretty_long_time } from "./EditOrRunButton.js"
 import { useEventListener } from "../common/useEventListener.js"
-import { get_included_external_source } from "../common/external_source.js"
 import { t, th } from "../common/lang.js"
-
-export const arrow_up_circle_icon = get_included_external_source("arrow_up_circle_icon")?.href
-export const document_text_icon = get_included_external_source("document_text_icon")?.href
-export const help_circle_icon = get_included_external_source("help_circle_icon")?.href
-export const open_icon = get_included_external_source("open_icon")?.href
+import { InlineIonicon } from "./PlutoLandUpload.js"
 
 /**
  * @typedef PkgPopupDetails
@@ -64,7 +59,7 @@ export const Popup = ({ notebook, disable_input }) => {
     )
 
     const close = useCallback(() => {
-        set_recent_event(null)
+        // set_recent_event(null)
     }, [set_recent_event])
 
     useEventListener(window, "open pluto popup", open, [open])
@@ -268,8 +263,8 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                           }
                           e.preventDefault()
                       }}
-                      ><img alt="⬆️" src=${arrow_up_circle_icon} width="17"
-                  /></a>`}
+                      >${InlineIonicon("arrow-up-circle-outline")}</a
+                  >`}
             <a
                 class="toggle-terminal"
                 target="_blank"
@@ -280,11 +275,9 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                     set_showterminal(!showterminal)
                     e.preventDefault()
                 }}
-                ><img alt="📄" src=${document_text_icon} width="17"
-            /></a>
-            <a class="help" target="_blank" title=${t("t_pkg_go_to_help")} href="https://plutojl.org/pkg/"
-                ><img alt="❔" src=${help_circle_icon} width="17"
-            /></a>
+                >${InlineIonicon("document-text-outline")}</a
+            >
+            <a class="help" target="_blank" title=${t("t_pkg_go_to_help")} href="https://plutojl.org/pkg/">${InlineIonicon("help-circle-outline")}</a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? t("t_loading_ellipses")} />
     </pkg-popup>`

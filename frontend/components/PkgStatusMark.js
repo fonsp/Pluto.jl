@@ -2,6 +2,7 @@ import { t, th } from "../common/lang.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
+import { InlineIonicon } from "./PlutoLandUpload.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -54,13 +55,17 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     const package_name_pretty = html`<a class="package-name" href=${package_url}><b>${package_name}</b></a> `
 
     const nbsp = "\u00A0"
-    const edit = html`${nbsp}<button
+    const edit = html`${nbsp}<a
+            href="#"
             title="Edit package versions"
             class="edit_package_version"
-            onClick=${() => window.dispatchEvent(new CustomEvent("open pluto project toml editor"))}
+            onClick=${(e) => {
+                window.dispatchEvent(new CustomEvent("open pluto project toml editor"))
+                e.preventDefault()
+            }}
         >
-            ✏️
-        </button>`
+            ${InlineIonicon("pencil-outline")}
+        </a>`
 
     if (is_disable_pkg) {
         const f_name = package_name
