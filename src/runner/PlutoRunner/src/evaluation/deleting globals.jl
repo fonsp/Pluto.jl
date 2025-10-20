@@ -207,7 +207,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-const alive_world_val = typemax(UInt) # This is true at least for julia 1.10 and 1.11, and it's not applicable for julia 1.12. See issue https://github.com/fonsp/Pluto.jl/issues/3259 for more details. # UInt and not UInt64 because of https://github.com/JuliaLang/julia/pull/58291/files#diff-882927c6e612596e22406ae0d06adcee88a9ec05e8b61ad81b48942e2cb266e9 and https://github.com/JuliaLang/julia/blob/422d05d1f8c185ad636deb0ab181aa41e3d424ea/src/jltypes.c#L3237
+const alive_world_val = typemax(UInt) # This is true at least for julia 1.10 and 1.11, and it's not applicable for julia 1.12 and later. See issue https://github.com/fonsp/Pluto.jl/issues/3259 for more details. # UInt and not UInt64 because of https://github.com/JuliaLang/julia/pull/58291/files#diff-882927c6e612596e22406ae0d06adcee88a9ec05e8b61ad81b48942e2cb266e9 and https://github.com/JuliaLang/julia/blob/422d05d1f8c185ad636deb0ab181aa41e3d424ea/src/jltypes.c#L3237
 
 
 # Check if a method has already been deleted/disabled
