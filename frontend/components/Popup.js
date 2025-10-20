@@ -59,7 +59,7 @@ export const Popup = ({ notebook, disable_input }) => {
     )
 
     const close = useCallback(() => {
-        // set_recent_event(null)
+        set_recent_event(null)
     }, [set_recent_event])
 
     useEventListener(window, "open pluto popup", open, [open])

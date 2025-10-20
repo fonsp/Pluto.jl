@@ -64,7 +64,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
                 e.preventDefault()
             }}
         >
-            ${InlineIonicon("pencil-outline")}
+            ${InlineIonicon("build-outline")}
         </a>`
 
     if (is_disable_pkg) {

@@ -399,6 +399,7 @@ const global_variables_completion =
 /** @returns {autocomplete.CompletionSource} */
 const make_it_julian = (/** @type {autocomplete.CompletionSource} */ source) => (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const c = source(ctx)
+    if (c instanceof Promise) throw "Oh nooooo"
     return c == null
         ? null
         : {

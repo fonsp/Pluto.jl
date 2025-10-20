@@ -520,6 +520,10 @@ function edit_project_toml(
     if strip(original_project_toml) == strip(new_project_toml)
         return
     end
+    if occursin("[sources", new_project_toml) && VERSION < v"1.12.0"
+        error("[sources] is not supported in this Julia version.")
+    end
+    
     
     backup && save && writebackup(notebook)
     

@@ -189,11 +189,9 @@ export const ProjectTomlEditor = ({ notebook }) => {
                         activateOnTyping: true,
 
                         override: [
-                            //
-
                             complete_remote_package_names(() => pluto_actions.send("all_registered_package_names").then(({ message }) => message.results)),
-                            complete_uuids(get_nbpkg, get_avaible_versions),
-                            complete_versions(get_nbpkg, get_avaible_versions),
+                            without_finished_completions(complete_uuids(get_nbpkg, get_avaible_versions)),
+                            without_finished_completions(complete_versions(get_nbpkg, get_avaible_versions)),
                         ],
                         activateOnCompletion: (completion) => completion.label.endsWith(" "),
 
@@ -203,6 +201,7 @@ export const ProjectTomlEditor = ({ notebook }) => {
                     }),
                     keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
 
+                    retrigger_autocomplete_directly,
                     update_button_decorations(get_avaible_versions),
 
                     tab_help_plugin,
@@ -214,8 +213,13 @@ export const ProjectTomlEditor = ({ notebook }) => {
     }, [])
 
     return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-project_toml">
-        <h1>Project.toml</h1>
-        <p>Here you can edit the Project.toml file for this notebook. <a href="https://pkgdocs.julialang.org/v1/compatibility/">What is Project.toml?</a></p>
+        <h1>Project.toml <em>(feature preview)</em></h1>
+        <p>
+            Here you can edit the Project.toml file for this notebook. (<a href="https://pkgdocs.julialang.org/v1/compatibility/">What is Project.toml?</a>) You
+            can change the <code>[compat]</code> entries to specify the <strong>package versions</strong> used in this notebook. By adding
+            <code>[sources]</code>, you can use unregistered and local packages.
+        </p>
+        <p><strong>Note:</strong> This is a feature preview. It may not always work as expected. Please let us know what you think!</p>
         <div class="project_toml_cm" ref=${base}></div>
 
         <label class="pkg-backup"><input type="checkbox" ref=${backup_checkbox_ref} /> Create a backup of the notebook before saving?</label>
@@ -302,6 +306,9 @@ const complete_uuids =
         const available_versions = await get_avaible_versions({ package_name })
         if (available_versions == null) return null
 
+        // If it's already a complete UUID, don't complete
+        // if ((to ?? ctx.pos) - from == 36 + 2) return null
+
         return {
             from,
             to,
@@ -309,6 +316,17 @@ const complete_uuids =
         }
     }
 
+/** @returns {autocomplete.CompletionSource} */
+const without_finished_completions = (/** @type {autocomplete.CompletionSource} */ source) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const c = await source(ctx)
+
+    return c == null
+        ? null
+        : {
+              ...c,
+              options: c.options.filter(({ label }) => label.length !== (c.to ?? ctx.pos) - c.from),
+          }
+}
 const complete_versions =
     (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg, get_avaible_versions) =>
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
@@ -338,16 +356,16 @@ const complete_versions =
         }
     }
 
-const complete_used_package_names =
-    (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        const sec = current_toml_section(ctx.state, ctx.pos)
-        if (!(sec === "deps" || sec === "compat" || sec === "sources")) return null
+// const complete_used_package_names =
+//     (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+//         const sec = current_toml_section(ctx.state, ctx.pos)
+//         if (!(sec === "deps" || sec === "compat" || sec === "sources")) return null
 
-        const pkg = get_nbpkg()
-        if (pkg == null) return null
+//         const pkg = get_nbpkg()
+//         if (pkg == null) return null
 
-        return autocomplete.completeFromList(Object.keys(pkg.installed_versions))(ctx)
-    }
+//         return autocomplete.completeFromList(Object.keys(pkg.installed_versions))(ctx)
+//     }
 
 const complete_remote_package_names = (package_completions) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const sec = current_toml_section(ctx.state, ctx.pos)
@@ -360,8 +378,17 @@ const complete_remote_package_names = (package_completions) => async (/** @type 
     if (remote_list == null) return null
 
     const at_end_of_line = ctx.state.doc.lineAt(ctx.pos).to === ctx.pos
-    return autocomplete.completeFromList(remote_list.map((s) => (at_end_of_line ? `${s} = ` : s)))(ctx)
+    return autocomplete.completeFromList(remote_list.map((s) => (at_end_of_line ? `${s} = "` : s)))(ctx)
 }
+
+const retrigger_autocomplete_directly = EditorView.updateListener.of((update) => {
+    update.transactions.forEach((transaction) => {
+        const completion = transaction.annotation(autocomplete.pickedCompletion)
+        if (completion != null) {
+            if (update.state.selection.main.empty) completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")?.run?.(update.view)
+        }
+    })
+})
 
 const julia_semver_to_npm = (julia_semver) =>
     julia_semver

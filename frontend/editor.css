@@ -742,8 +742,8 @@ pluto-editor.static_preview button.toggle_export {
 .ionicon-icon[data-icon="help-circle-outline"] {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg");
 }
-.ionicon-icon[data-icon="pencil-outline"] {
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pencil-outline.svg");
+.ionicon-icon[data-icon="build-outline"] {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/build-outline.svg");
 }
 
 dialog.export-html-dialog {

@@ -574,6 +574,7 @@ responses[:nbpkg_get_project_toml] = function response_nbpkg_get_project_toml(�
         :project_toml => project_toml,
         :pkg_token_available => isready(pkg_token),
         :notebook_token_available => isready(🙋.notebook.executetoken),
+        :julia_supports_sources => VERSION >= v"1.12.0",
     ), nothing, nothing, 🙋.initiator))
 end
 
