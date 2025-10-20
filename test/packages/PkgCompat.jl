@@ -92,7 +92,7 @@ import Pkg
     end
 
     @testset "Compat manipulation" begin
-        old_path = joinpath(@__DIR__, "old_artifacts_import.jl")
+        old_path = joinpath(pkg_fixtures, "old_artifacts_import.jl")
         old_contents = read(old_path, String)
         
         dir = mktempdir()
