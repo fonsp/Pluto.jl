@@ -310,7 +310,7 @@ const activate_notebook = activate_notebook_environment
 function testnb(name="simple_stdlib_import.jl")
     t = tempname()
 
-    readwrite(Pluto.project_relative_path("test", "packages", name), t)
+    readwrite(Pluto.project_relative_path("test", "packages", "fixtures", name), t)
     t
 end
 
