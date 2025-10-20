@@ -26,7 +26,6 @@ include("helpers.jl")
 # tests that start new processes:
 
 @timeit_include("compiletimes.jl")
-@timeit_include("packages/ProjectTomlEdit.jl")
 verify_no_running_processes()
 if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
     print_timeroutput()
@@ -43,6 +42,8 @@ verify_no_running_processes()
 @timeit_include("RichOutput.jl")
 verify_no_running_processes()
 @timeit_include("packages/Basic.jl")
+verify_no_running_processes()
+@timeit_include("packages/ProjectTomlEdit.jl")
 verify_no_running_processes()
 @timeit_include("Dynamic.jl")
 verify_no_running_processes()
