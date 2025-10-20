@@ -152,11 +152,15 @@ end
 
 # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
 
-pluto_test_registry_spec = Pkg.RegistrySpec(;
+const pluto_test_registry_spec = Pkg.RegistrySpec(;
     url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
     uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
     name="PlutoPkgTestRegistry",
 )
+
+const pkg_fixtures = joinpath(@__DIR__, "packages", "fixtures")
+
+
 
 snapshots_dir = joinpath(@__DIR__, "snapshots")
 
@@ -197,5 +201,6 @@ function check_project()
 	@show(yo("Manifest.toml"))
     println()
 end
+
 
 

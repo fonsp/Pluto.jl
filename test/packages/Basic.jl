@@ -223,7 +223,7 @@ import Malt
         cleanup(🍭, notebook)
     end
 
-    simple_import_path = joinpath(@__DIR__, "simple_import.jl")
+    simple_import_path = joinpath(pkg_fixtures, "simple_import.jl")
     simple_import_notebook = read(simple_import_path, String)
 
     @testset "Manifest loading" begin
@@ -251,7 +251,7 @@ import Malt
     end
     
     @testset "Package added by url" begin
-        url_notebook = read(joinpath(@__DIR__, "url_import.jl"), String)
+        url_notebook = read(joinpath(pkg_fixtures, "url_import.jl"), String)
 
         🍭 = ServerSession()
 
@@ -275,7 +275,7 @@ import Malt
         cleanup(🍭, notebook)
     end
     
-    future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
+    future_notebook = read(joinpath(pkg_fixtures, "future_nonexisting_version.jl"), String)
     @testset "Recovery from unavailable versions" begin
         🍭 = ServerSession()
 
@@ -354,13 +354,13 @@ import Malt
         cleanup(🍭, notebook)
     end
     
-    pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
+    pkg_cell_notebook = read(joinpath(pkg_fixtures, "pkg_cell.jl"), String)
     @testset "Pkg cell -- loaded from file" begin
         🍭 = ServerSession()
 
         dir = mktempdir()
         for n in ["Project.toml", "Manifest.toml"]
-            cp(joinpath(@__DIR__, "pkg_cell_env", n), joinpath(dir, n))
+            cp(joinpath(pkg_fixtures, "pkg_cell_env", n), joinpath(dir, n))
         end
         path = joinpath(dir, "hello.jl")
         write(path, pkg_cell_notebook)
@@ -434,7 +434,7 @@ import Malt
     @testset "File format -- Backwards compat" begin
         🍭 = ServerSession()
         
-        pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
+        pre_pkg_notebook = read(joinpath(pkg_fixtures, "old_import.jl"), String)
         dir = mktempdir()
         path = joinpath(dir, "hello.jl")
         write(path, pre_pkg_notebook)
@@ -495,7 +495,7 @@ import Malt
     @testset "Bad files" begin
         @testset "$(name)" for name in ["corrupted_manifest", "unregistered_import"]
 
-            original_path = joinpath(@__DIR__, "$(name).jl")
+            original_path = joinpath(pkg_fixtures, "$(name).jl")
             original_contents = read(original_path, String)
 
             🍭 = ServerSession()
