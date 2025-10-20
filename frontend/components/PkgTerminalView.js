@@ -2,7 +2,10 @@ import { useDialog } from "../common/useDialog.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { ansi_to_html } from "../imports/AnsiUp.js"
 import { html, Component, useState, useEffect, useRef, useLayoutEffect } from "../imports/Preact.js"
-import { InlineIonicon } from "./PlutoLandUpload.js"
+
+export const IoniconButton = ({ icon, ...kwargs }) => {
+    return html`<button ...${kwargs} data-icon=${icon} class="ionicon-icon-button"></button>`
+}
 
 const make_spinner_spin = (original_html) => original_html.replaceAll("◐", `<span class="make-me-spin">◐</span>`)
 

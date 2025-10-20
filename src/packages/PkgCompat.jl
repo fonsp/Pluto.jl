@@ -19,8 +19,7 @@ else
     const REPLMode = Base.get_extension(Pkg, :REPLExt)
 end
 
-# Should be in Base
-flatmap(args...) = vcat(map(args...)...)
+const flatmap = collect ∘ Iterators.flatmap
 
 # Should be in Base
 function select(f::Function, xs)
@@ -354,6 +353,20 @@ function package_versions(package_name::AbstractString)::Vector
     end
 end
 
+"""
+Return a Vector of UUIDs for the given package name. Returns an empty Vector if the package was not found.
+"""
+function package_uuids(package_name::AbstractString)::Vector{Base.UUID}
+	try
+		flatmap(_parsed_registries[]) do reg
+			RegistryInstances.uuids_from_name(reg, package_name)
+		end
+	catch e
+		@warn "Pkg compat: failed to get package UUIDs." exception=(e,catch_backtrace())
+		Base.UUID[]
+	end
+end
+
 # ✅ "Public" API using RegistryInstances
 """
 Return the URL of the package's documentation (if possible) or homepage. Returns `nothing` if the package was not found.
@@ -513,11 +526,8 @@ function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
 		_modify_compat!(ctx) do compat
 			for p in keys(compat)
-				m_version = get_manifest_version(ctx, p)
-				if m_version !== nothing && !is_stdlib(p)
-					if compat[p] == "~" * string(m_version)
-						delete!(compat, p)
-					end
+				if match(r"^~\d+\.\d+\.\d+$", compat[p]) !== nothing
+					delete!(compat, p)
 				end
 			end
 		end
