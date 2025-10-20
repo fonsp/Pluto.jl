@@ -11,13 +11,13 @@ import {
     english,
     french,
     japanese,
-    nederlands,
+    nederlands_nl,
     norsk_bokmål,
     polski,
     portugues_pt,
     suomi,
     corporate_english,
-} from "./lang_imports.js"
+} from "../imports/lang_imports.js"
 
 const without_empty_keys = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
@@ -51,8 +51,8 @@ i18next.use(LanguageDetector).init({
         "ja": {
             translation: without_empty_keys(japanese),
         },
-        "nl": {
-            translation: without_empty_keys(nederlands),
+        "nl-NL": {
+            translation: without_empty_keys(nederlands_nl),
         },
         "nb": {
             translation: without_empty_keys(norsk_bokmål),

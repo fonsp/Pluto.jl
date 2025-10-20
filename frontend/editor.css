@@ -3365,6 +3365,7 @@ footer #info {
     cursor: pointer;
     /* width: 78px; */
     width: 100%;
+    font-family: var(--system-ui-font-stack);
 }
 
 .language-picker select:focus {
