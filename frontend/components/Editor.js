@@ -1741,6 +1741,7 @@ ${t("t_key_autosave_description")}`
                     />
                     <${ProjectTomlEditor}
                         notebook=${notebook}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
                     />
                     <${PlutoLandUpload}
                         notebook_id=${notebook.notebook_id}

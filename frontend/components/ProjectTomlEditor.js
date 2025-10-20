@@ -44,9 +44,10 @@ import { set_cm_value } from "./FilePicker.js"
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
+ *  process_waiting_for_permission: Boolean,
  * }} props
  * */
-export const ProjectTomlEditor = ({ notebook }) => {
+export const ProjectTomlEditor = ({ notebook, process_waiting_for_permission }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     const cm = useRef(/** @type {EditorView?} */ (null))
@@ -122,7 +123,17 @@ export const ProjectTomlEditor = ({ notebook }) => {
         close()
     }, [close, original_project_toml])
 
-    useEventListener(window, "open pluto project toml editor", open, [open])
+    const pwfp_ref = useRef(process_waiting_for_permission)
+    pwfp_ref.current = process_waiting_for_permission
+    useEventListener(
+        window,
+        "open pluto project toml editor",
+        () => {
+            if (pwfp_ref.current) alert("You need to start the notebook before you can edit the Project.toml. This might be supported in the future.")
+            else open()
+        },
+        [open]
+    )
 
     useEventListener(
         window,
@@ -215,12 +226,22 @@ export const ProjectTomlEditor = ({ notebook }) => {
     return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-project_toml">
         <h1>Project.toml <em>(feature preview)</em></h1>
         <p>
-            Here you can edit the Project.toml file for this notebook. (<a href="https://pkgdocs.julialang.org/dev/toml-files/">What is Project.toml?</a>) You
-            can change the <code>[compat]</code> entries to specify the <strong>package versions</strong> used in this notebook. By adding
-            <code>[sources]</code>, you can use unregistered and local packages.
+            This notebook has its own package environment. You can edit the Project.toml file to specify the packages used in this notebook. (<a
+                href="https://pkgdocs.julialang.org/dev/toml-files/"
+                >What is Project.toml?</a
+            >)
         </p>
+
+        <p>
+            You can change the <code>[compat]</code> entries to specify the <strong>package versions</strong> used in this notebook. By adding
+            <code>[sources]</code>, you can use <em>unregistered</em> or <em>local</em> packages.
+        </p>
+
         <p><strong>Note:</strong> This is a feature preview. It may not always work as expected. Please let us know what you think!</p>
+
         <div class="project_toml_cm" ref=${base}></div>
+
+        <p>After submitting, use the <strong>Status</strong> tab to see the logs.</p>
 
         <label class="pkg-backup"><input type="checkbox" ref=${backup_checkbox_ref} /> Create a backup of the notebook before saving?</label>
         <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save & resolve</button></div>
