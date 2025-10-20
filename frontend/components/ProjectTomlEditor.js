@@ -215,7 +215,7 @@ export const ProjectTomlEditor = ({ notebook }) => {
     return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-project_toml">
         <h1>Project.toml <em>(feature preview)</em></h1>
         <p>
-            Here you can edit the Project.toml file for this notebook. (<a href="https://pkgdocs.julialang.org/v1/compatibility/">What is Project.toml?</a>) You
+            Here you can edit the Project.toml file for this notebook. (<a href="https://pkgdocs.julialang.org/dev/toml-files/">What is Project.toml?</a>) You
             can change the <code>[compat]</code> entries to specify the <strong>package versions</strong> used in this notebook. By adding
             <code>[sources]</code>, you can use unregistered and local packages.
         </p>

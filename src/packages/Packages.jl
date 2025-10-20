@@ -5,6 +5,7 @@ import .PkgCompat: select, is_stdlib
 import Logging
 import LoggingExtras
 import GracefulPkg
+import TOML
 
 const tiers = unique((
     Pkg.PRESERVE_ALL_INSTALLED,
@@ -463,7 +464,7 @@ const gracefulpkg_strats = filter!(collect(GracefulPkg.DEFAULT_STRATEGIES)) do s
     !(strat isa GracefulPkg.StrategyRemoveProject)
 end
 
-const gracefulpkg_strats_project_edit = [
+const gracefulpkg_strats_project_edit = GracefulPkg.Strategy[
     GracefulPkg.StrategyDoNothing(),
     GracefulPkg.StrategyRemoveManifest(),
 ]
@@ -562,21 +563,40 @@ function edit_project_toml(
                 withlogcapture(iolistener) do
                     with_io_setup(notebook, iolistener) do
                         try
-                            Status.report_business!(pkg_status, :write_project_toml) do
-                                write(p, new_project_toml)
-                                
+                            function recache()
                                 PkgCompat.load_ctx!(notebook.nbpkg_ctx)
                                 PkgCompat._update_project_hash!(notebook.nbpkg_ctx)
                             end
                             
+                            Status.report_business!(pkg_status, :write_project_toml) do
+                                write(p, new_project_toml)
+                                
+                                recache()
+                            end
+                            
+                            # The GracefulPkg strategies to use for `resolve`
+                            strategies = let
+                                s(str) = try
+                                    get(TOML.parse(str), "sources", nothing)
+                                catch
+                                    nothing
+                                end
+                                sources_changed = s(original_project_toml) != s(new_project_toml)
+
+                                sources_changed ? 
+                                    # Sources changed, so we remove the Manifest directly, to get latest things from sources.
+                                    GracefulPkg.Strategy[GracefulPkg.StrategyRemoveManifest()] : 
+                                    # We use GracefulPkg here with only 2 strategies: DoNothing and RemoveManifest. The first one is a regular "resolve". The second one is more like an "update".
+                                    gracefulpkg_strats_project_edit
+                            end
+                            
                             local report
                             Status.report_business!(pkg_status, :resolve) do
-                                # we use GracefulPkg here with only 2 strategies: DoNothing and RemoveManifest. The first one is a regular "resolve". The second one is more like an "update".
-                                report = 
-                                with_auto_fixes(
+                                report = with_auto_fixes(
                                     notebook, iolistener; 
-                                    strategies=gracefulpkg_strats_project_edit) do
-                                    # the "resolve" strategy will try to resolve the package environment.
+                                    strategies
+                                ) do
+                                    recache()
                                     _resolve(notebook, iolistener)
                                 end
                                 

@@ -526,11 +526,8 @@ function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
 		_modify_compat!(ctx) do compat
 			for p in keys(compat)
-				m_version = get_manifest_version(ctx, p)
-				if m_version !== nothing && !is_stdlib(p)
-					if compat[p] == "~" * string(m_version)
-						delete!(compat, p)
-					end
+				if match(r"^~\d+\.\d+\.\d+$", compat[p]) !== nothing
+					delete!(compat, p)
 				end
 			end
 		end
