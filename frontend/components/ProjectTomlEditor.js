@@ -8,7 +8,6 @@ import semver from "https://esm.sh/semver@7.6.3"
 import {
     EditorState,
     EditorView,
-    placeholder as Placeholder,
     keymap,
     history,
     autocomplete,
@@ -40,6 +39,7 @@ import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { ReactWidget } from "./CellInput/ReactWidget.js"
 import { set_cm_value } from "./FilePicker.js"
+import { t, th } from "../common/lang.js"
 
 /**
  * @param {{
@@ -75,12 +75,12 @@ export const ProjectTomlEditor = ({ notebook, process_waiting_for_permission }) 
                     const { project_toml, pkg_token_available, notebook_token_available } = res.message
 
                     if (!notebook_token_available) {
-                        alert("Please wait for all cells to finish executing.")
+                        alert(t("t_project_toml_editor_wait_cells"))
                         close()
                         return
                     }
                     if (!pkg_token_available) {
-                        alert("Please wait for all package operations to finish (also in other notebooks).")
+                        alert(t("t_project_toml_editor_wait_packages"))
                         close()
                         return
                     }
@@ -112,13 +112,13 @@ export const ProjectTomlEditor = ({ notebook, process_waiting_for_permission }) 
             .then((res) => {
                 const { ok, why_not } = res.message
                 if (ok) {
-                    alert("Project TOML synchronized ✔\n\nView the Status tab for logs.")
+                    alert(t("t_project_toml_editor_synchronized"))
                 } else {
                     throw new Error(why_not)
                 }
             })
             .catch((err) => {
-                alert(`Project TOML synchronization failed: ${err}`)
+                alert(t("t_project_toml_editor_sync_failed", { error: err }))
             })
         close()
     }, [close, original_project_toml])
@@ -129,7 +129,7 @@ export const ProjectTomlEditor = ({ notebook, process_waiting_for_permission }) 
         window,
         "open pluto project toml editor",
         () => {
-            if (pwfp_ref.current) alert("You need to start the notebook before you can edit the Project.toml. This might be supported in the future.")
+            if (pwfp_ref.current) alert(t("t_project_toml_editor_start_notebook_first"))
             else open()
         },
         [open]
@@ -193,8 +193,6 @@ export const ProjectTomlEditor = ({ notebook, process_waiting_for_permission }) 
                         { dark: usesDarkTheme }
                     ),
                     // EditorView.updateListener.of(onCM6Update),
-
-                    Placeholder("This is a TOML file. You can set metadata for your project here."),
                     // regexpLinter(get_nbpkg),
                     autocompletion({
                         activateOnTyping: true,
@@ -224,66 +222,27 @@ export const ProjectTomlEditor = ({ notebook, process_waiting_for_permission }) 
     }, [])
 
     return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-project_toml">
-        <h1>Project.toml <em>(feature preview)</em></h1>
+        <h1>${th("t_project_toml_editor_title")}</h1>
         <p>
-            This notebook has its own package environment. You can edit the Project.toml file to specify the packages used in this notebook. (<a
-                href="https://pkgdocs.julialang.org/dev/toml-files/"
-                >What is Project.toml?</a
+            ${t("t_project_toml_editor_description")} (<a href="https://pkgdocs.julialang.org/dev/toml-files/"
+                >${t("t_project_toml_editor_what_is_project_toml")}</a
             >)
         </p>
 
-        <p>
-            You can change the <code>[compat]</code> entries to specify the <strong>package versions</strong> used in this notebook. By adding
-            <code>[sources]</code>, you can use <em>unregistered</em> or <em>local</em> packages.
-        </p>
+        <p>${th("t_project_toml_editor_compat_description")}</p>
 
-        <p><strong>Note:</strong> This is a feature preview. It may not always work as expected. Please let us know what you think!</p>
+        <p>${th("t_project_toml_editor_feature_preview_note")}</p>
 
         <div class="project_toml_cm" ref=${base}></div>
 
-        <p>After submitting, use the <strong>Status</strong> tab to see the logs.</p>
+        <p>${th("t_project_toml_editor_status_tab_note")}</p>
 
-        <label class="pkg-backup"><input type="checkbox" ref=${backup_checkbox_ref} /> Create a backup of the notebook before saving?</label>
-        <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save & resolve</button></div>
+        <label class="pkg-backup"><input type="checkbox" ref=${backup_checkbox_ref} /> ${t("t_project_toml_editor_backup_checkbox")}</label>
+        <div class="final">
+            <button onClick=${cancel}>${t("t_project_toml_editor_cancel")}</button><button onClick=${submit}>${t("t_project_toml_editor_save")}</button>
+        </div>
     </dialog>`
 }
-
-// TODO: this does not work for new packaes... maybe not useful.
-// const regexpLinter = (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) =>
-//     linter((view) => {
-//         /** @type {import("../imports/CodemirrorPlutoSetup.js").Diagnostic[]} */
-//         let diagnostics = []
-//         syntaxTree(view.state)
-//             .cursor()
-//             .iterate((node) => {
-//                 if (node.name !== "propertyName") return
-//                 const sec = current_toml_section(view.state, node.from)
-//                 if (sec !== "deps" && sec !== "compat" && sec !== "sources") return
-//                 const name = view.state.sliceDoc(node.from, node.to)
-
-//                 const pkg = get_nbpkg()
-//                 if (pkg == null) return
-
-//                 const ver = pkg.installed_versions[name]
-//                 if (ver != null) return
-
-//                 diagnostics.push({
-//                     from: node.from,
-//                     to: node.to,
-//                     severity: "warning",
-//                     message: `Package ${name} is not used in this notebook.`,
-//                     // actions: [
-//                     //     {
-//                     //         name: "Remove",
-//                     //         apply(view, from, to) {
-//                     //             view.dispatch({ changes: { from, to } })
-//                     //         },
-//                     //     },
-//                     // ],
-//                 })
-//             })
-//         return diagnostics
-//     })
 
 const current_toml_section = (/** @type {EditorState} */ state, pos) => {
     const before = state.sliceDoc(0, pos)
@@ -377,17 +336,6 @@ const complete_versions =
         }
     }
 
-// const complete_used_package_names =
-//     (/** @type {() => import("./Editor.js").NotebookPkgData?} */ get_nbpkg) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-//         const sec = current_toml_section(ctx.state, ctx.pos)
-//         if (!(sec === "deps" || sec === "compat" || sec === "sources")) return null
-
-//         const pkg = get_nbpkg()
-//         if (pkg == null) return null
-
-//         return autocomplete.completeFromList(Object.keys(pkg.installed_versions))(ctx)
-//     }
-
 const complete_remote_package_names = (package_completions) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const sec = current_toml_section(ctx.state, ctx.pos)
     if (!(sec === "deps" || sec === "compat" || sec === "sources")) return null
@@ -440,7 +388,7 @@ const three_stage_update = (current_entry, available_versions) => {
     const results = []
 
     results.push({
-        label: `Latest (${latest})`,
+        label: `${t("t_project_toml_editor_version_latest")} (${latest})`,
         entry: `~${latest}`,
     })
 
@@ -450,7 +398,7 @@ const three_stage_update = (current_entry, available_versions) => {
         const latest_compatible_version = semver.maxSatisfying(available_versions, current_semver_input)
         if (latest_compatible_version != null && latest_compatible_version !== latest) {
             results.push({
-                label: `Latest compatible (${latest_compatible_version})`,
+                label: `${t("t_project_toml_editor_version_latest_compatible")} (${latest_compatible_version})`,
                 entry: `~${latest_compatible_version}`,
             })
         }
