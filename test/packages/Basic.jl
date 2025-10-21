@@ -6,6 +6,7 @@ import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, Se
 import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Malt
+import TOML
 
 
 @testset "Built-in Pkg" begin
@@ -175,7 +176,7 @@ import Malt
             @test count("PlutoPkgTestD", ptoml_contents()) == 2
             @test count("Dates", ptoml_contents()) == 1 # once in [deps], but not in [compat] because it is a stdlib
 
-            ptoml = Pkg.TOML.parse(ptoml_contents())
+            ptoml = TOML.parse(ptoml_contents())
 
             @test haskey(ptoml["compat"], "PlutoPkgTestA")
             @test haskey(ptoml["compat"], "PlutoPkgTestB")

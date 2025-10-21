@@ -11,6 +11,7 @@ import Scratch
 import UUIDs
 import GracefulPkg
 import ..TempDirInScratch
+import TOML
 
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode, :complete_remote_package)
@@ -457,7 +458,7 @@ end
 ###
 
 
-const _project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "weakdeps", "sources", "extensions", "compat"]
+const _project_key_order = ["name", "uuid", "keywords", "license", "desc", "version", "workspace", "deps", "weakdeps", "sources", "extensions", "compat"]
 project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
 
@@ -467,7 +468,7 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	project_path = project_file(ctx)
 	
 	toml = if isfile(project_path)
-		Pkg.TOML.parsefile(project_path)
+		TOML.parsefile(project_path)
 	else
 		Dict{String,Any}()
 	end
@@ -478,7 +479,14 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	isempty(compat) && delete!(toml, "compat")
 
 	write(project_path, sprint() do io
-		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
+		inline_tables = Base.IdSet{Dict}()
+		if haskey(toml, "sources")
+			for source in values(toml["sources"])
+				source isa Dict || error("Expected `sources` to be a table")
+				push!(inline_tables, source)
+			end
+		end
+		TOML.print(io, toml; sorted=true, inline_tables, by=(key -> (project_key_order(key), key)))
 	end)
 	
 	return _update_project_hash!(load_ctx!(ctx))

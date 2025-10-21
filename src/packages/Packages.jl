@@ -621,8 +621,9 @@ function edit_project_toml(
                             Status.report_business_finished!(pkg_status, false)
                         end
                     end
-                    
-                    notebook.nbpkg_restart_required_msg = "Yes, something changed during Project.toml synchronization."
+                    if _has_executed_effectful_code(session, notebook)
+                        notebook.nbpkg_restart_required_msg = "Yes, something changed during Project.toml synchronization."
+                    end
                     stoplistening(iolistener)
                     Status.report_business_finished!(pkg_status)
                 end
