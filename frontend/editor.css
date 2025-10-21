@@ -1107,7 +1107,6 @@ pluto-editor.disconnected > header#pluto-nav {
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
 pluto-editor.nbpkg_restart_recommended > header#pluto-nav {
