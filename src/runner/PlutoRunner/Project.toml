@@ -13,5 +13,4 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
-
 # you CANNOT add a non-stdlib dependency here. I'm sorry this suckz but we tried and it's just too hard to make this work. Check out https://github.com/fonsp/Pluto.jl/issues/3187 and linked issues/PRs for details.
