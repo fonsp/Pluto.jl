@@ -479,14 +479,20 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	isempty(compat) && delete!(toml, "compat")
 
 	write(project_path, sprint() do io
-		inline_tables = Base.IdSet{Dict}()
-		if haskey(toml, "sources")
-			for source in values(toml["sources"])
-				source isa Dict || error("Expected `sources` to be a table")
-				push!(inline_tables, source)
+		@static if VERSION > v"1.12.0-aaa"
+			inline_tables = Base.IdSet{Dict}()
+			if haskey(toml, "sources")
+				for source in values(toml["sources"])
+					source isa Dict || error("Expected `sources` to be a table")
+					push!(inline_tables, source)
+				end
 			end
+			TOML.print(io, toml; sorted=true, inline_tables, by=(key -> (project_key_order(key), key)))
+		else
+			# same but without inline_tables
+			TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
+			
 		end
-		TOML.print(io, toml; sorted=true, inline_tables, by=(key -> (project_key_order(key), key)))
 	end)
 	
 	return _update_project_hash!(load_ctx!(ctx))
