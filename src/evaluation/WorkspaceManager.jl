@@ -9,6 +9,7 @@ import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Malt
 import Malt.Distributed
+import SHA
 
 """
 Contains the Julia process to evaluate code in.
@@ -32,12 +33,29 @@ end
 const SN = Tuple{ServerSession, Notebook}
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
-process_preamble() = quote
-    Base.exit_on_sigint(false)
-    const pluto_boot_environment_path = $(Pluto.pluto_boot_environment_path[])
-    include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
-    ENV["GKSwstype"] = "nul"
-    ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
+function process_preamble()
+    loader_path = project_relative_path(joinpath("src", "runner"), "Loader.jl")
+    project_toml_contents = try
+        read(project_relative_path(joinpath("src", "runner"), "PlutoRunner", "Project.toml"), String)
+    catch
+        ""
+    end
+    lp_hash = string(reinterpret(UInt64, SHA.sha1(loader_path * project_toml_contents)[1:8])[1]; base=62)
+    environment_path = joinpath(Pluto.pluto_boot_environment_path[], lp_hash)
+    # Now the environment path includes (a hash of):
+    # - Julia version
+    # - Pluto version
+    # - Loader.jl path
+    # - PlutoRunner/Project.toml contents
+    # And these 4 should uniquely define the contents of the Manifest.toml that gets generated. So we can safely use this as cache key.
+    
+    quote
+        Base.exit_on_sigint(false)
+        const pluto_boot_environment_path = $environment_path
+        include($loader_path)
+        ENV["GKSwstype"] = "nul"
+        ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
+    end
 end
 
 const active_workspaces = Dict{UUID,Task}()
