@@ -64,7 +64,7 @@ end
 
 @testset "Exports" begin
     port, socket = 
-        @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543) 
+        @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543)
 
     close(socket)
     @test 5543 <= port < 5600
@@ -126,11 +126,19 @@ end
     @test occursin(string(Pluto.PLUTO_VERSION), export_contents)
     @test occursin("</html>", export_contents)
     
+    # wait for Pkg to finish
+    for _ in 1:10
+        Pluto.withtoken(Pluto.pkg_token) do
+            sleep(0.01)
+        end
+    end
+    
     for notebook in values(🍭.notebooks)
-        SessionActions.shutdown(🍭, notebook; keep_in_session=false)
+        SessionActions.shutdown(🍭, notebook; keep_in_session=false, async=false)
     end
     
     close(server)
 end
+sleep(2)
 
 end # testset
