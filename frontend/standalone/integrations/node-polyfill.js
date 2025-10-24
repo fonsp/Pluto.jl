@@ -16,15 +16,18 @@ const dom = parseHTML(`
   </html>
 `);
 
-// Copy jsdom globals to Node.js global scope
+let g = globalThis ?? global;
+
 Object.assign(global, {
-  window: dom.window,
-  document: dom.window.document,
-  HTMLElement: dom.window.HTMLElement,
-  Element: dom.window.Element,
-  Node: dom.window.Node,
-  SVGElement: dom.window.SVGElement,
-  MessageEvent: dom.window.MessageEvent,
+  window: g?.window ?? dom.window,
+  location: g?.location ?? { href: "", origin: "", host: "host" },
+  localStorage: g?.localStorage ?? dom.localStorage,
+  document: g?.window?.document ?? dom.window.document,
+  HTMLElement: g?.window?.HTMLElement ?? dom.window.HTMLElement,
+  Element: g?.window?.Element ?? dom.window.Element,
+  Node: g?.window?.Node ?? dom.window.Node,
+  SVGElement: g?.window?.SVGElement ?? dom.window.SVGElement,
+  MessageEvent: g?.window?.MessageEvent ?? dom.window.MessageEvent,
   alert: (message) => console.log("ALERT:", message),
   Buffer,
 });
