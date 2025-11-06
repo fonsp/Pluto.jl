@@ -96,7 +96,7 @@ function move_vars(
 
     do_reimports(new_workspace, module_imports_to_move)
 
-    revise_if_possible(new_workspace)
+    invokelatest(revise_if_possible,new_workspace)
 end
 
 
