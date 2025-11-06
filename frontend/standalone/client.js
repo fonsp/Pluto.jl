@@ -925,11 +925,6 @@ end`,
 
             this.notebook_state = new_notebook
             this.last_update_time = Date.now()
-
-            this._notify_update("notebook_updated", {
-                patches,
-                notebook: new_notebook,
-            })
         } catch (exception) {
             console.error("Failed to apply patches:", exception)
             console.error("Notebook state:", this.notebook_state)
