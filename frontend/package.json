@@ -1,6 +1,6 @@
 {
   "name": "@plutojl/rainbow",
-  "version": "0.6.16",
+  "version": "0.6.17",
   "description": "TypeScript/JavaScript API for programmatically interacting with Pluto notebooks",
   "type": "module",
   "main": "dist/standalone/index.js",
@@ -95,7 +95,7 @@
   },
   "dependencies": {
     "@observablehq/stdlib": "^3.3.1",
-    "immer": "^10.1.1",
+    "immer": "^10.1.3",
     "linkedom": "^0.18.12",
     "lodash-es": "^4.17.21",
     "msgpack-lite": "github:fonsp/msgpack-lite#0.1.27-es.1",
