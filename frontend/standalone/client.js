@@ -898,44 +898,68 @@ end`,
         }
 
         if (message.patches && message.patches.length > 0) {
-            this._apply_patches(message.patches)
+            // Serialize patch application through the update queue to avoid race conditions
+            // This ensures patches are applied sequentially, matching Editor.js behavior
+            const new_task = this._update_queue_promise.then(() => {
+                return this._apply_patches(message.patches)
+            })
+
+            // Update the queue promise, catching any errors to prevent breaking the chain
+            this._update_queue_promise = new_task.catch((error) => {
+                console.error("Error in patch application queue:", error)
+            })
         }
     }
 
     /**
      * Apply patches to notebook state
      * @param {Array} patches - Array of patches to apply
+     * @returns {Promise<void>} Promise that resolves when patches are applied
      * @private
      */
     _apply_patches(patches) {
-        try {
-            // Ensure we have a valid notebook state before applying patches
-            if (!this.notebook_state) {
-                console.warn("No notebook state available, skipping patch application")
-                return
+        return new Promise((resolve, reject) => {
+            try {
+                // Ensure we have a valid notebook state before applying patches
+                if (!this.notebook_state) {
+                    console.warn("No notebook state available, skipping patch application")
+                    resolve()
+                    return
+                }
+
+                // Validate patches before applying
+                if (!Array.isArray(patches) || patches.length === 0) {
+                    console.warn("Invalid or empty patches, skipping application")
+                    resolve()
+                    return
+                }
+
+                let new_notebook = applyPatches(this.notebook_state, patches)
+
+                this.notebook_state = new_notebook
+                this.last_update_time = Date.now()
+
+                // Notify handlers after successful patch application
+                this._notify_update("notebook_updated", {
+                    patches,
+                    notebook_id: this.notebook_id,
+                })
+
+                resolve()
+            } catch (exception) {
+                console.error("Failed to apply patches:", exception)
+                console.error("Notebook state:", this.notebook_state)
+                console.error("Patches:", patches)
+
+                // Request state reset from server
+                if (this.client && this.connected) {
+                    console.info("Resetting state")
+                    this.client.send("reset_shared_state", {}, { notebook_id: this.notebook_id }, false)
+                }
+
+                reject(exception)
             }
-
-            // Validate patches before applying
-            if (!Array.isArray(patches) || patches.length === 0) {
-                console.warn("Invalid or empty patches, skipping application")
-                return
-            }
-
-            let new_notebook = applyPatches(this.notebook_state, patches)
-
-            this.notebook_state = new_notebook
-            this.last_update_time = Date.now()
-        } catch (exception) {
-            console.error("Failed to apply patches:", exception)
-            console.error("Notebook state:", this.notebook_state)
-            console.error("Patches:", patches)
-
-            // Request state reset from server
-            if (this.client && this.connected) {
-                console.info("Resetting state")
-                this.client.send("reset_shared_state", {}, { notebook_id: this.notebook_id }, false)
-            }
-        }
+        })
     }
 
     /**
