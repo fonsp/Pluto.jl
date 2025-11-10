@@ -5,6 +5,8 @@
  * compatible with the frontend Editor component.
  */
 
+import TOML from "@iarna/toml";
+
 const NOTEBOOK_HEADER = "### A Pluto.jl notebook ###";
 const CELL_ID_DELIMITER = "# ╔═╡ ";
 const CELL_METADATA_PREFIX = "# ╠═╡ ";
@@ -181,20 +183,42 @@ function parseCellMetadata(lines, startIndex) {
   let hasExplicitDisabledMetadata = false;
   let i = startIndex;
 
+  // Collect all metadata lines
+  const metadataLines = [];
   while (i < lines.length && lines[i].startsWith(CELL_METADATA_PREFIX)) {
     const metadataLine = lines[i].slice(CELL_METADATA_PREFIX.length);
-
-    if (metadataLine.includes("disabled = true")) {
-      metadata.disabled = true;
-      hasExplicitDisabledMetadata = true;
-    }
-    if (metadataLine.includes("show_logs = false")) {
-      metadata.show_logs = false;
-    }
-    if (metadataLine.includes("skip_as_script = true")) {
-      metadata.skip_as_script = true;
-    }
+    metadataLines.push(metadataLine);
     i++;
+  }
+
+  // Parse TOML if we have any metadata lines
+  if (metadataLines.length > 0) {
+    try {
+      const tomlString = metadataLines.join("\n");
+      const parsed = TOML.parse(tomlString);
+
+      // Apply parsed values to metadata
+      if (parsed.disabled !== undefined) {
+        metadata.disabled = parsed.disabled;
+        hasExplicitDisabledMetadata = true;
+      }
+      if (parsed.show_logs !== undefined) {
+        metadata.show_logs = parsed.show_logs;
+      }
+      if (parsed.skip_as_script !== undefined) {
+        metadata.skip_as_script = parsed.skip_as_script;
+      }
+
+      // Store any other metadata fields
+      for (const [key, value] of Object.entries(parsed)) {
+        if (!["disabled", "show_logs", "skip_as_script"].includes(key)) {
+          metadata[key] = value;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse cell metadata TOML:", e);
+      // Fall back to keeping default metadata
+    }
   }
 
   return { metadata, hasExplicitDisabledMetadata, endIndex: i };
@@ -401,37 +425,45 @@ function generateBindMacro() {
  * @returns {string[]} Array of metadata lines
  */
 function serializeCellMetadata(metadata) {
-  const lines = [];
+  const tomlData = {};
 
-  // Only serialize non-default values
+  // Only serialize non-default values (excluding internal fields)
   if (metadata.disabled && !metadata._implicit_disabled) {
-    lines.push(CELL_METADATA_PREFIX + "disabled = true");
+    tomlData.disabled = metadata.disabled;
   }
   if (
     metadata.show_logs !== undefined &&
     metadata.show_logs !== DEFAULT_CELL_METADATA.show_logs
   ) {
-    lines.push(CELL_METADATA_PREFIX + `show_logs = ${metadata.show_logs}`);
+    tomlData.show_logs = metadata.show_logs;
   }
   if (
     metadata.skip_as_script !== undefined &&
     metadata.skip_as_script !== DEFAULT_CELL_METADATA.skip_as_script
   ) {
-    lines.push(
-      CELL_METADATA_PREFIX + `skip_as_script = ${metadata.skip_as_script}`
-    );
+    tomlData.skip_as_script = metadata.skip_as_script;
   }
-  return [
-    ...lines,
-    ...Object.entries(metadata)
-      .filter(([name, entry]) => {
-        return !["skip_as_script", "show_logs", "disabled"].includes(name);
-      })
-      .map(
-        ([name, entry]) =>
-          `${CELL_METADATA_PREFIX}${name} = ${JSON.stringify(entry)}`
-      ),
-  ];
+
+  // Add any other metadata fields (excluding internal fields starting with _)
+  for (const [key, value] of Object.entries(metadata)) {
+    if (
+      !["disabled", "show_logs", "skip_as_script"].includes(key) &&
+      !key.startsWith("_")
+    ) {
+      tomlData[key] = value;
+    }
+  }
+
+  // Serialize to TOML and convert to lines
+  if (Object.keys(tomlData).length > 0) {
+    const tomlString = TOML.stringify(tomlData);
+    return tomlString
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => CELL_METADATA_PREFIX + line);
+  }
+
+  return [];
 }
 
 /**
