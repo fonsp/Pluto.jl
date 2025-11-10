@@ -427,7 +427,10 @@ function serializeCellMetadata(metadata) {
       .filter(([name, entry]) => {
         return !["skip_as_script", "show_logs", "disabled"].includes(name);
       })
-      .map(([name, entry]) => `${CELL_METADATA_PREFIX}${name} = ${entry}`),
+      .map(
+        ([name, entry]) =>
+          `${CELL_METADATA_PREFIX}${name} = ${JSON.stringify(entry)}`
+      ),
   ];
 }
 
