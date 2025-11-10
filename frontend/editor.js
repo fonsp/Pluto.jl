@@ -42,7 +42,7 @@ const from_attribute = (element, name) => {
     }
 }
 
-const preamble_html_comes_from_url_params = url_params.has("preamble_url")
+const preamble_html_comes_from_url_params = url_params.has("preamble_html")
 
 /**
  *

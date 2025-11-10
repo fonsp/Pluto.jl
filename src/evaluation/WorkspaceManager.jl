@@ -196,7 +196,7 @@ function precompile_nbpkg((session, notebook)::SN; io=stdout)::Bool
         print(io, "Waiting for notebook process to start... ")
     end
     workspace = fetch(workspace_task)
-    not_ready_yet && println(io, "✅")
+    not_ready_yet && println(io, "Done. Starting precompilation...")
     Malt.isrunning(workspace.worker) || return false
 
     io_writes_channel = Malt.worker_channel(workspace.worker, :(__precomp_io_writes_channel = Channel(10)))
