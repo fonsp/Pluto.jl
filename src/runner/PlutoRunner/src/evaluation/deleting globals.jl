@@ -95,8 +95,7 @@ function move_vars(
     end
 
     do_reimports(new_workspace, module_imports_to_move)
-
-    invokelatest(revise_if_possible,new_workspace)
+    revise_if_possible()
 end
 
 
@@ -219,16 +218,22 @@ else
 end
 
 
+const revise_pkg_id = Base.PkgId(UUID("295af30f-e4ad-537b-8983-00126c2a3abe"), "Revise")
+const revise_integration_broken = Ref(false)
 
-
-function revise_if_possible(m::Module)
-    # Revise.jl support
-    if isdefined(m, :Revise) &&
-        isdefined(m.Revise, :revise) && m.Revise.revise isa Function &&
-        isdefined(m.Revise, :revision_queue) && m.Revise.revision_queue isa AbstractSet
-
-        if !isempty(m.Revise.revision_queue) # to avoid the sleep(0.01) in revise()
-            m.Revise.revise()
+# Revise.jl support
+function revise_if_possible()
+    revise_integration_broken[] && return
+    if haskey(Base.loaded_modules, revise_pkg_id)
+        reviseee = Base.loaded_modules[revise_pkg_id]
+    
+        try
+            if !isempty(reviseee.revision_queue) # to avoid the sleep(0.01) in revise()
+                reviseee.revise()
+            end
+        catch ex
+            @warn "Failed to revise" exception=(ex, catch_backtrace()) pkgversion(reviseee)
+            revise_integration_broken[] = true
         end
     end
 end
