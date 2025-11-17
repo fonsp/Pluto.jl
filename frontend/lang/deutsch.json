@@ -234,7 +234,7 @@
     "t_frontmatter_cancel": "Abbrechen",
     "t_frontmatter_save": "Speichern",
     "t_frontmatter_preview": "Vorschau",
-    "t_frontmatter_language_placeholder": "de-DE IETF BCP 47 language tag",
+    "t_frontmatter_language_placeholder": "de-DE (BCP-47-Sprach-Tag eingeben)",
     "t_plutoland_upload_description": "Dieses Notebook auf {{plutoland}} hochladen, einen kostenlosen Hosting-Service für Pluto-Notebooks:",
     "t_plutoland_upload_description_recording": "Diese Aufzeichnung auf {{plutoland}} hochladen, einen kostenlosen Hosting-Service für Pluto-Aufzeichnungen:",
     "t_plutoland_upload_upload": "Auf {{plutoland}} hochladen",
