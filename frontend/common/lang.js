@@ -9,6 +9,7 @@ import {
     deutsch,
     ellinika,
     english,
+    español,
     french,
     japanese,
     nederlands_nl,
@@ -38,6 +39,9 @@ i18next.use(LanguageDetector).init({
         },
         "en": {
             translation: without_empty_keys(english),
+        },
+        "es": {
+            translation: without_empty_keys(español),
         },
         "en-US-x-corp": {
             translation: without_empty_keys(corporate_english),
