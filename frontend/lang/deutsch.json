@@ -2,7 +2,7 @@
     "t_language_name": "Deutsch",
     "t_my_work": "Meine Arbeit",
     "t_newnotebook": "Ein <strong>neues Notebook</strong> erstellen",
-    "t_welcome_to_pluto": "willkommen bei {{pluto}}",
+    "t_welcome_to_pluto": "Willkommen bei {{pluto}}",
     "t_confirmdeletencells": "Bist du sicher, dass du {{count}} Zellen löschen möchtest?",
     "t_FORGET": "VERGESSEN",
     "t_live_docs_search_placeholder": "Dokumentation durchsuchen...",
