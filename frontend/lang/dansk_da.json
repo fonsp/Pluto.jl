@@ -303,22 +303,5 @@
     "t_undo_delete_other": "{{count}} celler slettet",
     "t_undo_delete_link": "FORTRYD",
     "t_auto_disabled": "{{another_cell}} er blevet deaktiveret, fordi den også definerede {{variable}}.",
-    "t_auto_disabled_link": "En anden celle",
-    "t_project_toml_editor_title": "",
-    "t_project_toml_editor_description": "",
-    "t_project_toml_editor_what_is_project_toml": "",
-    "t_project_toml_editor_compat_description": "",
-    "t_project_toml_editor_feature_preview_note": "",
-    "t_project_toml_editor_status_tab_note": "",
-    "t_project_toml_editor_backup_checkbox": "",
-    "t_project_toml_editor_cancel": "",
-    "t_project_toml_editor_save": "",
-    "t_project_toml_editor_placeholder": "",
-    "t_project_toml_editor_wait_cells": "",
-    "t_project_toml_editor_wait_packages": "",
-    "t_project_toml_editor_synchronized": "",
-    "t_project_toml_editor_sync_failed": "",
-    "t_project_toml_editor_start_notebook_first": "",
-    "t_project_toml_editor_version_latest": "",
-    "t_project_toml_editor_version_latest_compatible": ""
+    "t_auto_disabled_link": "En anden celle"
    }
