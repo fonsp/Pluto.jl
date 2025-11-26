@@ -4,6 +4,7 @@ import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/d
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
+import { is_desktop } from "./DesktopInterface.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -55,9 +56,7 @@ export const exportNotebookDesktop = (
     /** @type {Desktop.PlutoExport} */ type,
     /** @type {string} */ notebook_id
 ) => {
-    // @ts-ignore
-    const isDesktop = !!window.plutoDesktop
-    if (isDesktop) {
+    if (is_desktop()) {
         e.preventDefault()
         window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
     }

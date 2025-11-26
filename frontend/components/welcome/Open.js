@@ -7,6 +7,7 @@ import { guess_notebook_location } from "../../common/NotebookLocationFromURL.js
 import { t, th } from "../../common/lang.js"
 
 import * as desktop from "../DesktopInterface.js"
+import { is_desktop } from "../DesktopInterface.js"
 
 /**
  * @param {{
@@ -40,8 +41,8 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
 
     return html`<${PasteHandler} on_start_navigation=${on_start_navigation} />
         <h2>${picker.text}</h2>
-        <div id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
-            ${window.plutoDesktop
+        <div id="new" class=${is_desktop() ? "desktop_opener" : ""}>
+            ${is_desktop()
                 ? html`
                       <div class="desktop_picker_group">
                           <button onClick=${desktop.open_from_path}>Open File</button>
@@ -67,7 +68,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                           value=""
                           on_submit=${on_open_path}
                           clear_on_blur=${false}
-                          button_label=${window.plutoDesktop ? t("t_open_file_action") : t("t_open_action")}
+                          button_label=${is_desktop() ? t("t_open_file_action") : t("t_open_action")}
                           placeholder=${picker.placeholder}
                       />
                   `}

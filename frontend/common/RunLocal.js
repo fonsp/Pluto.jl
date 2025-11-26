@@ -1,3 +1,4 @@
+import { is_desktop } from "../components/DesktopInterface.js"
 import immer from "../imports/immer.js"
 import { BackendLaunchPhase } from "./Binder.js"
 import { timeout_promise } from "./PlutoConnection.js"
@@ -63,7 +64,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })
         console.info("notebook_id:", new_notebook_id)
 
-        if (!window.plutoDesktop) {
+        if (!is_desktop()) {
             window.history.replaceState({}, "", edit_url)
         }
 

@@ -51,6 +51,7 @@ import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
 import { BigPkgTerminal } from "./PkgTerminalView.js"
+import { is_desktop } from "./DesktopInterface.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -983,14 +984,16 @@ all patches: ${JSON.stringify(patches, null, 1)}
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
-            create_pluto_connection({
-                ws_address: ws_address ?? ws_address_from_base(this.props.launch_params.pluto_server_url ?? window.location.href),
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) => {
+            const psu = this.props.launch_params.pluto_server_url
+            return create_pluto_connection({
+                ws_address: ws_address ?? (psu ? ws_address_from_base(psu) : undefined),
                 on_unrequested_update: on_update,
                 on_connection_status: on_connection_status,
                 on_reconnect: on_reconnect,
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
+        }
 
         this.on_disable_ui = () => {
             set_disable_ui_css(this.state.disable_ui, props.pluto_editor_element)
@@ -1028,7 +1031,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${is_desktop() ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
