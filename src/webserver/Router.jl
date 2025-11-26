@@ -1,6 +1,6 @@
 
 function http_router_for(session::ServerSession)
-    router = HTTP.Router(default_404)
+    router = HTTP.Router(default_404_response)
     security = session.options.security
     
     function create_serve_onefile(path)

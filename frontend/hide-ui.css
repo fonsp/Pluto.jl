@@ -12,6 +12,8 @@ pluto-input > button,
 pluto-shoulder,
 footer,
 pluto-runarea,
+jlerror .doclink,
+.dont-panic,
 #helpbox-wrapper {
     display: none !important;
 }

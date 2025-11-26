@@ -213,10 +213,6 @@ end
 
 "Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
 function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
-    if session.options.server.init_with_file_viewer
-        @error "DEPRECATED: init_with_file_viewer has been removed."
-    end
-    
     notebook = if session.options.compiler.sysimage === nothing
         emptynotebook()
     else
@@ -262,7 +258,9 @@ function move(session::ServerSession, notebook::Notebook, newpath::String)
     else
         move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-        WorkspaceManager.cd_workspace((session, notebook), newpath)
+        let workspace = WorkspaceManager.get_workspace((session, notebook); allow_creation=false)
+            isnothing(workspace) || WorkspaceManager.cd_workspace(workspace, newpath)
+        end
     end 
 end
 

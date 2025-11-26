@@ -1,6 +1,6 @@
 import { html, Component } from "../imports/Preact.js"
 import * as preact from "../imports/Preact.js"
-import { produce, applyPatches, produceWithPatches } from "../imports/immer.js"
+import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
@@ -20,7 +20,7 @@ import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
 
-import { slice_utf8 } from "../common/UnicodeTools.js"
+import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import {
     has_ctrl_or_cmd_pressed,
     ctrl_or_cmd_name,
@@ -45,6 +45,7 @@ import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { get_included_external_source } from "../common/external_source.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -257,8 +258,8 @@ const first_true_key = (obj) => {
  * }}
  */
 
-const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
-export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
+const url_logo_big = get_included_external_source("pluto-logo-big")?.href
+export const url_logo_small = get_included_external_source("pluto-logo-small")?.href
 
 /**
  * @typedef EditorProps
@@ -274,8 +275,10 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @type {{
  * notebook: NotebookData,
  * cell_inputs_local: { [uuid: string]: { code: String } },
+ * unsumbitted_global_definitions: { [uuid: string]: String[] }
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
+ * recently_auto_disabled_cells: Record<string,[string,string]>,
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
@@ -297,10 +300,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * extended_components: any,
  * is_recording: boolean,
  * recording_waiting_to_start: boolean,
- * slider_server: {
- * connecting: boolean,
- * interactive: boolean,
- * },
+ * slider_server: { connecting: boolean, interactive: boolean },
  * }}
  */
 
@@ -313,12 +313,14 @@ export class Editor extends Component {
 
         const { launch_params, initial_notebook_state } = this.props
 
+        /** @type {EditorState} */
         this.state = {
-            notebook: /** @type {NotebookData} */ initial_notebook_state,
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+            notebook: initial_notebook_state,
+            cell_inputs_local: {},
+            unsumbitted_global_definitions: {},
             desired_doc_query: null,
-            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
-            recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
+            recently_deleted: [],
+            recently_auto_disabled_cells: {},
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -342,7 +344,7 @@ export class Editor extends Component {
             export_menu_open: false,
 
             last_created_cell: null,
-            selected_cells: /** @type {string[]} */ ([]),
+            selected_cells: [],
 
             extended_components: {
                 CustomHeader: null,
@@ -369,7 +371,7 @@ export class Editor extends Component {
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 return this.setStatePromise(
-                    produce((/** @type {EditorState} */ state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
@@ -377,6 +379,14 @@ export class Editor extends Component {
                     })
                 )
             },
+            set_unsubmitted_global_definitions: (cell_id, new_val) => {
+                return this.setStatePromise(
+                    immer((/** @type {EditorState} */ state) => {
+                        state.unsumbitted_global_definitions[cell_id] = new_val
+                    })
+                )
+            },
+            get_unsubmitted_global_definitions: () => _.pick(this.state.unsumbitted_global_definitions, this.state.notebook.cell_order),
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
                 const new_i = i + delta
@@ -426,7 +436,7 @@ export class Editor extends Component {
                  * See ** 1 **
                  */
                 this.setState(
-                    produce((/** @type {EditorState} */ state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
 
@@ -464,7 +474,7 @@ export class Editor extends Component {
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
 
                 await this.setStatePromise(
-                    produce((/** @type {EditorState} */ state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_code,
                         }
@@ -492,7 +502,7 @@ export class Editor extends Component {
                 })
 
                 this.setState(
-                    produce((/** @type {EditorState} */ state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         for (let cell of cells_to_add) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -565,15 +575,20 @@ export class Editor extends Component {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
-                        this.setState({
-                            recently_deleted: cell_ids.map((cell_id) => {
-                                return {
-                                    index: this.state.notebook.cell_order.indexOf(cell_id),
-                                    cell: this.state.notebook.cell_inputs[cell_id],
+                        this.setState(
+                            immer((/** @type {EditorState} */ state) => {
+                                state.recently_deleted = cell_ids.map((cell_id) => {
+                                    return {
+                                        index: this.state.notebook.cell_order.indexOf(cell_id),
+                                        cell: this.state.notebook.cell_inputs[cell_id],
+                                    }
+                                })
+                                state.selected_cells = []
+                                for (let c of cell_ids) {
+                                    delete state.unsumbitted_global_definitions[c]
                                 }
-                            }),
-                            selected_cells: [],
-                        })
+                            })
+                        )
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
                                 delete notebook.cell_inputs[cell_id]
@@ -618,11 +633,12 @@ export class Editor extends Component {
                             }
                         }
                     })
-                    // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
-                    // But for now... this is fine 😼
                     await this.setStatePromise(
-                        produce((/** @type {EditorState} */ state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             for (let cell_id of cell_ids) {
+                                delete state.unsumbitted_global_definitions[cell_id]
+                                // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
+                                // But for now... this is fine 😼
                                 if (state.notebook.cell_results[cell_id] != null) {
                                     state.notebook.cell_results[cell_id].queued = this.is_process_ready()
                                 } else {
@@ -682,7 +698,7 @@ export class Editor extends Component {
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
-                return message.versions
+                return message
             },
         }
         this.actions = { ...this.real_actions }
@@ -695,7 +711,7 @@ export class Editor extends Component {
                     let _copy_of_patches,
                         reverse_of_patches = []
                     this.setState(
-                        produce((/** @type {EditorState} */ state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             let new_notebook
                             try {
                                 // To test this, uncomment the lines below:
@@ -729,9 +745,16 @@ patch: ${JSON.stringify(
                                         null,
                                         1
                                     )}
+all patches: ${JSON.stringify(patches, null, 1)}
 #######################**************************########################`,
                                     exception
                                 )
+
+                                let parts = failing_path.split(".")
+                                for (let i = 0; i < parts.length; i++) {
+                                    let path = parts.slice(0, i).join(".")
+                                    console.log(path, _.get(this.state.notebook, path, "Not Found"))
+                                }
 
                                 if (ignore) {
                                     console.info("Safe to ignore this patch failure...")
@@ -785,6 +808,15 @@ patch: ${JSON.stringify(
 
         this.apply_notebook_patches = apply_notebook_patches
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
+        this.last_update_counter = -1
+        const check_update_counter = (new_val) => {
+            if (new_val <= this.last_update_counter) {
+                console.error("State update out of order", new_val, this.last_update_counter)
+                alert("Oopsie!! please refresh your browser and everything will be alright!")
+            }
+            this.last_update_counter = new_val
+        }
+
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const show_debugs = launch_params.binder_url != null
@@ -792,6 +824,7 @@ patch: ${JSON.stringify(
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
+                        check_update_counter(message?.counter)
                         let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
@@ -1174,7 +1207,7 @@ patch: ${JSON.stringify(
             window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
                 if (!!loc)
                     await this.setStatePromise(
-                        produce((/** @type {EditorState} */ state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             state.notebook.in_temp_dir = false
                             state.notebook.path = loc
                         })
@@ -1644,7 +1677,7 @@ The notebook file saves every time you run a cell.`
                         apply_notebook_patches=${this.apply_notebook_patches}
                         reset_notebook_state=${() =>
                             this.setStatePromise(
-                                produce((/** @type {EditorState} */ state) => {
+                                immer((/** @type {EditorState} */ state) => {
                                     state.notebook = this.props.initial_notebook_state
                                 })
                             )}
@@ -1686,9 +1719,7 @@ The notebook file saves every time you run a cell.`
                         ${
                             this.state.disable_ui ||
                             html`<${SelectionArea}
-                                actions=${this.actions}
                                 cell_order=${this.state.notebook.cell_order}
-                                selected_cell_ids=${this.state.selected_cell_ids}
                                 set_scroller=${(enabled) => {
                                     this.setState({ scroller: enabled })
                                 }}
@@ -1729,13 +1760,15 @@ The notebook file saves every time you run a cell.`
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {
+                            const rd = this.state.recently_deleted
+                            if (rd == null) return
                             this.update_notebook((notebook) => {
-                                for (let { index, cell } of this.state.recently_deleted) {
+                                for (let { index, cell } of rd) {
                                     notebook.cell_inputs[cell.cell_id] = cell
                                     notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
                                 }
                             }).then(() => {
-                                this.actions.set_and_run_multiple(this.state.recently_deleted.map(({ cell }) => cell.cell_id))
+                                this.actions.set_and_run_multiple(rd.map(({ cell }) => cell.cell_id))
                             })
                         }}
                     />

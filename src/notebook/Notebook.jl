@@ -1,8 +1,9 @@
+# The `Notebook` struct!
+
 import UUIDs: UUID, uuid1
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
-import TOML
 import .Status
 
 const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
@@ -22,7 +23,11 @@ const ProcessStatus = (
     waiting_for_permission="waiting_for_permission",
 )
 
-"Like a [`Diary`](@ref) but more serious. 📓"
+"""
+A Pluto notebook, yay! 📓
+
+This mutable struct is a notebook session. It contains the information loaded from the `.jl` file, the cell outputs, package information, execution metadata and more.
+"""
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
@@ -111,8 +116,10 @@ end
 Notebook(cells::Vector{Cell}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
+    # This is so that you can do notebook.cells to get all cells as a vector.
     if property == :cells
         _collect_cells(notebook.cells_dict, notebook.cell_order)
+    # This is for Firebasey I think
     elseif property == :cell_inputs
         notebook.cells_dict
     else
@@ -120,6 +127,7 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
+# New method for this function with a `Notebook` as input.
 function PlutoDependencyExplorer.topological_order(notebook::Notebook)
     cached = notebook._cached_topological_order
 	if cached === nothing || cached.input_topology !== notebook.topology
@@ -127,17 +135,6 @@ function PlutoDependencyExplorer.topological_order(notebook::Notebook)
 	else
 		cached
 	end
-end
-
-function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
-    # can't use @deprecate on an overload
-    @warn "Deprecated, drop the notebook argument"
-    PlutoDependencyExplorer.where_referenced(topology, something)
-end
-function PlutoDependencyExplorer.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
-    # can't use @deprecate on an overload
-    @warn "Deprecated, drop the notebook argument"
-    PlutoDependencyExplorer.where_assigned(topology, something)
 end
 
 emptynotebook(args...) = Notebook([Cell()], args...)

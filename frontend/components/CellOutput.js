@@ -25,7 +25,7 @@ import { pluto_syntax_colors_julia, ENABLE_CM_MIXED_PARSER } from "./CellInput.j
 
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
-import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 const prettyAssignee = (assignee) =>
@@ -479,7 +479,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 let run = (f) => f()
 
 /**
- * Support declarative shadowroot 😼
+ * Support declarative shadowroot 😺
  * https://web.dev/declarative-shadow-dom/
  * The polyfill they mention on the page is nice and all, but we need more.
  * For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
@@ -680,7 +680,7 @@ export let highlight = (code_element, language) => {
                         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()] : []),
+                        ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia()] : []),
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),

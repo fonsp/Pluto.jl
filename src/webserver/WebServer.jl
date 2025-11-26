@@ -145,9 +145,7 @@ function run!(session::ServerSession)
         @info "Loading..."
     end
 
-    if VERSION < v"1.6.2"
-        @warn("\nPluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia.")
-    end
+    warn_julia_compat()
 
     pluto_router = http_router_for(session)
     store_session_middleware = create_session_context_middleware(session)
@@ -184,7 +182,7 @@ function run!(session::ServerSession)
     end
 
     server = HTTP.listen!(hostIP, port; stream=true, server=serversocket, on_shutdown, verbose=-1) do http::HTTP.Stream
-        # messy messy code so that we can use the websocket on the same port as the HTTP server
+        # the if statement below asks if the current request is a "websocket upgrade" request: the start of a websocket connection.
         if HTTP.WebSockets.isupgrade(http.message)
             secret_required = let
                 s = session.options.security
@@ -202,12 +200,14 @@ function run!(session::ServerSession)
             end
             if !secret_required || is_authenticated(session, http.message)
                 try
+                    # "upgrade" means accept and start the websocket connection that the client requested
                     HTTP.WebSockets.upgrade(http) do clientstream
                         if HTTP.WebSockets.isclosed(clientstream)
                             return
                         end
                         found_client_id_ref = Ref(Symbol(:none))
                         try
+                            # the loop below will keep running for this websocket connection, it iterates over all incoming websocket messages.
                             for message in clientstream
                                 # This stream contains data received over the WebSocket.
                                 # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
@@ -216,6 +216,7 @@ function run!(session::ServerSession)
                                 try
                                     parentbody = unpack(message)
                                     
+                                    # for debug only
                                     let
                                         lag = session.options.server.simulated_lag
                                         (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
@@ -281,12 +282,16 @@ function run!(session::ServerSession)
             # HTTP.closeread(http)
 
             # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
-            params = HTTP.queryparams(HTTP.URI(request.target))
-            if haskey(params, "token") && params["token"] ∉ ("null", "undefined", "") && session.binder_token === nothing
-                session.binder_token = params["token"]
+            let
+                params = HTTP.queryparams(HTTP.URI(request.target))
+                if haskey(params, "token") && params["token"] ∉ ("null", "undefined", "") && session.binder_token === nothing
+                    session.binder_token = params["token"]
+                end
             end
 
+            ###
             response_body = app(request)
+            ###
 
             request.response::HTTP.Response = response_body
             request.response.request = request
@@ -310,7 +315,7 @@ function run!(session::ServerSession)
 
     server_running() =
         try
-            HTTP.get("http://$(hostIP):$(port)$(session.options.server.base_url)ping"; status_exception = false, retry = false, connect_timeout = 10, readtimeout = 10).status == 200
+            HTTP.get("http://$(hostIP):$(port)$(session.options.server.base_url)ping"; status_exception=false, retry=false, connect_timeout=10, readtimeout=10).status == 200
         catch
             false
         end
@@ -328,7 +333,7 @@ function run!(session::ServerSession)
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
-    if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
+    if frontend_directory() == "frontend"
         @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
     end
 
@@ -385,7 +390,11 @@ function pretty_address(session::ServerSession, hostIP, port)
     string(HTTP.URI(HTTP.URI(new_root); query = url_params))
 end
 
-"All messages sent over the WebSocket get decoded+deserialized and end up here."
+"""
+All messages sent over the WebSocket from the client get decoded+deserialized and end up here.
+
+It calls one of the functions from the `responses` Dict, see the file Dynamic.jl.
+"""
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id) do 

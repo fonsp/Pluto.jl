@@ -66,6 +66,14 @@ using Pluto.WorkspaceManager: poll
         "show(stdout, collect(1:500))", # 24
         "show(stdout, \"text/plain\", collect(1:500))", # 25
         "display(collect(1:500))", # 26
+
+        "struct StructThatErrorsOnPrinting end", # 27
+        """
+        Base.print(::IO, ::StructThatErrorsOnPrinting) = error("Can't print this")
+        """, # 28
+        """
+        @info "" _id=StructThatErrorsOnPrinting()
+        """, # 29
     ]))
 
     @testset "Stdout" begin
@@ -201,4 +209,28 @@ using Pluto.WorkspaceManager: poll
     end
 
     cleanup(🍭, notebook)
+
+    @testset "Logging error fallback" begin
+        # This testset needs to use a local worker to capture the worker stderr (which is
+        # different from the notebook stderr)
+        🍍 = ServerSession()
+        🍍.options.evaluation.workspace_use_distributed = false
+
+        io = IOBuffer()
+        old_stderr = PlutoRunner.original_stderr[]
+        PlutoRunner.original_stderr[] = io
+        
+        update_run!(🍍, notebook, notebook.cells[27:29])
+        
+        msg = String(take!(io))
+        close(io)
+        PlutoRunner.original_stderr[] = old_stderr
+
+        @test notebook.cells[27] |> noerror
+        @test notebook.cells[28] |> noerror
+        @test notebook.cells[29] |> noerror
+        @test occursin("Failed to relay log from PlutoRunner", msg)
+
+        cleanup(🍍, notebook)
+    end
 end

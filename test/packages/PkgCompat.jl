@@ -22,6 +22,18 @@ import Pkg
         @test PkgCompat.package_exists("Dates")
 
         @test PkgCompat.is_stdlib("Dates")
+        @test PkgCompat.is_stdlib("Markdown")
+        @test PkgCompat.is_stdlib("Sockets")
+        @test PkgCompat.is_stdlib("MbedTLS_jll")
+        @test PkgCompat.is_stdlib("Test")
+        @test PkgCompat.is_stdlib("Pkg")
+        @test PkgCompat.is_stdlib("Random")
+        @test PkgCompat.is_stdlib("FileWatching")
+        @test PkgCompat.is_stdlib("Distributed")
+        # upgradable stdlibs:
+        @test PkgCompat.is_stdlib("Statistics")
+        @test PkgCompat.is_stdlib("DelimitedFiles")
+
         @test !PkgCompat.is_stdlib("PlutoUI")
 
 
@@ -30,6 +42,12 @@ import Pkg
         @test isempty(vs)
         @test !PkgCompat.package_exists("Dateskjashdfkjahsdfkjh")
         
+    end
+    
+    @testset "URL" begin
+        @test PkgCompat.package_url("HTTP") == "https://github.com/JuliaWeb/HTTP.jl.git"
+        @test PkgCompat.package_url("HefefTTP") === nothing
+        @test PkgCompat.package_url("Downloads") == "https://docs.julialang.org/en/v1/stdlib/Downloads/"
     end
     
     @testset "Registry queries" begin

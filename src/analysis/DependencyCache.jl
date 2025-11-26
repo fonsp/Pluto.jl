@@ -1,3 +1,5 @@
+import UUIDs: UUID
+
 """
 Gets a dictionary of all symbols and the respective cells which are dependent on the given cell.
 
@@ -13,7 +15,6 @@ function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symb
         for sym in defined_symbols
     )
 end
-@deprecate downstream_cells_map(cell::Cell, notebook::Notebook) downstream_cells_map(cell, notebook.topology)
 
 _is_anon_function_name(s::Symbol) = startswith(String(s), "__ExprExpl_anon__")
 
@@ -30,7 +31,6 @@ function upstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol
         for sym in referenced_symbols
     )
 end
-@deprecate upstream_cells_map(cell::Cell, notebook::Notebook) upstream_cells_map(cell, notebook.topology)
 
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, topology::NotebookTopology)

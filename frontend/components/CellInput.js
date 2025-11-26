@@ -43,7 +43,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
-import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
@@ -119,7 +119,7 @@ const common_style_tags = [
 
 export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
     all: { color: `var(--cm-color-editor-text)` },
-    scope: julia_andrey().language,
+    scope: julia().language,
 })
 
 export const pluto_syntax_colors_javascript = HighlightStyle.define(common_style_tags, {
@@ -365,15 +365,16 @@ export const CellInput = ({
                 return true
             }
 
-            // TODO Multicursor?
-            let selection = cm.state.selection.main
-            if (!selection.empty) {
+            const anySelect = cm.state.selection.ranges.some((r) => !r.empty)
+            if (anySelect) {
                 return indentMore(cm)
             } else {
-                cm.dispatch({
-                    changes: { from: selection.from, to: selection.to, insert: "\t" },
-                    selection: EditorSelection.cursor(selection.from + 1),
-                })
+                cm.dispatch(
+                    cm.state.changeByRange((selection) => ({
+                        range: EditorSelection.cursor(selection.from + 1),
+                        changes: { from: selection.from, to: selection.to, insert: "\t" },
+                    }))
+                )
                 return true
             }
         }
@@ -547,6 +548,17 @@ export const CellInput = ({
             }
         })
 
+        const unsubmitted_globals_updater = EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+                const before = [...update.startState.field(ScopeStateField).definitions.keys()]
+                const after = [...update.state.field(ScopeStateField).definitions.keys()]
+
+                if (!_.isEqual(before, after)) {
+                    pluto_actions.set_unsubmitted_global_definitions(cell_id, after)
+                }
+            }
+        })
+
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
@@ -594,9 +606,10 @@ export const CellInput = ({
                     rectangularSelection({
                         eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
-                    highlightSelectionMatches({ minSelectionLength: 2 }),
+                    highlightSelectionMatches({ minSelectionLength: 2, wholeWords: true }),
                     bracketMatching(),
                     docs_updater,
+                    unsubmitted_globals_updater,
                     tab_help_plugin,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
@@ -648,7 +661,7 @@ export const CellInput = ({
                           ]
                         : [
                               //
-                              julia_andrey(),
+                              julia(),
                           ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
@@ -668,6 +681,8 @@ export const CellInput = ({
                         },
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
+                        request_unsubmitted_global_definitions: () => pluto_actions.get_unsubmitted_global_definitions(),
+                        cell_id,
                     }),
 
                     // I put plutoKeyMaps separately because I want make sure we have

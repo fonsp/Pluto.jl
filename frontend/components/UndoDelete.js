@@ -46,7 +46,7 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  recently_auto_disabled_cells: Map<string,[string,string]>,
+ *  recently_auto_disabled_cells: Record<string,[string,string]>,
  * }} props
  * */
 export const RecentlyDisabledInfo = ({ notebook, recently_auto_disabled_cells }) => {

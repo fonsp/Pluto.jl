@@ -8,9 +8,6 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-const PRESERVE_ALL_INSTALLED = isdefined(Pkg, :PRESERVE_ALL_INSTALLED) ? Pkg.PRESERVE_ALL_INSTALLED : Pkg.PRESERVE_ALL
-
-
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
     const REPLMode = Pkg.REPLMode
 else
@@ -60,9 +57,7 @@ I tried to only use public API, except:
 ###
 
 
-const PkgContext = if isdefined(Pkg, :Context)
-	Pkg.Context
-elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
+const PkgContext = if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
 	Pkg.Types.Context
 elseif isdefined(Pkg, :API) && isdefined(Pkg.API, :Context)
 	Pkg.API.Context
@@ -168,7 +163,12 @@ end
 
 # I'm a pirate harrr 🏴‍☠️
 @static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = get(io, :sneaky_enable_tty, false) === true
+	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+		get(io, :sneaky_enable_tty, false) === true
+end
+@static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
+	Base.Precompilation.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+		get(io, :sneaky_enable_tty, false) === true
 end
 
 ###
@@ -200,7 +200,12 @@ end
 # ✅ Public API
 function update_registries(; force::Bool=false)
 	if force || !_updated_registries_compat[]
-		Pkg.Registry.update()
+		try
+			Pkg.Registry.update()
+		catch
+			# sometimes it just fails but we dont want Pluto to be too sensitive to that
+			Pkg.Registry.update()
+		end
 		try
 			refresh_registry_cache()
 		catch
@@ -255,22 +260,9 @@ end
 # Standard Libraries
 ###
 
-# (⚠️ Internal API with fallback)
-_stdlibs() = try
-	stdlibs = values(Pkg.Types.stdlibs())
-	T = eltype(stdlibs)
-	if T == String
-		stdlibs
-	elseif T <: Tuple{String,Any}
-		first.(stdlibs)
-	else
-		error()
-	end
-catch e
-	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
-
-	String["ArgTools", "Artifacts", "Base64", "CRC32c", "CompilerSupportLibraries_jll", "Dates", "DelimitedFiles", "Distributed", "Downloads", "FileWatching", "Future", "GMP_jll", "InteractiveUtils", "LLD_jll", "LLVMLibUnwind_jll", "LazyArtifacts", "LibCURL", "LibCURL_jll", "LibGit2", "LibGit2_jll", "LibOSXUnwind_jll", "LibSSH2_jll", "LibUV_jll", "LibUnwind_jll", "Libdl", "LinearAlgebra", "Logging", "MPFR_jll", "Markdown", "MbedTLS_jll", "Mmap", "MozillaCACerts_jll", "NetworkOptions", "OpenBLAS_jll", "OpenLibm_jll", "PCRE2_jll", "Pkg", "Printf", "Profile", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "SuiteSparse", "SuiteSparse_jll", "TOML", "Tar", "Test", "UUIDs", "Unicode", "Zlib_jll", "dSFMT_jll", "libLLVM_jll", "libblastrampoline_jll", "nghttp2_jll", "p7zip_jll"]
-end
+# (✅ Public API)
+_stdlibs_found = sort(readdir(Sys.STDLIB))
+_stdlibs() = _stdlibs_found
 
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
@@ -338,17 +330,6 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 	end
 end
 
-# (🐸 "Public API", but using PkgContext)
-function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
-	# compat
-    vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
-        Pkg.Operations.load_versions(registry_entry_fullpath)
-    else
-        Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
-    end
-	vd |> keys |> collect
-end
-
 # ✅ "Public" API using RegistryInstances
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
@@ -373,6 +354,29 @@ function package_versions(package_name::AbstractString)::Vector
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
+		end
+    end
+end
+
+# ✅ "Public" API using RegistryInstances
+"""
+Return the URL of the package's documentation (if possible) or homepage. Returns `nothing` if the package was not found.
+"""
+function package_url(package_name::AbstractString)::Union{String,Nothing}
+    if is_stdlib(package_name)
+		"https://docs.julialang.org/en/v1/stdlib/$(package_name)/"
+    else
+		try
+			for reg in _parsed_registries[]
+				for u in RegistryInstances.uuids_from_name(reg, package_name)
+					pkg = get(reg, u, nothing)
+					if pkg !== nothing
+						return RegistryInstances.registry_info(pkg).repo
+					end
+				end
+			end
+		catch e
+			@warn "Pkg compat: failed to get package URL." exception=(e,catch_backtrace())
 		end
     end
 end
@@ -443,9 +447,10 @@ end
 ###
 
 
-_project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "compat"]
+const _project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "weakdeps", "sources", "extensions", "compat"]
 project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
+
 
 # ✅ Public API
 function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
@@ -472,7 +477,7 @@ end
 # ✅ Internal API with fallback
 "Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
 function _update_project_hash!(ctx::PkgContext)
-	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+	isfile(manifest_file(ctx)) && try
 		Pkg.Operations.record_project_hash(ctx.env)
 		Pkg.Types.write_manifest(ctx.env)
 	catch e

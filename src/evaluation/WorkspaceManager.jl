@@ -334,13 +334,12 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
         get(active_workspaces, notebook.notebook_id, nothing)
     else
         get!(active_workspaces, notebook.notebook_id) do
-            Task(() -> make_workspace(session_notebook))
+            🌸 = Pluto.@asynclog make_workspace(session_notebook)
+            yield(); 🌸
         end
     end
 
-    isnothing(task) && return nothing
-    istaskstarted(task) || schedule(task)
-    fetch(task)
+    isnothing(task) ? nothing : fetch(task)
 end
 get_workspace(workspace::Workspace; kwargs...)::Workspace = workspace
 
@@ -523,8 +522,10 @@ function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, modu
             # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
             # which normally would be very useful for debugging, but we can't serialize it!
             # So we make sure we only serialize the exception we know about, and string-ify the others.
-            if (error isa LoadError && error.error isa UndefVarError) || error isa UndefVarError
-                (false, error)
+            if error isa UndefVarError
+                (false, UndefVarError(error.var))
+            elseif error isa LoadError && error.error isa UndefVarError
+                (false, UndefVarError(error.error.var))
             else
                 (false, ErrorException(sprint(showerror, error)))
             end
@@ -604,11 +605,6 @@ function move_vars(
     )
 end
 
-# TODO: delete me
-@deprecate(
-    delete_vars(args...; kwargs...),
-    move_vars(args...; kwargs...)
-)
 
 """
 ```julia

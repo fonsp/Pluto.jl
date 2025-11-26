@@ -1,7 +1,7 @@
 import { cl } from "../common/ClassTable.js"
 import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 
-export const DiscreteProgressBar = ({ total, done, busy, failed_indices }) => {
+export const DiscreteProgressBar = ({ onClick, total, done, busy, failed_indices }) => {
     total = Math.max(1, total)
 
     return html`
@@ -13,6 +13,7 @@ export const DiscreteProgressBar = ({ total, done, busy, failed_indices }) => {
                 "big": total >= 48,
             })}
             data-total=${total}
+            onClick=${onClick}
         >
             ${[...Array(total)].map((_, i) => {
                 return html`<div
