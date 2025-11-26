@@ -2,6 +2,13 @@ module PlutoApp
 using Pluto
 import Comonicon
 
+"""
+# Intro
+The `pluto` executable exposes a simple CLI interface for the `Pluto.run(; ...)` function.
+It is supposed to be used via Julia ["apps"](https://pkgdocs.julialang.org/v1/apps/) from Julia 1.11+
+and typically lives in your `\$PATH`.
+It can be installed via `julia -e "import Pkg; Pkg.Apps.add("Pluto")"`.
+"""
 Comonicon.@main function pluto(notebooks::String...;
     # Comonicon flags must default to false
     dont_launch_browser::Bool=false,
