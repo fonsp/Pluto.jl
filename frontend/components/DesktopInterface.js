@@ -42,7 +42,7 @@ export const wait_for_file_move = () =>
         })
     })
 
-export const is_desktop = () => true //!!window.plutoDesktop
+export const is_desktop = () => !!window.plutoDesktop
 
 export const add_block_screen_text_listener = (listener) => {
     window.plutoDesktop?.ipcRenderer.on("set-block-screen-text", listener)
