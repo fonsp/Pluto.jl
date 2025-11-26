@@ -3,6 +3,7 @@ import { saveScreenshot, createPage, paste, waitForContentToBecome, waitForConte
 import {
     createNewNotebook,
     getPlutoUrl,
+    gotoPlutoMainMenu,
     importNotebook,
     runAllChanged,
     setupPlutoBrowser,
@@ -27,7 +28,7 @@ describe("@bind", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)

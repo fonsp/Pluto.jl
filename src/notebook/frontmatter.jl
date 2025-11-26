@@ -18,7 +18,7 @@ end
 function frontmatter(abs_path::String; raise::Bool=false)
     try
 		# this will load the notebook to analyse, it won't run it
-		frontmatter(load_notebook_nobackup(abs_path); raise)
+		frontmatter(load_notebook_nobackup(abs_path; skip_nbpkg=true); raise)
 	catch e
 		if raise
 			rethrow(e)

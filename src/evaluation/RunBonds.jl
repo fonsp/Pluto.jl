@@ -10,7 +10,7 @@ function set_bond_values_reactive(;
         Iterators.filter(zip(bound_sym_names, is_first_values) |> collect) do (bound_sym, is_first_value)
             new_value = notebook.bonds[bound_sym].value
 
-            variable_exists = Pluto.MoreAnalysis.is_assigned_anywhere(notebook, notebook.topology, bound_sym)
+            variable_exists = Pluto.MoreAnalysis.is_assigned_anywhere(notebook.topology, bound_sym)
             if !variable_exists
                 # a bond was set while the cell is in limbo state
                 # we don't need to do anything
@@ -18,7 +18,7 @@ function set_bond_values_reactive(;
             end
 
             # TODO: Not checking for any dependents now
-            # any_dependents = Pluto.MoreAnalysis.is_referenced_anywhere(notebook, notebook.topology, bound_sym)
+            # any_dependents = Pluto.MoreAnalysis.is_referenced_anywhere(notebook.topology, bound_sym)
 
             # fix for https://github.com/fonsp/Pluto.jl/issues/275
             # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)

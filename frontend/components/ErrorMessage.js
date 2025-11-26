@@ -1,11 +1,14 @@
 import { cl } from "../common/ClassTable.js"
-import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
-import AnsiUp from "../imports/AnsiUp.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
+import { FixWithAIButton } from "./FixWithAIButton.js"
+
+const nbsp = "\u00A0"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     if (file.includes("#@#==#")) return null
@@ -44,7 +47,7 @@ const DocLink = ({ frame }) => {
     const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
     if (!builtin && nb?.nbpkg != null && !installed) return null
 
-    return html`  <span
+    return html` ${nbsp}<span
             ><a
                 href="#"
                 class="doclink"
@@ -72,7 +75,7 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`: <em>line ${line}</em>`}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`:${nbsp}<em>line${nbsp}${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
@@ -80,14 +83,14 @@ const StackFrameFilename = ({ frame, cell_id }) => {
 
         const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
 
-        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
+        const text = sp != null ? html`<strong>${origin}</strong>${nbsp}→${nbsp}${file_line}` : file_line
 
         const href = frame?.url?.startsWith?.("https") ? frame.url : null
         return html`<a title=${frame.path} class="remote-url" href=${href}>${text}</a>`
     }
 }
 
-const at = html`<span> from </span>`
+const at = html`<span> from${nbsp}</span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
@@ -213,7 +216,7 @@ const HighlightCallArgumentNames = ({ code }) => {
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
-export const ParseError = ({ cell_id, diagnostics }) => {
+export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
     useEffect(() => {
         window.dispatchEvent(
             new CustomEvent("cell_diagnostics", {
@@ -227,18 +230,24 @@ export const ParseError = ({ cell_id, diagnostics }) => {
     }, [diagnostics])
 
     return html`
-        <jlerror>
-            <header><p>Syntax error</p></header>
+        <jlerror class="syntax-error">
+            <header>
+                <p>Syntax error</p>
+                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} last_run_timestamp=${last_run_timestamp} />
+            </header>
             <section>
-                <div class="stacktrace-header"><secret-h1>Syntax errors</secret-h1></div>
+                <div class="stacktrace-header">
+                    <secret-h1>Syntax errors</secret-h1>
+                </div>
                 <ol>
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
                             html`<li
                                 class="from_this_notebook from_this_cell important"
                                 onmouseenter=${() =>
-                                    // NOTE: this could be moved move to `StackFrameFilename`
-                                    window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
+                                    cell_is_unedited(cell_id)
+                                        ? window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))
+                                        : null}
                                 onmouseleave=${() =>
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
@@ -254,6 +263,8 @@ export const ParseError = ({ cell_id, diagnostics }) => {
     `
 }
 
+const cell_is_unedited = (cell_id) => document.querySelector(`pluto-cell[id="${cell_id}"].code_differs`) == null
+
 const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, frame_cell_id) => {
     if (frame_cell_id != null) return true
 
@@ -267,6 +278,9 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
 
     // too sciency
     if (frame.inlined) return false
+
+    // makes no sense anyways
+    if (frame.line < 1) return false
 
     if (params == null) {
         // no type signature... must be some function call that got optimized away or something special
@@ -289,7 +303,7 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 
     useLayoutEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        node_ref.current.innerHTML = ansi_to_html(value)
         did_ansi_up.current = true
     }, [node_ref.current, value])
 
@@ -299,8 +313,9 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
-export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
+export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
+
     const default_rewriter = {
         pattern: /.?/,
         display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
@@ -446,6 +461,8 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         {
             pattern: /^ArgumentError: Package (.*) not found in current path/,
             display: (/** @type{string} */ x) => {
+                if (pluto_actions.get_notebook().nbpkg?.enabled === false) return default_rewriter.display(x)
+
                 const match = x.match(/^ArgumentError: Package (.*) not found in current path/)
                 const package_name = (match?.[1] ?? "").replaceAll("`", "")
 
@@ -458,8 +475,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                         <li>Try a different Julia version.</li>
                         <li>Contact the developers of ${package_name}.jl about this error.</li>
                     </ul>
-                    <p>You might find useful information in the package installation log:</p>
-                    <${PkgTerminalView} value=${pkg_terminal_value} />`
+                    ${pkg_terminal_value == null
+                        ? null
+                        : html` <p>You might find useful information in the package installation log:</p>
+                              <${PkgTerminalView} value=${pkg_terminal_value} />`} `
             },
             show_stacktrace: () => false,
         },
@@ -483,6 +502,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     const first_package = get_first_package(limited_stacktrace)
 
+    const [stacktrace_waiting_to_view, set_stacktrace_waiting_to_view] = useState(true)
+    useEffect(() => {
+        set_stacktrace_waiting_to_view(true)
+    }, [msg, stacktrace, cell_id])
+
     return html`<jlerror>
         <div class="error-header">
             <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
@@ -492,6 +516,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
+            : stacktrace_waiting_to_view
+            ? html`<section class="stacktrace-waiting-to-view">
+                  <button onClick=${() => set_stacktrace_waiting_to_view(false)}>Show stack trace...</button>
+              </section>`
             : html`<section>
                   <div class="stacktrace-header">
                       <secret-h1>Stack trace</secret-h1>
@@ -530,7 +558,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
-        <${Motivation} stacktrace=${stacktrace} />
+        ${pluto_actions.get_session_options?.()?.server?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
 
@@ -552,8 +580,8 @@ const motivational_words = [
     "Don't panic!",
     "Keep calm, you got this!",
     "You got this!",
-    "Silly computer!",
-    "Silly computer!",
+    "Goofy computer!",
+    "This one is on the computer!",
     "beep boop CRASH 🤖",
     "computer bad, you GREAT!",
     "Probably not your fault!",
@@ -565,7 +593,7 @@ const motivational_words = [
     "C'est la vie !",
     "¯\\_(ツ)_/¯",
     "Oh no! 🙀",
-    "this suckz 💣",
+    "oopsie 💣",
     "Be patient :)",
 ]
 

@@ -348,6 +348,7 @@ end
 
 @testset "Disabled cells should stay in the topology (#2676)" begin
     🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
     notebook = Notebook(Cell.([
         "using Dates",
         "b = 2; December",
@@ -385,6 +386,39 @@ end
     seekstart(io)
     notebook2 = Pluto.load_notebook_nobackup(io, "mynotebook.jl")
     @test length(notebook2.cells) == length(notebook.cells)
+
+    cleanup(🍭, notebook)
+end
+
+
+@testset "Disabled cell definitions should be removed (#3089)" begin
+    🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
+    notebook = Notebook(Cell.([
+        "x = 1",
+        "y = 9",
+        "x + y",
+        "f() = 4",
+        "f()",
+    ]))
+
+    update_run!(🍭, notebook, notebook.cells)
+    # start from the end so deletions do not mess-up indexing
+    set_disabled(notebook.cells[4], true)  # disable f definition
+    update_run!(🍭, notebook, notebook.cells[4])
+    
+    delete_cell!(🍭, notebook, notebook.cells[4])  # remove f definition
+    # after the update, cell 4 is removed from the notebook
+    # "f()" (cell 4 now) should error since f is gone
+    @test notebook.cells[4].errored
+
+    set_disabled(notebook.cells[1], true)
+    update_run!(🍭, notebook, notebook.cells[1])
+    
+    delete_cell!(🍭, notebook, notebook.cells[1])
+    # after the update, cell 1 is removed from the notebook
+    # "x + y" (cell 2 now) should error since x is gone
+    @test notebook.cells[2].errored
 
     cleanup(🍭, notebook)
 end

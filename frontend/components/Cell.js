@@ -212,7 +212,7 @@ export const Cell = ({
     let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded)
 
     const [line_heights, set_line_heights] = useState([15])
-    const node_ref = useRef(null)
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     const disable_input_ref = useRef(disable_input)
     disable_input_ref.current = disable_input
@@ -328,7 +328,6 @@ export const Cell = ({
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
-                cell_dependencies=${cell_dependencies}
                 global_definition_locations=${global_definition_locations}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
@@ -430,7 +429,7 @@ export const Cell = ({
  * }} props
  * */
 export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden, sanitize_html = true }) => {
-    const node_ref = useRef(null)
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const { show_logs } = metadata

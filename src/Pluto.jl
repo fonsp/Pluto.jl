@@ -14,7 +14,7 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_m
     @eval Base.Experimental.@max_methods 1
 end
 
-import FuzzyCompletions
+import Markdown
 import RelocatableFolders: @path
 const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
@@ -98,15 +98,31 @@ include("./precompile.jl")
 
 const pluto_boot_environment_path = Ref{String}()
 
+function julia_compat_issue(short::String)
+    if short == "1.12"
+        "Check [https://github.com/fonsp/Pluto.jl/issues/3005](https://github.com/fonsp/Pluto.jl/issues/3005)"
+    else
+        "Search [github.com/fonsp/Pluto.jl/issues](https://github.com/fonsp/Pluto.jl/issues) for `Julia $short`"
+    end
+end
+
 function warn_julia_compat()
     if VERSION > v"1.11.9999"
-        @warn("\nPluto ($(PLUTO_VERSION)) is running on a new version of Julia ($(VERSION)).\n\n$(
-            # if using a regular Julia version, then that means that the new Julia version has been released and we released a new Pluto version that supports it, but the user is still using an old Pluto version.
+        short = "$(VERSION.major).$(VERSION.minor)"
+        msg = "# WARNING: Unsupported Julia version\nPluto (`$(PLUTO_VERSION)`) is running on a new version of Julia (`$(VERSION)`). Support for Julia $short will be added in a later Pluto release.\n\nYou can try:\n$(
+            "  1. Update Pluto using `Pkg.update(\"Pluto\")`.\n" *
+            "  1. If there is no newer version of Pluto yet, then you can **help us develop it**! _Julia $short compatibility takes a lot of work, and we would really appreciate your help! $(julia_compat_issue(short)) to see what still needs to be done. Not all compatibility issues are known – play around and try running `Pkg.test(\"Pluto\")`_.\n\n")$(
             VERSION.prerelease === () && VERSION.build === () ?
-            "You need to update Pluto to use this Julia version, see https://plutojl.org/en/docs/update/ to learn more." :
+            "" :
             # if using a build/prerelease, then the user is using a future Julia version that we don't support yet.
-            "This (preview) version of Julia might not be fully supported by Pluto yet. Please check back later or use an older version of Julia."
-        )")
+            "!!! note\n\tPreview versions of Julia are not fully supported by Pluto.\n\n"
+        )"
+        
+        println()
+        println()
+        display(Markdown.parse(msg))
+        println()
+        println()
     end
     
     bad_depots = filter(d -> !isabspath(expanduser(d)), DEPOT_PATH)

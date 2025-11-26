@@ -1,6 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
 import DOMPurify from "../imports/DOMPurify.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
 
 import { ErrorMessage, ParseError } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
@@ -27,6 +28,7 @@ import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
+import lodashLibrary from "../imports/lodash.js"
 
 const prettyAssignee = (assignee) =>
     assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
@@ -182,7 +184,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         case "application/vnd.pluto.parseerror+object":
-            return html`<div><${ParseError} cell_id=${cell_id} ...${body} /></div>`
+            return html`<div><${ParseError} cell_id=${cell_id} last_run_timestamp=${last_run_timestamp} ...${body} /></div>`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
@@ -192,9 +194,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             break
         case "text/plain":
             if (body) {
-                return html`<div>
-                    <pre class="no-block"><code>${body}</code></pre>
-                </div>`
+                return html`<div><${ANSITextOutput} body=${body} /></div>`
             } else {
                 return html`<div></div>`
             }
@@ -445,6 +445,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                       }),
 
                                 ...observablehq_for_cells,
+                                _: lodashLibrary,
                             },
                             code,
                         })
@@ -630,6 +631,10 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                             const pre = code_element.parentElement
                             generateCopyCodeButton(pre)
                         })
+                        container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
+                            if (header_element.closest("table, pluto-display, bond")) return
+                            generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
+                        })
                     }
                 } catch (err) {
                     console.warn("Adding markdown code copy button failed", err)
@@ -709,18 +714,79 @@ export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
 
     // create copy button
     const button = document.createElement("button")
-    button.title = "Copy to Clipboard"
+    button.title = "Copy to clipboard"
     button.className = "markdown-code-block-button"
     button.addEventListener("click", (e) => {
         const txt = pre.textContent ?? ""
         navigator.clipboard.writeText(txt)
 
-        button.classList.add("markdown-code-block-copied-code-button")
+        button.classList.add("recently-copied")
         setTimeout(() => {
-            button.classList.remove("markdown-code-block-copied-code-button")
-        }, 2000)
+            button.classList.remove("recently-copied")
+        }, 1300)
     })
 
     // Append copy button to the code block element
     pre.prepend(button)
+}
+
+/**
+ * Generates a copy button for Markdown header elements, to copy the URL to this header using the `id`.
+ */
+export const generateCopyHeaderIdButton = (/** @type {HTMLHeadingElement} */ header, /** @type {any} */ pluto_actions) => {
+    const id = header.id
+    if (!id) return
+    const button = document.createElement("pluto-header-id-copy")
+    button.title = "Click to copy URL to this header"
+    button.ariaLabel = "Copy URL to this header"
+    button.role = "button"
+    button.tabIndex = 0
+    const listener = (_e) => {
+        const id = header.id
+        if (!id) return
+        let url_to_copy = `#${id}`
+        const launch_params = /** @type {import("./Editor.js").LaunchParameters?} */ (pluto_actions?.get_launch_params?.())
+        if (!launch_params) return
+        if (launch_params.isolated_cell_ids != null) return
+        const root = new URL(window.location.href)
+        root.hash = ""
+
+        const is_localhost_hostname = (hostname) => hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0"
+        if (launch_params.disable_ui && launch_params.notebook_id == null && launch_params.pluto_server_url == null && !is_localhost_hostname(root.hostname)) {
+            url_to_copy = `${root.href}${url_to_copy}`
+        }
+
+        navigator.clipboard.writeText(url_to_copy)
+
+        button.classList.add("recently-copied")
+        setTimeout(() => {
+            button.classList.remove("recently-copied")
+        }, 1300)
+    }
+    button.addEventListener("click", listener)
+    button.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return
+        listener(e)
+        e.preventDefault()
+    })
+    header.append(button)
+}
+
+export const ANSITextOutput = ({ body }) => {
+    const has_ansi = /\x1b\[\d+m/.test(body)
+
+    if (has_ansi) {
+        return html`<${ANSIUpContents} body=${body} />`
+    } else {
+        return html`<pre class="no-block"><code>${body}</code></pre>`
+    }
+}
+
+const ANSIUpContents = ({ body }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useLayoutEffect(() => {
+        if (!node_ref.current) return
+        node_ref.current.innerHTML = ansi_to_html(body)
+    }, [body])
+    return html`<pre class="no-block"><code ref=${node_ref}></code></pre>`
 }

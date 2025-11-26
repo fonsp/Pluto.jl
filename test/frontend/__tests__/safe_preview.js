@@ -13,6 +13,7 @@ import {
     runAllChanged,
     openPathOrURLNotebook,
     getAllCellOutputs,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("safe_preview", () => {
@@ -30,7 +31,7 @@ describe("safe_preview", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)
@@ -46,7 +47,8 @@ describe("safe_preview", () => {
     const expect_safe_preview = async (/** @type {puppeteer.Page} */ page) => {
         await waitForPlutoToCalmDown(page)
         expect(await page.evaluate(() => window.I_DID_SOMETHING_DANGEROUS)).toBeUndefined()
-        expect(await page.evaluate(() => [...document.body.classList])).toContain("process_waiting_for_permission")
+        await page.waitForSelector("pluto-editor.process_waiting_for_permission")
+        expect(await page.evaluate(() => [...document.querySelector("pluto-editor").classList])).toContain("process_waiting_for_permission")
         expect(await page.evaluate(() => document.querySelector("a#restart-process-button"))).not.toBeNull()
         expect(await page.evaluate(() => document.querySelector(".safe-preview-info"))).not.toBeNull()
     }
@@ -128,7 +130,7 @@ Hello
         let path = await page.evaluate(() => window.editor_state.notebook.path.replaceAll("\\", "\\\\"))
         let shutdown = async () => {
             await shutdownCurrentNotebook(page)
-            await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+            await gotoPlutoMainMenu(page)
             // Wait for it to be shut down
             await page.waitForSelector(`li.recent a[title="${path}"]`)
         }

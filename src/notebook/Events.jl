@@ -69,6 +69,7 @@ end
 
 # Triggered when the local code has changed (user typed something),
 # but the code hasn't run yet. 
+# TODO: Remove me after 0.20 @deprecate 
 struct FileEditEvent <: PlutoEvent
     notebook::Notebook
     file_contents::String
@@ -76,13 +77,16 @@ struct FileEditEvent <: PlutoEvent
 end
 
 FileEditEvent(notebook::Notebook) = begin
-    file_contents = sprint() do io
-        # TODO: https://github.com/fonsp/Pluto.jl/pull/1729: serialize_temp flag
-        # to only get local changes; the workspace edit of the notebook!
-        save_notebook(io, notebook #=; serialize_temp=true =#)
-    end
-    FileEditEvent(notebook, file_contents, notebook.path)
+    FileEditEvent(notebook, "BROKEN", notebook.path)
 end
+
+"""
+Triggered when the notebook state changes (e.g. code changes, output changes, a log message appears, etc)
+"""
+struct StateChangeEvent <: PlutoEvent
+    notebook::Notebook
+end
+
 
 # Triggered when we create a new notebook
 struct NewNotebookEvent <: PlutoEvent

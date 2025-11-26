@@ -1,14 +1,15 @@
 module PkgCompat
 
-export package_versions, package_completions
+export package_versions, registered_package_names
 
 import REPL
 import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+import GracefulPkg
 
-@static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
+@static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode, :complete_remote_package)
     const REPLMode = Pkg.REPLMode
 else
     const REPLMode = Base.get_extension(Pkg, :REPLExt)
@@ -260,12 +261,8 @@ end
 # Standard Libraries
 ###
 
-# (✅ Public API)
-_stdlibs_found = sort(readdir(Sys.STDLIB))
-_stdlibs() = _stdlibs_found
-
-# ⚠️ Internal API with fallback
-is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
+# ✅ Public API
+is_stdlib(package_name::String) = package_name ∈ GracefulPkg.stdlibs_past_present_future
 
 
 
@@ -279,30 +276,21 @@ end
 # Package names
 ###
 
-# ⚠️ Internal API with fallback
-function package_completions(partial_name::AbstractString)::Vector{String}
-	String[
-		filter(s -> startswith(s, partial_name), collect(_stdlibs()));
-		_registered_package_completions(partial_name)
-	]
+
+# (✅ "Public" API)
+"""
+Return names of all registered packages.
+"""
+function registered_package_names(;registries::Vector=_parsed_registries[])::Vector{String}
+	flatmap(registries) do reg
+		packages = values(reg.pkgs)
+		union!(String[
+			d.name
+			for d in packages
+		], GracefulPkg.stdlibs_past_present_future)
+	end |> sort!
 end
 
-# (⚠️ Internal API with fallback)
-function _registered_package_completions(partial_name::AbstractString)::Vector{String}
-	# compat
-	try
-		@static if hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
-			REPLMode.complete_remote_package(partial_name; hint=false)
-		elseif hasmethod(REPLMode.complete_remote_package, (String,))
-			REPLMode.complete_remote_package(partial_name)
-		else
-			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
-		end
-	catch e
-		@warn "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())
-		String[]
-	end
-end
 
 ###
 # Package versions
@@ -329,6 +317,7 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 		]
 	end
 end
+
 
 # ✅ "Public" API using RegistryInstances
 """
@@ -397,6 +386,7 @@ function dependencies(ctx)
 		end
 	catch e
 		if !any(occursin(sprint(showerror, e)), (
+			"could not find source path for", # https://github.com/fonsp/Pluto.jl/issues/3176
 			r"expected.*exist.*manifest",
 			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
 		))
@@ -504,19 +494,6 @@ function write_auto_compat_entries!(ctx::PkgContext)::PkgContext
 				end
 			end
 		end
-	end
-end
-
-
-# ✅ Public API
-"""
-Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
-"""
-function clear_compat_entries!(ctx::PkgContext)::PkgContext
-	if isfile(project_file(ctx))
-		_modify_compat!(empty!, ctx)
-	else
-		ctx
 	end
 end
 

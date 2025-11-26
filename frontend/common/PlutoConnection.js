@@ -336,6 +336,8 @@ export const create_pluto_connection = async ({
     const connect = async () => {
         let update_url_with_binder_token = async () => {
             try {
+                const on_a_binder_server = window.location.href.includes("binder")
+                if (!on_a_binder_server) return
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
                 if (!response.ok) {
@@ -394,7 +396,7 @@ export const create_pluto_connection = async ({
             client.kill = () => {
                 if (ws_connection) ws_connection.socket.close()
             }
-            client.session_options = u.message.options
+            client.session_options = u.message.session_options
             client.version_info = u.message.version_info
             client.notebook_exists = u.message.notebook_exists
 

@@ -1,6 +1,6 @@
 # Collect timing and allocations information; this is printed later.
 using TimerOutputs: TimerOutput, @timeit
-const TOUT = TimerOutput()
+TOUT = TimerOutput()
 macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
 function print_timeroutput()
     # Sleep to avoid old logs getting tangled up in the output.
@@ -26,9 +26,11 @@ function insert_cell!(notebook, cell)
     push!(notebook.cell_order, cell.cell_id)
 end
 
-function delete_cell!(notebook, cell)
+function delete_cell!(🍭, notebook, cell)
+    # this matches exactly what the frontend does when you delete a cell, check out `confirm_delete_multiple` in `Editor.js
     deleteat!(notebook.cell_order, findfirst(==(cell.cell_id), notebook.cell_order))
     delete!(notebook.cells_dict, cell.cell_id)
+    Pluto.update_run!(🍭, notebook, Pluto.Cell[])
 end
 
 function setcode!(cell, newcode)
@@ -148,13 +150,13 @@ end
 
 # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
 
-const pluto_test_registry_spec = Pkg.RegistrySpec(;
+pluto_test_registry_spec = Pkg.RegistrySpec(;
     url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
     uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
     name="PlutoPkgTestRegistry",
 )
 
-const snapshots_dir = joinpath(@__DIR__, "snapshots")
+snapshots_dir = joinpath(@__DIR__, "snapshots")
 
 isdir(snapshots_dir) && rm(snapshots_dir; force=true, recursive=true)
 mkdir(snapshots_dir)

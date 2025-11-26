@@ -25,8 +25,11 @@
 
 @import url("./themes/light.css");
 @import url("./themes/dark.css");
+@import url("./ansi-colors.css");
 
 @import url("./featured-card.css");
+
+@import url("./hide-ui.css");
 
 /* VARIABLES */
 
@@ -81,11 +84,11 @@ main {
     width: 100%;
 }
 
-body:not(.disable_ui) main {
+pluto-editor:not(.disable_ui) > main {
     padding-bottom: 16rem;
 }
 
-body:not(.disable_ui) {
+body:has(pluto-editor:not(.disable_ui)) {
     overscroll-behavior: contain;
 }
 
@@ -98,6 +101,7 @@ pluto-editor main {
         /* First part: center it */ max(0px, (100% - (700px + 25px + 6px)) / 2),
         /* Second part: push away from the right to take up all free space */ min((100% - (700px + 25px + 6px)), /* but don't do this more than */ 500px)
     );
+    position: relative;
 }
 
 pluto-notebook {
@@ -557,6 +561,56 @@ dialog#export::before {
     height: 100px;
     background: inherit;
 }
+dialog.pride#export {
+    background: linear-gradient(
+        80deg,
+        hsl(0deg 43.55% 26.63%),
+        hsl(30deg 50.05% 37.86%),
+        hsl(55deg 49.41% 34.19%),
+        hsl(140deg 12.48% 45.98%),
+        hsl(220deg 35.66% 38.34%),
+        hsl(280deg 30.8% 32.11%)
+    );
+}
+dialog#export::after {
+    transform: translateY(1px);
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 8px;
+    width: 100%;
+    pointer-events: none;
+}
+dialog.pride#export::after {
+    --c1: hsl(51.39deg 89.27% 68.71%);
+    --c2: hsl(281.12deg 68.59% 80.75%);
+    --c3: var(--c1);
+    --c4: hsl(0deg 0% 84.61%);
+    --c5: hsl(334.67deg 58.4% 75.81%);
+    --c6: hsl(204.67deg 41.19% 68.46%);
+    --c7: hsl(41deg 70.19% 37.26%);
+    --c8: hsl(0deg 0% 26.02%);
+    background: repeating-linear-gradient(
+        to right,
+        var(--c1) 0%,
+        var(--c1) 12.5%,
+        var(--c2) 12.5%,
+        var(--c2) 25%,
+        var(--c3) 25%,
+        var(--c3) 37.5%,
+        var(--c4) 37.5%,
+        var(--c4) 50%,
+        var(--c5) 50%,
+        var(--c5) 62.5%,
+        var(--c6) 62.5%,
+        var(--c6) 75%,
+        var(--c7) 75%,
+        /* black */ var(--c7) 87.5%,
+        var(--c8) 87.5%,
+        /* white */ var(--c8) 100%
+    );
+}
 dialog#export div#container {
     flex-direction: row;
     display: flex;
@@ -621,7 +675,18 @@ dialog#export .export_small_btns {
     top: 0em;
     background: var(--export-bg-color);
 }
-body.static_preview button.toggle_export {
+dialog#export .pride_message {
+    flex: 1 0 auto;
+    align-self: center;
+    margin-left: 32ch;
+}
+dialog#export .pride_message p {
+    margin: 0;
+    padding: 0.2ch 1ch;
+    background: black;
+    transform: rotate(3deg);
+}
+pluto-editor.static_preview button.toggle_export {
     display: none;
 }
 
@@ -853,10 +918,10 @@ nav#at_the_top:after {
     }
 }
 
-body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > * {
+pluto-editor.binder > header#pluto-nav > nav#at_the_top > pluto-filepicker > * {
     display: none;
 }
-body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
+pluto-editor.binder > header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
     display: block;
     font-size: 16px;
     font-family: var(--julia-mono-font-stack);
@@ -864,37 +929,37 @@ body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
     text-decoration: none;
 }
 
-body.nbpkg_restart_recommended header#pluto-nav,
-body.nbpkg_restart_required header#pluto-nav,
-body.binder.loading header#pluto-nav,
-body.process_waiting_for_permission header#pluto-nav,
-body.process_dead header#pluto-nav,
-body.disconnected header#pluto-nav {
+pluto-editor.nbpkg_restart_recommended > header#pluto-nav,
+pluto-editor.nbpkg_restart_required > header#pluto-nav,
+pluto-editor.binder.loading > header#pluto-nav,
+pluto-editor.process_waiting_for_permission > header#pluto-nav,
+pluto-editor.process_dead > header#pluto-nav,
+pluto-editor.disconnected > header#pluto-nav {
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
-body.nbpkg_restart_recommended header#pluto-nav {
+pluto-editor.nbpkg_restart_recommended > header#pluto-nav {
     background-color: var(--restart-recc-header-color);
 }
-body.nbpkg_restart_required header#pluto-nav {
+pluto-editor.nbpkg_restart_required > header#pluto-nav {
     background-color: var(--restart-req-header-color);
 }
-body.process_dead header#pluto-nav {
+pluto-editor.process_dead > header#pluto-nav {
     background-color: var(--dead-process-header-color);
 }
-body.process_waiting_for_permission header#pluto-nav {
+pluto-editor.process_waiting_for_permission > header#pluto-nav {
     background-color: var(--restart-recc-header-color);
 }
-body.loading header#pluto-nav {
+pluto-editor.loading > header#pluto-nav {
     background-color: var(--loading-header-color);
 }
-body.disconnected header#pluto-nav {
+pluto-editor.disconnected > header#pluto-nav {
     background-color: var(--disconnected-header-color);
 }
-body.binder.loading header#pluto-nav {
+pluto-editor.binder.loading > header#pluto-nav {
     background-color: var(--binder-loading-header-color);
 }
 
@@ -914,15 +979,15 @@ nav#at_the_top > #process_status:empty {
     display: none;
 }
 
-.statefile-fetch-progress {
+pluto-editor.fullscreen .statefile-fetch-progress {
     /* width: 200px;
     height: 27px;
     background: white;
     border: 5px solid #d1d9e4;
     border-radius: 6px; */
     --w: min(80vw, 300px);
-    position: fixed;
-    left: calc(50vw - 0.5 * var(--w));
+    position: absolute;
+    left: calc(50% - 0.5 * var(--w));
     top: 0;
     z-index: 300000;
     /* box-sizing: content-box; */
@@ -954,7 +1019,7 @@ loading-bar.slow {
     }
 }
 
-body.binder.loading #binder_spinners {
+pluto-editor.binder.loading #binder_spinners {
     opacity: 0.25;
 }
 
@@ -979,15 +1044,15 @@ body.binder.loading #binder_spinners {
     box-sizing: border-box;
 }
 
-body.process_waiting_for_permission .outline-frame.safe-preview {
+pluto-editor.process_waiting_for_permission > .outline-frame.safe-preview {
     border-bottom: 12px solid var(--restart-recc-header-color);
 }
 
-body.recording_waiting_to_start .outline-frame.recording {
+pluto-editor.recording_waiting_to_start > .outline-frame.recording {
     border: 12px solid #be6f6fba;
 }
-body.is_recording .outline-frame.recording {
-    border: 12px solid #dc3535ba;
+pluto-editor.is_recording > .outline-frame.recording {
+    border: 12px solid #645e5eba;
 }
 .outline-frame.playback {
     opacity: 1;
@@ -998,8 +1063,8 @@ body.is_recording .outline-frame.recording {
     box-shadow: inset 0px 0px 20px 20px #919bff2b;
 }
 
-body.recording_waiting_to_start header#pluto-nav,
-body.is_recording header#pluto-nav {
+pluto-editor.recording_waiting_to_start > header#pluto-nav,
+pluto-editor.is_recording > header#pluto-nav {
     display: none;
 }
 
@@ -1180,10 +1245,6 @@ main > preamble span.saved-icon::after,
     display: inline;
 }
 
-/* body:not(.code_differs) > main > preamble #saveall-container {
-    display: none;
-} */
-
 /* CELL */
 
 pluto-cell {
@@ -1254,6 +1315,15 @@ pluto-output:not(.rich_output) > div > pre {
 .bonds_disabled:where(.offer_binder, .offer_local) bond {
     opacity: 0.6;
     filter: grayscale(1);
+}
+
+@keyframes fadeintext {
+    from {
+        color: transparent;
+    }
+    to {
+        color: inherit;
+    }
 }
 
 /* as embedded display: */
@@ -1531,18 +1601,18 @@ pluto-cell.activate_animation pluto-trafficlight::after {
 }
 
 /* in ascending order of severity: */
-/* we need the :not(.___) to fix our CSS selector specificity when `body.disable_ui` */
-body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
+/* we need the :not(.___) to fix our CSS selector specificity when `pluto-editor.disable_ui` */
+pluto-editor:not(.___) pluto-cell.code_folded > pluto-trafficlight {
     background: none;
 }
 
 @media screen and (any-pointer: fine) {
-    body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
+    pluto-editor:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: var(--normal-cell-color);
     }
 }
 
-body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
@@ -1550,25 +1620,25 @@ body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     background-color: var(--normal-cell-color);
 }
 
-body:not(.___) pluto-cell.selected > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: var(--selected-cell-color);
     border-left-color: var(--selected-cell-color);
     background-clip: padding-box;
 }
 
-body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: var(--code-differs-cell-color);
     border-left-color: var(--code-differs-cell-color);
     background-clip: padding-box;
 }
 
-body:not(.___) pluto-cell.errored > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: var(--error-cell-color);
     border-left-color: var(--error-cell-color);
     background-clip: padding-box;
 }
 
-body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, var(--normal-cell-color) 8px, var(--normal-cell-color) 16px);
     background-clip: padding-box;
     /* [1]
@@ -1584,7 +1654,7 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     animation-duration: 20s;
 }
 
-body:not(.___) pluto-cell.running > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         var(--normal-cell-color),
@@ -1597,7 +1667,7 @@ body:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight);
 }
 
-body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         var(--light-error-cell-color),
@@ -1610,7 +1680,7 @@ body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         var(--light-error-cell-color),
@@ -1787,10 +1857,9 @@ pluto-input > .input_context_menu li {
     flex-direction: column;
 }
 pluto-input > .input_context_menu li button {
-    font-family: "Roboto Mono", system-ui;
-    font-size: 0.8rem;
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
     margin-block-end: 0px;
-    letter-spacing: -0.02em;
     color: var(--input-context-menu-li-color);
     position: relative;
     padding: 8px;
@@ -1800,7 +1869,6 @@ pluto-input > .input_context_menu li button {
     justify-content: flex-start;
     border-radius: 2px;
     cursor: pointer;
-
     background: none;
     border: none;
 }
@@ -1871,6 +1939,10 @@ pluto-input > .input_context_menu li button {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
 }
 
+.ctx_icon.ask_ai {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbubble-ellipses-outline.svg");
+}
+
 pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
@@ -1907,9 +1979,97 @@ pluto-input > .preview_hidden_code_info {
     pointer-events: none;
 }
 
-body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
-pluto-cell.code_folded:focus-within pluto-input > .preview_hidden_code_info {
+pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded > pluto-input > .preview_hidden_code_info,
+pluto-cell.code_folded:focus-within > pluto-input > .preview_hidden_code_info {
     display: block;
+}
+
+/* AI Context */
+
+pluto-popup.ai-context > div {
+    background: var(--ai-gradient-bg);
+    box-shadow: 0 0 3rem #00000061;
+}
+
+.ai-context-container {
+    padding: 0.2rem;
+}
+
+.ai-context-container h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    color: var(--pluto-output-h-color);
+}
+
+.ai-context-intro {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--pluto-output-color);
+}
+
+.ai-context-question-input {
+    width: 100%;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border: 3px solid transparent;
+    border-radius: 4px;
+    font-size: 0.95em;
+    background: var(--main-bg-color);
+    transition: border-color 0.2s;
+}
+
+.ai-context-question-input:focus,
+.ai-context-question-input:not(:placeholder-shown) {
+    outline: none;
+    border-color: var(--overlay-button-border);
+}
+
+.ai-context-question-input::placeholder {
+    color: var(--pluto-input-color);
+    opacity: 0.6;
+}
+
+.ai-context-prompt-container {
+    position: relative;
+    margin-top: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 2px 11px #0000001f;
+    background: var(--ai-prompt-bg);
+}
+
+.ai-context-prompt {
+    max-height: 15ch;
+    overflow-y: auto;
+    padding: 0.5rem;
+    line-height: 1.5;
+}
+
+.ai-context-prompt pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    font-size: 0.5rem;
+}
+
+.ai-context-container .copy-button {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--white);
+    border: 3px solid var(--overlay-button-border);
+    border-radius: 0.7rem;
+    color: var(--black);
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    /* box-shadow: 0 1px 10px #0000001a; */
+}
+
+.ai-context-container .copy-button.copied {
+    /* color: var(--pluto-output-bg); */
 }
 
 /* PKG UI */
@@ -1920,7 +2080,7 @@ pkg-status-mark {
     margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
 }
-body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
+pluto-editor.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
     display: none;
 }
 
@@ -2078,6 +2238,7 @@ pkg-popup .pkg-buttons {
 a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
+    width: 17px;
 }
 
 a.stdout-info,
@@ -2265,6 +2426,7 @@ dropruler {
     height: 4px;
     margin-top: calc(-2px - 0.5 * var(--pluto-cell-spacing));
     background: var(--dropruler-bg-color);
+    transition: top 0.05s;
 }
 
 /* LIVE DOCS */
@@ -2769,7 +2931,6 @@ pl-status .status-time {
     /* align-self: end; */
     padding-right: 0.5em;
     padding-left: 0.5em;
-    /* font-family: var(--roboto-mono-font-stack); */
     opacity: 0.6;
     font-size: 0.7rem;
     font-variant-numeric: tabular-nums;
@@ -2963,14 +3124,11 @@ nav#undo_delete {
     left: 0px;
     margin: 0.75rem;
     padding: 0.5rem;
-
-    font-family: var(--roboto-mono-font-stack);
-    font-size: 0.75rem;
-
-    background-color: var(--white);
-    border-radius: 3px;
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.8rem;
+    background-color: var(--helpbox-header-tab-bg-color);
+    border-radius: 8px;
     color: var(--black);
-
     box-shadow: 00px 00px 10px 2px var(--undo-delete-box-shadow-color);
     opacity: 1;
     transition: 0.2s linear box-shadow, 0.2s ease-out margin-bottom, 0.05s linear opacity;
@@ -3277,7 +3435,8 @@ body.presentation pluto-output h2 {
 body.presentation pluto-notebook {
     padding-bottom: 100vh;
 }
-body.presentation #helpbox-wrapper {
+body.presentation #helpbox-wrapper,
+body.presentation footer {
     display: none !important;
 }
 
@@ -3418,17 +3577,17 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     text-decoration-skip-ink: none;
 }
 
-body.disable_ui [data-pluto-variable],
-body.disable_ui [data-cell-variable] {
+pluto-editor.disable_ui [data-pluto-variable],
+pluto-editor.disable_ui [data-cell-variable] {
     cursor: pointer;
 }
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
-body:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -3494,7 +3653,7 @@ pluto-input .cm-editor .cm-content {
     /* height: auto; */
 }
 
-pluto-cell.code_differs .cm-editor .cm-gutters {
+pluto-cell.code_differs > pluto-input > .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
     background-color: var(--cm-color-code-differs-gutters);
 }
@@ -3528,10 +3687,10 @@ pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
  */
 
-pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
+pluto-cell.errored > pluto-input > .cm-editor .cm-lineNumbers .cm-gutterElement {
     color: var(--cm-color-line-numbers);
 }
-pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+pluto-cell.errored > pluto-input > .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
 }
 /* Case 2: Print */
@@ -3545,7 +3704,7 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
 
 .cm-completionIcon-c_Number::before {
-    color: var(--cm-color-number);
+    color: var(--cm-color-literal);
 }
 
 .cm-completionIcon-c_String::before,
@@ -3555,7 +3714,7 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
 
 .cm-completionIcon-completion_property::before {
-    color: var(--cm-color-property);
+    color: var(--cm-color-symbol);
 }
 
 .cm-completionIcon-completion_keyword::before {
@@ -3567,13 +3726,13 @@ li.completion_keyword_argument .cm-completionLabel {
     font-weight: bold;
 }
 .cm-completionIcon-completion_keyword_argument::before {
-    color: var(--cm-color-number);
+    color: var(--cm-color-literal);
 }
 
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
-    color: var(--cm-color-var) !important;
+    color: var(--cm-color-variable) !important;
     font-weight: 700;
 }
 
@@ -3657,11 +3816,11 @@ pluto-cell.hooked_up {
     --pluto-cell-force-color: #00b9ff7a;
 }
 
-pluto-cell.hooked_up pluto-trafficlight {
+pluto-cell.hooked_up > pluto-trafficlight {
     background-color: var(--pluto-cell-force-color) !important;
 }
 
-pluto-cell.hooked_up pluto-input .cm-editor {
+pluto-cell.hooked_up > pluto-input .cm-editor {
     border-color: var(--pluto-cell-force-color);
     border-width: 2px;
     border-left: none;
@@ -3673,11 +3832,11 @@ pluto-cell.hooked_up > pluto-runarea {
     background-color: var(--pluto-cell-force-color);
 }
 
-pluto-cell.hooked_up pluto-runarea > span {
+pluto-cell.hooked_up > pluto-runarea > span {
     color: #0000004f;
 }
 
-pluto-cell.hooked_up pluto-output {
+pluto-cell.hooked_up > pluto-output {
     border-right: solid 2px;
     border-top: solid 2px;
     border-top-right-radius: 4px;
@@ -3787,8 +3946,170 @@ pluto-cell.hooked_up pluto-output {
 
 .markdown-code-block-button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
+    background-size: 100% 100%;
 }
 
-.markdown-code-block-copied-code-button::before {
+.markdown-code-block-button.recently-copied::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
+}
+
+/* Styles for markdown header ID copy button */
+pluto-header-id-copy {
+    position: relative;
+    cursor: pointer;
+    justify-content: center;
+    align-items: baseline;
+    display: inline-block;
+    padding: 0;
+    margin-left: 0.2em;
+    border: none;
+    background: none;
+    transition: opacity 0.1s ease;
+    font-size: inherit;
+    inset-block: 0.1em;
+    opacity: 0.3;
+}
+
+pluto-header-id-copy::before {
+    content: "";
+    display: block;
+    --size: 0.7em;
+    width: var(--size);
+    height: var(--size);
+    filter: var(--image-filters);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/link-outline.svg");
+    background-size: 100% 100%;
+}
+
+pluto-header-id-copy.recently-copied::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
+}
+
+@media (pointer: fine) {
+    pluto-header-id-copy {
+        opacity: 0;
+    }
+}
+
+/* Show button on header hover */
+pluto-output :is(h1, h2, h3, h4, h5, h6):hover pluto-header-id-copy {
+    opacity: 0.3;
+}
+
+pluto-output:hover pluto-header-id-copy:hover {
+    opacity: 1;
+}
+
+/* Show button when focused */
+pluto-header-id-copy:focus {
+    opacity: 1;
+    outline: 2px solid var(--black);
+    outline-offset: 2px;
+}
+
+jlerror.syntax-error > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fix-with-ai {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fix-with-ai button {
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: none;
+    color: var(--black);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--ai-gradient-bg);
+    transition: background 0.3s ease;
+}
+
+.fix-with-ai button::before {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    background-size: contain;
+    filter: var(--image-filters);
+    transition: background-image 0.3s ease;
+}
+
+.fix-with-ai button::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sparkles.svg");
+}
+
+.fix-with-ai-loading button {
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.1), rgba(147, 112, 219, 0.1));
+}
+
+.fix-with-ai-loading button::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
+    animation: identifier-spin 1s linear infinite;
+}
+
+.fix-with-ai-success button {
+    background: rgb(89 174 87 / 22%);
+}
+
+.fix-with-ai-success button::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
+}
+
+.fix-with-ai button.reject-ai-fix {
+    background: rgba(231, 71, 71, 0.228);
+}
+
+.fix-with-ai button.reject-ai-fix::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
+}
+
+.ai-permission-prompt {
+    padding: 0.2em;
+}
+
+.ai-permission-prompt h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+/* 
+.ai-permission-prompt p {
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+} */
+
+.ai-permission-prompt .ask-next-time {
+    display: flex;
+    gap: 0.5ch;
+    margin-bottom: 1em;
+}
+
+.ai-permission-prompt .button-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.ai-permission-prompt button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--pluto-output-color);
+    background: var(--white);
+    color: var(--black);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.ai-permission-prompt button.accept {
+    background: var(--black);
+    color: var(--white);
 }

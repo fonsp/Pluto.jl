@@ -17,6 +17,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
 import { tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import _ from "../imports/lodash.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -246,24 +247,33 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
     `
 }
 
+const dirname = (/** @type {string} */ str) => {
+    // using regex /\/|\\/
+    const idx = [...str.matchAll(/[\/\\]/g)].map((r) => r.index)
+    return idx.length > 0 ? str.slice(0, _.last(idx) + 1) : str
+}
+
+const basename = (/** @type {string} */ str) => (str.split("/").pop() ?? "").split("\\").pop() ?? ""
+
 const pathhints =
     ({ client, suggest_new_file }) =>
-    (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        const cursor = ctx.state.selection.main.to
-        const oldLine = ctx.state.doc.toString()
+    /** @type {autocomplete.CompletionSource} */
+    (ctx) => {
+        const query_full = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
+        const query = dirname(query_full)
 
         return client
             .send("completepath", {
-                query: oldLine,
+                query,
             })
             .then((update) => {
-                const queryFileName = (oldLine.split("/").pop() ?? "").split("\\").pop() ?? ""
+                const queryFileName = basename(query_full)
 
                 const results = update.message.results
-                const from = utf8index_to_ut16index(oldLine, update.message.start)
-                const to = utf8index_to_ut16index(oldLine, update.message.stop)
+                const from = utf8index_to_ut16index(query, update.message.start)
 
-                if (results.length >= 1 && results[0] == queryFileName) {
+                // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                if (results.includes(queryFileName)) {
                     return null
                 }
 
@@ -302,10 +312,18 @@ const pathhints =
                     }
                 }
 
+                const validFor = (/** @type {string} */ text) => {
+                    return (
+                        /[\p{L}\p{Nl}\p{Sc}\d_!-\.]*$/u.test(text) &&
+                        // if the typed text matches one of the paths exactly, stop autocomplete immediately.
+                        !results.includes(basename(text))
+                    )
+                }
+
                 return {
                     options: styledResults,
                     from: from,
-                    to: to,
+                    validFor,
                 }
             })
     }

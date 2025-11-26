@@ -82,7 +82,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
     let scopestate = state.field(ScopeStateField)
 
-    if (selection.from === selection.to) {
+    if (selection.empty) {
         // If the cell starts with a questionmark, we interpret it as a
         // docs query, so I'm gonna spit out exactly what the user typed.
         let current_line = state.doc.lineAt(selection.from).text

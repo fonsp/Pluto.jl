@@ -131,6 +131,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                         frontmatter: clean_data(frontmatter) ?? {},
                     })
                 }
+                image_loading=${"lazy"}
                 disable_links=${true}
             />
         </div>

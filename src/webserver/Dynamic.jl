@@ -176,34 +176,37 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
     lock(current_state_for_clients_lock) do
-        notebook_dict = notebook_to_js(🙋.notebook)
         counter = update_counter_for_debugging[] += 1
+        
+        if !isempty(🙋.session.connected_clients)
+            notebook_dict = notebook_to_js(🙋.notebook)
 
-        for (_, client) in 🙋.session.connected_clients
-            if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-                current_dict = get(current_state_for_clients, client, :empty)
-                patches = Firebasey.diff(current_dict, notebook_dict)
-                patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
-                current_state_for_clients[client] = deep_enough_copy(notebook_dict)
+            for (_, client) in 🙋.session.connected_clients
+                if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
+                    current_dict = get(current_state_for_clients, client, :empty)
+                    patches = Firebasey.diff(current_dict, notebook_dict)
+                    patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
+                    current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
-                # Make sure we do send a confirmation to the client who made the request, even without changes
-                is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
+                    # Make sure we do send a confirmation to the client who made the request, even without changes
+                    is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-                if !isempty(patches) || is_response
-                    response = Dict(
-                        :counter => counter,
-                        :patches => patches_as_dicts,
-                        :response => is_response ? commentary : nothing
-                    )
-                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                    if !isempty(patches) || is_response
+                        response = Dict(
+                            :counter => counter,
+                            :patches => patches_as_dicts,
+                            :response => is_response ? commentary : nothing
+                        )
+                        push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                    end
                 end
             end
-        end
 
-        for (client, msg) in outbox
-            putclientupdates!(client, msg)
+            for (client, msg) in outbox
+                putclientupdates!(client, msg)
+            end
         end
-        try_event_call(🙋.session, FileEditEvent(🙋.notebook))
+        try_event_call(🙋.session, StateChangeEvent(🙋.notebook))
     end
 end
 
@@ -395,7 +398,7 @@ end
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
         :notebook_exists => (🙋.notebook !== nothing),
-        :options => 🙋.session.options,
+        :session_options => 🙋.session.options,
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
@@ -563,8 +566,8 @@ responses[:nbpkg_available_versions] = function response_nbpkg_available_version
     ), nothing, nothing, 🙋.initiator))
 end
 
-responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
-    results = PkgCompat.package_completions(🙋.body["query"])
+responses[:all_registered_package_names] = function response_all_registered_package_names(🙋::ClientRequest)
+    results = PkgCompat.registered_package_names()
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
         :results => results,
     ), nothing, nothing, 🙋.initiator))

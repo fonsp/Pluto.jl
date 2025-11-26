@@ -3,7 +3,7 @@ import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
 import { help_circle_icon } from "./Popup.js"
-import AnsiUp from "../imports/AnsiUp.js"
+import { ansi_to_html } from "../imports/AnsiUp.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 const LOGS_VISIBLE_START = 60
@@ -125,7 +125,7 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
     }
 
     const mimepair_output = (pair) =>
-        html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
+        html`<${SimpleOutputBody} cell_id=${"cell_id_not_known"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
 
     useEffect(() => {
         return () => set_cm_highlighted_line(null)
@@ -172,7 +172,7 @@ const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}}
             })
             e.preventDefault()
         }}
-        ><img alt="❔" src=${help_circle_icon} width="17"
+        ><img alt="❔" src=${help_circle_icon}
     /></a>`
 }
 
@@ -181,7 +181,7 @@ const LogViewAnsiUp = (/** @type {{value: string}} */ { value }) => {
 
     useEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        node_ref.current.innerHTML = ansi_to_html(value)
     }, [node_ref.current, value])
 
     return html`<pre ref=${node_ref}></pre>`

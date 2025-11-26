@@ -130,10 +130,8 @@ import Pluto.Configuration: Options, EvaluationOptions
 
         @test all(noerror, notebook.cells)
 
-        delete_cell!(notebook, notebook.cells[begin])
+        delete_cell!(🍭, notebook, notebook.cells[begin])
         @test length(notebook.cells) == 1
-
-        update_run!(🍭, notebook, Cell[])
 
         @test expecterror(UndefVarError(:x), notebook.cells[begin])
     end

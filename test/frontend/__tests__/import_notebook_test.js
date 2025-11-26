@@ -10,6 +10,7 @@ import {
     shutdownCurrentNotebook,
     setupPlutoBrowser,
     runAllChanged,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("PlutoImportNotebook", () => {
@@ -27,7 +28,7 @@ describe("PlutoImportNotebook", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)

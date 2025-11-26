@@ -126,7 +126,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                     <div class="command">Run Pluto</div>
                     <p>
                         ${"(Also see: "}
-                        <a target="_blank" href="https://computationalthinking.mit.edu/Spring21/installation/">How to install Julia and Pluto</a>)
+                        <a target="_blank" href="https://plutojl.org/#install">How to install Julia and Pluto</a>)
                     </p>
                     <img src="https://user-images.githubusercontent.com/6933510/107865594-60864b00-6e68-11eb-9625-2d11fd608e7b.png" />
                 </li>
