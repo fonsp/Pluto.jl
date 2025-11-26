@@ -12,7 +12,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
-import { DropRuler } from "./DropRuler.js"
+import { DropRuler, get_drop_index_for_paste } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
@@ -46,8 +46,11 @@ import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
+import { ProjectTomlEditor } from "./ProjectTomlEditor.js"
 import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
+import { PlutoLandUpload } from "./PlutoLandUpload.js"
+import { BigPkgTerminal } from "./PkgTerminalView.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1364,7 +1367,7 @@ ${control_name}${and}/:   ${t("t_key_ctrl_slash")}
 ${control_name}${and}M:   ${t("t_key_ctrl_m")}
 ${fold_prefix}${and}[:   ${t("t_key_ctrl_m")}
 ${fold_prefix}${and}]:   ${t("t_key_ctrl_m")}
-${ctrl_or_cmd_name}${and}Q:   ${t("t_key_ctrl_q")}
+${control_name}${and}Q:   ${t("t_key_ctrl_q")}
 
 ${t("t_key_selection_description")}
 ${ctrl_or_cmd_name}${and}C:   ${t("t_key_ctrl_c")}
@@ -1433,7 +1436,8 @@ ${t("t_key_autosave_description")}`
             if (topaste) {
                 const deserializer = detect_deserializer(topaste)
                 if (deserializer != null) {
-                    this.actions.add_deserialized_cells(topaste, -1, deserializer)
+                    const drop_index = get_drop_index_for_paste(this.props.pluto_editor_element)
+                    this.actions.add_deserialized_cells(topaste, drop_index, deserializer)
                     e.preventDefault()
                 }
             }
@@ -1734,6 +1738,17 @@ ${t("t_key_autosave_description")}`
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
+                    />
+                    <${ProjectTomlEditor}
+                        notebook=${notebook}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
+                    />
+                    <${PlutoLandUpload}
+                        notebook_id=${notebook.notebook_id}
+                        notebookexport_url=${this.export_url("notebookexport")}
+                    />
+                    <${BigPkgTerminal}
+                        notebook=${notebook}
                     />
                     ${this.props.preamble_element}
                     <${Main}>

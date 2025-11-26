@@ -44,7 +44,7 @@ html`
 ### Location
 Language files are stored in `frontend/lang/` as JSON files:
 - `english.json` (fallback language)
-- `nederlands.json`
+- `nederlands_nl.json`
 - Add new languages following the pattern: `{language}.json`
 
 ### JSON Structure

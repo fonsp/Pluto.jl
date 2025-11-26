@@ -159,7 +159,7 @@ const validFor = (/** @type {string} */ text) => {
 
 const not_explicit_and_too_boring = (/** @type {autocomplete.CompletionContext} */ ctx, allow_strings = false) => {
     if (ctx.explicit) return false
-    if (ctx.matchBefore(/[ =)+-/,*:'"]$/)) return true
+    if (ctx.matchBefore(/[\s=\)+-/,*:'\(;\[\]\{\}"]$/)) return true
     if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return true
     if (!allow_strings) {
         if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
@@ -399,6 +399,7 @@ const global_variables_completion =
 /** @returns {autocomplete.CompletionSource} */
 const make_it_julian = (/** @type {autocomplete.CompletionSource} */ source) => (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const c = source(ctx)
+    if (c instanceof Promise) throw "Oh nooooo"
     return c == null
         ? null
         : {

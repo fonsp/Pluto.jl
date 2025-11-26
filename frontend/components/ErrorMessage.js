@@ -11,6 +11,23 @@ import { localized_list_htl, t, th } from "../common/lang.js"
 
 const nbsp = "\u00A0"
 
+/**
+ * See the matching Julia file, Exception.jl in PlutoRunner.
+ * @typedef {Object} StackFrame
+ * @property {string} call
+ * @property {string} call_short
+ * @property {string|null} func
+ * @property {boolean} inlined
+ * @property {boolean} from_c
+ * @property {string} file
+ * @property {string} path
+ * @property {number} line
+ * @property {string} linfo_type
+ * @property {string|null} url
+ * @property {string|null} source_package
+ * @property {string|null} parent_module
+ */
+
 const extract_cell_id = (/** @type {string} */ file) => {
     if (file.includes("#@#==#")) return null
     const sep = "#==#"
@@ -32,6 +49,9 @@ const focus_line = (cell_id, line) =>
         })
     )
 
+/**
+ * @param {{frame: StackFrame}} props
+ */
 const DocLink = ({ frame }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -44,8 +64,8 @@ const DocLink = ({ frame }) => {
 
     const nb = pluto_actions.get_notebook()
     const pkg_name = frame.source_package
-    const builtin = ["Main", "Core", "Base"].includes(pkg_name)
-    const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
+    const builtin = ["Main", "Core", "Base"].includes(pkg_name ?? "")
+    const installed = nb?.nbpkg?.installed_versions?.[frame.source_package ?? ""] != null
     if (!builtin && nb?.nbpkg != null && !installed) return null
 
     return html` ${nbsp}<span
@@ -97,7 +117,13 @@ const StackFrameFilename = ({ frame, cell_id }) => {
 
 const at = html`<span> ${t("t_stack_frame_location")}${nbsp}</span>`
 
-const ignore_funccall = (frame) => frame.call === "top-level scope"
+const ignore_funccall = (/** @type {StackFrame} */ frame) => {
+    if (frame.call === "top-level scope") return true
+    // In Julia 1.12, you sometimes get the top-level code (like calling sqrt(-1) in a cell) as a "macro expansion" when you run the cell again a second time. 🤷
+    if (frame.call === "macro expansion" && !frame.file.includes("#@#==#") && extract_cell_id(frame.file) != null) return true
+
+    return false
+}
 const ignore_location = (frame) => frame.file === "none"
 
 const funcname_args = (call) => {
@@ -299,6 +325,8 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
     return true
 }
 
+const frame_is_toplevel_disguised_as_macro_expansion = (frame) => {}
+
 const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
@@ -316,6 +344,15 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
+/**
+ * Display runtime errors with stack trace.
+ * @param {Object} props
+ * @param {string} props.msg
+ * @param {StackFrame[]} props.stacktrace
+ * @param {string} [props.plain_error]
+ * @param {string} props.cell_id
+ * @returns {any}
+ */
 export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -440,13 +477,18 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
-                const match = x.match(/UndefVarError: (.*) not defined/)
+                const match = x.match(/UndefVarError: (.*) not defined in (.*).*/)
                 let sym = (match?.[1] ?? "").replaceAll("`", "")
+                let module = (match?.[2] ?? "").replaceAll("`", "").replaceAll(/Main\.var\"workspace#\d+\"/g, "this notebook")
                 const undefvar_is_from_upstream = Object.values(notebook?.cell_dependencies ?? {}).some((map) =>
                     Object.keys(map.downstream_cells_map).includes(sym)
                 )
 
                 if (Object.keys(erred_upstreams).length === 0 || !undefvar_is_from_upstream) {
+                    if (sym && module) {
+                        return html` <p>UndefVarError: <code>${sym}</code> not defined in ${module}.</p>
+                            <p>${x.replace(/UndefVarError.*\n?/, "")}</p>`
+                    }
                     return html`<p>${x}</p>`
                 }
 
@@ -499,7 +541,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
     const first_stack_from_here = stacktrace.findIndex((frame) => extract_cell_id(frame.file) != null)
 
-    const limited = !show_more && first_stack_from_here != -1 && first_stack_from_here < stacktrace.length - 1
+    const limited = !show_more && first_stack_from_here !== -1 && first_stack_from_here < stacktrace.length - 1
 
     const limited_stacktrace = (limited ? stacktrace.slice(0, first_stack_from_here + 1) : stacktrace).filter(
         (frame) => !(ignore_location(frame) && ignore_funccall(frame))
@@ -509,7 +551,8 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
     const [stacktrace_waiting_to_view, set_stacktrace_waiting_to_view] = useState(true)
     useEffect(() => {
-        set_stacktrace_waiting_to_view(true)
+        const from_another_cell = first_stack_from_here !== -1 && extract_cell_id(stacktrace[first_stack_from_here].file) !== cell_id
+        set_stacktrace_waiting_to_view(!from_another_cell)
     }, [msg, stacktrace, cell_id])
 
     return html`<jlerror>

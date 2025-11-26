@@ -121,6 +121,8 @@ Feel free to get creative! You don't need to match the English text exactly, jus
 
 With Pluto, we try to keep an **informal and clear style**, using simple and positive language. What would that look like in your language?
 
+If your language contains gender-specific words, please make an effort to use gender-neutral language. (In some languages, this means being careful to not assume that the user is masculine.) We want Pluto to feel inclusive!
+
 ## Using AI
 Feel free to use AI to help with writing the localization strings. (For example, copy the complete JSON file into ChatGPT and ask kindly for a translation.) But we do ask you to **check every localization string** yourself, and make sure that it is correct.
 
@@ -139,7 +141,7 @@ Also think about the **writing style**. Does the AI generate text in a style (fo
 You are free to modify existing localization strings contributed by other people, if you see a way to improve! For large changes, we ask you to contact previous authors and find a consensus together.
 
 ## New languages
-If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how another language (like "nederlands" (`nl`)) is set up, and copy the structure.
+If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how another language (like "nederlands_nl" (`nl-NL`)) is set up, and copy the structure.
 
 **All languages and dialects are welcome!** Even if the language is not spoken by many people, or less represented in the scientific programming world, we would really like your contribution!
 
