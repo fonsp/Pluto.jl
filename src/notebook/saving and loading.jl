@@ -319,13 +319,15 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
+    topology = _initial_topology(appeared_cells_dict, appeared_order)
 
     Notebook(;
         cells_dict=appeared_cells_dict,
         cell_order=appeared_order,
-        topology=_initial_topology(appeared_cells_dict, appeared_order),
-        path=path,
-        nbpkg_ctx=nbpkg_ctx,
+        topology,
+        _cached_topological_order=topological_order(topology),
+        path,
+        nbpkg_ctx,
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
         metadata=notebook_metadata,
     )

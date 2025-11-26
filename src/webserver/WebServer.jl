@@ -190,13 +190,23 @@ function run!(session::ServerSession)
                 s = session.options.security
                 s.require_secret_for_access || s.require_secret_for_open_links
             end
+            finish() = try
+                HTTP.setstatus(http, 403)
+                HTTP.startwrite(http)
+                write(http, "Forbidden")
+                HTTP.closewrite(http)
+            catch e
+                if !(e isa Base.IOError)
+                    rethrow(e)
+                end
+            end
             if !secret_required || is_authenticated(session, http.message)
                 try
-
                     HTTP.WebSockets.upgrade(http) do clientstream
                         if HTTP.WebSockets.isclosed(clientstream)
                             return
                         end
+                        found_client_id_ref = Ref(Symbol(:none))
                         try
                             for message in clientstream
                                 # This stream contains data received over the WebSocket.
@@ -212,6 +222,9 @@ function run!(session::ServerSession)
                                     end
                                     
                                     did_read = true
+                                    if found_client_id_ref[] === :none
+                                        found_client_id_ref[] = Symbol(parentbody["client_id"])
+                                    end
                                     process_ws_message(session, parentbody, clientstream)
                                 catch ex
                                     if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
@@ -233,6 +246,11 @@ function run!(session::ServerSession)
                                 bt = stacktrace(catch_backtrace())
                                 @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
                             end
+                        finally
+                            if haskey(session.connected_clients, found_client_id_ref[])
+                                @debug "Removing client $(found_client_id_ref[]) from connected_clients"
+                                delete!(session.connected_clients, found_client_id_ref[])
+                            end
                         end
                     end
                 catch ex
@@ -246,17 +264,14 @@ function run!(session::ServerSession)
                         bt = stacktrace(catch_backtrace())
                         @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
                     end
-                end
-            else
-                try
-                    HTTP.setstatus(http, 403)
-                    HTTP.startwrite(http)
-                    HTTP.closewrite(http)
-                catch e
-                    if !(e isa Base.IOError)
-                        rethrow(e)
+                finally
+                    # if we never wrote a response, then do it now
+                    if isopen(http) && !iswritable(http)
+                        finish()
                     end
                 end
+            else
+                finish()
             end
         else
             # then it's a regular HTTP request, not a WS upgrade
@@ -373,7 +388,7 @@ end
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream)
     client_id = Symbol(parentbody["client_id"])
-    client = get!(session.connected_clients, client_id ) do 
+    client = get!(session.connected_clients, client_id) do 
         ClientSession(client_id, clientstream, session.options.server.simulated_lag)
     end
     client.stream = clientstream # it might change when the same client reconnects

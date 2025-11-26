@@ -574,12 +574,15 @@ end
         @test_notebook_inputs_equal(nb, result, false)
 
         
-        filename = "howdy.jl"
-
+        filename = "\"howdy.jl\""
         export_html = Pluto.generate_html(nb; notebookfile_js=filename)
         @test occursin(filename, export_html)
         @test_throws ArgumentError Pluto.embedded_notebookfile(export_html)
         
+        filename = "\"some where/thing.plutostate\""
+        export_html = Pluto.generate_html(nb; statefile_js=filename)
+        @test occursin("""pluto_statefile = "some where/""", export_html)
+        @test occursin("""<link rel="preload" as="fetch" href="some where/""", export_html)
         
         export_html = Pluto.generate_index_html()
         @test occursin("</html>", export_html)

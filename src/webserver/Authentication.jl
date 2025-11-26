@@ -1,3 +1,4 @@
+import .Throttled
 
 """
 Return whether the `request` was authenticated in one of two ways:
@@ -29,7 +30,7 @@ function is_authenticated(session::ServerSession, request::HTTP.Request)
 end
 
 # Function to log the url with secret on the Julia CLI when a request comes to the server without the secret. Executes at most once every 5 seconds
-const log_secret_throttled = simple_leading_throttle(5) do session::ServerSession, request::HTTP.Request
+const log_secret_throttled = Throttled.simple_leading_throttle(5) do session::ServerSession, request::HTTP.Request
     host = HTTP.header(request, "Host")
     target = request.target
     url = Text(string(HTTP.URI(HTTP.URI("http://$host/"); query=Dict("secret" => session.secret))))

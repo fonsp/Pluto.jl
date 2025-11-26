@@ -11,11 +11,11 @@
         --header-border-color: rgba(0, 0, 0, 0.1);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
+
+        /* Cells */
         --normal-cell: 0, 0, 0;
         --code-differs: 160, 130, 28;
         --error-color: 240, 168, 168;
-
-        /*Cells*/
         --normal-cell-color: rgba(var(--normal-cell), 0.1);
         --dark-normal-cell-color: rgba(var(--normal-cell), 0.2);
         --selected-cell-color: rgba(40, 78, 189, 0.4);
@@ -41,6 +41,7 @@
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
+        /* --pluto-dim-output-color */
         --pluto-output-color: hsl(0, 0%, 25%);
         --pluto-output-h-color: hsl(0, 0%, 12%);
         --pluto-output-bg-color: white;
@@ -113,6 +114,7 @@
         --overlay-button-bg: #ffffff;
         --overlay-button-border: hsl(0 4% 91% / 1);
         --overlay-button-border-save: #f3f2f2;
+        /* --overlay-button-color */
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
@@ -155,7 +157,7 @@
         --helpbox-notfound-search-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
-        --code-section-bg-color: #f3f3f3;
+        --code-section-bg-color: #f3f3f3; /* TODO: Should this be `-border-color`? */
         --process-item-bg: #f2f2f2;
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
@@ -176,40 +178,49 @@
         --undo-delete-box-shadow-color: #0083;
 
         /*codemirror hints*/
-        --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
-        --cm-editor-li-aria-selected-bg-color: #16659d;
-        --cm-editor-li-aria-selected-color: white;
-        --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
+        --cm-color-editor-tooltip-border: rgba(0, 0, 0, 0.2);
+        --cm-color-editor-li-aria-selected-bg: #16659d;
+        --cm-color-editor-li-aria-selected: white;
+        --cm-color-editor-li-notexported: rgba(0, 0, 0, 0.5);
         --code-background: hsla(46, 90%, 98%, 1);
-        --cm-code-differs-gutters-color: rgba(214, 172, 35, 0.2);
-        --cm-line-numbers-color: #8d86875e;
+        --cm-color-code-differs-gutters: rgba(214, 172, 35, 0.2);
+        --cm-color-line-numbers: #8d86875e;
         --cm-selection-background: hsl(214deg 100% 73% / 48%);
         --cm-selection-background-blurred: hsl(214deg 0% 73% / 48%);
         --cm-highlighted: #cbceb668;
 
         /* code highlighting */
-        --cm-editor-text-color: #41323f;
-        --cm-comment-color: #e96ba8;
-        --cm-atom-color: #815ba4;
-        --cm-number-color: #815ba4;
-        --cm-property-color: #b67a48;
-        --cm-keyword-color: #ef6155;
-        --cm-string-color: #da5616;
-        --cm-var-color: #5668a4;
-        --cm-macro-color: #5c8c5f;
-        --cm-var2-color: #37768a;
-        --cm-builtin-color: #5e7ad3;
-        --cm-function-color: #cc80ac;
-        --cm-type-color: hsl(170deg 7% 56%);
-        --cm-bracket-color: #41323f;
-        --cm-tag-color: #ef6155;
-        --cm-link-color: #815ba4;
-        --cm-error-bg-color: #ef6155;
-        --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: black;
-        --cm-matchingBracket-bg-color: #1b4bbb21;
-        --cm-placeholder-text-color: rgba(0, 0, 0, 0.2);
-        --cm-clickable-underline: #ced2ef;
+        --cm-color-editor-text: #41323f;
+        --cm-color-comment:     #e96ba8;
+        --cm-color-atom:        #815ba4;
+        --cm-color-number:      #815ba4;
+        --cm-color-property:    #b67a48;
+        --cm-color-keyword:     #ef6155;
+        --cm-color-string:      #da5616;
+        --cm-color-var:         #5668a4;
+        --cm-color-var2:        #37768a;
+        --cm-color-macro:       #5c8c5f;
+        --cm-color-builtin:     #5e7ad3;
+        --cm-color-function:    #cc80ac;
+        --cm-color-type:        hsl(170deg 7% 56%);
+        --cm-color-bracket:     #41323f;
+        --cm-color-tag:         #ef6155;
+        --cm-color-link:        #815ba4;
+        --cm-color-error-bg:    #ef6155;
+        --cm-color-error:       #f7f7f7;
+        --cm-color-matchingBracket: black;
+        --cm-color-matchingBracket-bg: #1b4bbb21;
+        --cm-color-placeholder-text: rgba(0, 0, 0, 0.2);
+        --cm-color-clickable-underline: #ced2ef;
+
+        /* Mixed parsers */
+        --cm-color-html:        #48b685;
+        --cm-color-html-accent: #00ab85;
+        --cm-color-css:         #876800;
+        --cm-color-css-accent:  #696200;
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
+        --cm-color-md:          #005a9b;
+        --cm-color-md-accent:   #00a9d1;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: white;
@@ -217,7 +228,7 @@
         /* Landing colors */
         --index-text-color: hsl(0, 0, 60);
         --index-light-text-color: #838383;
-        --index-clickable-text-color: hsl(0, 0, 30);
+        --index-clickable-text-color: black;
         --docs-binding-bg: #8383830a;
         --index-card-bg: white;
         --welcome-mywork-bg: hsl(35deg 66% 93%);
@@ -226,14 +237,5 @@
         --welcome-recentnotebook-border: #dfdfdf;
         --welcome-open-bg: #fbfbfb;
         --welcome-card-author-backdrop: #ffffffb0;
-
-        /* HTML in codemirror! */
-        --cm-html-color: #48b685;
-        --cm-html-accent-color: #00ab85;
-        --cm-css-color: #876800;
-        --cm-css-accent-color: #696200;
-        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
-        --cm-md-color: #005a9b;
-        --cm-md-accent-color: #00a9d1;
     }
 }

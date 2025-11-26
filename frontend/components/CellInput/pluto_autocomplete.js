@@ -1,6 +1,6 @@
 import _ from "../../imports/lodash.js"
 
-import { EditorView, keymap, autocomplete, syntaxTree, StateField, StateEffect, Transaction } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, EditorState, keymap, autocomplete, syntaxTree, StateField, StateEffect, Transaction } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
@@ -8,38 +8,10 @@ import { open_bottom_right_panel } from "../BottomRightPanel.js"
 import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
 import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
 
-let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
+let { autocompletion, completionKeymap, completionStatus, acceptCompletion, selectedCompletion } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 const completionState = autocompletion()[1]
-
-/** @type {any} */
-const TabCompletionEffect = StateEffect.define()
-const tabCompletionState = StateField.define({
-    create() {
-        return false
-    },
-
-    update(value, /** @type {Transaction} */ tr) {
-        // Tab was pressed
-        for (let effect of tr.effects) {
-            if (effect.is(TabCompletionEffect)) return true
-        }
-        if (!value) return false
-
-        let previous_selected = autocomplete.selectedCompletion(tr.startState)
-        let current_selected = autocomplete.selectedCompletion(tr.state)
-
-        // Autocomplete window was closed
-        if (previous_selected != null && current_selected == null) {
-            return false
-        }
-        if (previous_selected != null && previous_selected !== current_selected) {
-            return false
-        }
-        return value
-    },
-})
 
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
@@ -66,9 +38,6 @@ const tab_completion_command = (cm) => {
     // ?([1,2], 3)<TAB> should trigger autocomplete
     if (last_char === ")" && !last_line.includes("?")) return false
 
-    cm.dispatch({
-        effects: TabCompletionEffect.of(10),
-    })
     return autocomplete.startCompletion(cm)
 }
 
@@ -101,8 +70,11 @@ const pluto_autocomplete_keymap = [
  */
 let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
     return EditorView.updateListener.of((update) => {
-        // Can't use this yet as it has not enough info to apply the change (source.from and source.to)
-        // let selected_completion = autocomplete.selectedCompletion(update.state)
+        // But we can use `selectedCompletion` to better check if the autocomplete is open
+        // (for some reason `autocompletion_state?.open != null` isn't enough anymore?)
+        // Sadly we still need `update.state.field(completionState, false)` as well because we can't
+        //   apply the result from `selectedCompletion()` yet (has no .from and .to, for example)
+        if (selectedCompletion(update.state) == null) return
 
         let autocompletion_state = update.state.field(completionState, false)
         let open_autocomplete = autocompletion_state?.open
@@ -123,6 +95,10 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         // Apply completion to state, which will yield us a `Transaction`.
         // The nice thing about this is that we can use the resulting state from the transaction,
         // without updating the actual state of the editor.
+        // NOTE This could bite someone who isn't familiar with this, but there isn't an easy way to fix it without a lot of console spam:
+        // .... THIS UPDATE WILL DO CONSOLE.LOG'S LIKE ANY UPDATE WOULD DO
+        // .... Which means you sometimes get double logs from codemirror extensions...
+        // .... Very disorienting 😵‍💫
         let result_transaction = update.state.update({
             changes: {
                 from,
@@ -140,13 +116,18 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 }
 
 /** Are we matching something like `\lambd...`? */
-let match_special_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_:]*/)
+const match_special_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_\^:]*/)
 /** Are we matching something like `:writing_a_symbo...`? */
-let match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
-/** Are we matching inside a string */
-function match_string_complete(ctx) {
-    const tree = syntaxTree(ctx.state)
-    const node = tree.resolve(ctx.pos)
+const match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+
+/** Are we matching inside a string at given pos?
+ * @param {EditorState} state
+ * @param {number} pos
+ * @returns {boolean}
+ **/
+function match_string_complete(state, pos) {
+    const tree = syntaxTree(state)
+    const node = tree.resolve(pos)
     if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
         return false
     }
@@ -172,7 +153,7 @@ const field_rank_heuristic = (text, is_exported) => is_exported * 3 + (/^\p{Ll}/
 
 const julia_commit_characters = [".", ",", "(", "[", "{"]
 const endswith_keyword_regex =
-    /(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
+    /^(.*\s)?(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
 
 const validFor = (text) => {
     let expected_char = /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u.test(text)
@@ -183,9 +164,9 @@ const validFor = (text) => {
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (writing_variable_name_or_keyword(ctx)) return null
         if (match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+        if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
@@ -195,9 +176,6 @@ const julia_code_completions_to_cm =
         if (is_symbol_completion) {
             to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
         }
-
-        // no path autocompletions
-        if (ctx.tokenBefore(["String"]) != null) return null
 
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
@@ -215,9 +193,11 @@ const julia_code_completions_to_cm =
         // console.debug({ definitions })
         // const proposed = new Set()
 
-        let to_complete_onto = to_complete.slice(0, start)
-        let is_field_expression = to_complete_onto.endsWith(".")
-        let is_listing_all_fields_of_a_module = is_field_expression && start === stop
+        const to_complete_onto = to_complete.slice(0, start)
+        const is_field_expression = to_complete_onto.endsWith(".")
+
+        // skip autocomplete's filter if we are completing a ~ path (userexpand)
+        const skip_filter = ctx.matchBefore(/\~[^\s\"]*/) != null
 
         return {
             from: start,
@@ -230,10 +210,14 @@ const julia_code_completions_to_cm =
             validFor,
 
             commitCharacters: julia_commit_characters,
+            filter: !skip_filter,
 
             options: [
                 ...results
-                    .filter(([text, _1, _2, is_from_notebook]) => !(is_from_notebook && is_already_a_global(text)))
+                    .filter(
+                        ([text, _1, _2, is_from_notebook, completion_type]) =>
+                            (ctx.explicit || completion_type != "path") && !(is_from_notebook && is_already_a_global(text))
+                    )
                     .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
                         // (quick) fix for identifiers that need to be escaped
                         // Ideally this is done with Meta.isoperator on the julia side
@@ -284,9 +268,9 @@ const julia_code_completions_to_cm =
     }
 
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
-    if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
@@ -319,7 +303,14 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
 const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let just_finished_a_keyword = ctx.matchBefore(endswith_keyword_regex)
 
-    let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) [@\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+    // Regex explaination:
+    // 1. a keyword that could be followed by a variable name like `catch ex` where `ex` is a variable name that should not get completed
+    // 2. a space
+    // 3. a sequence of either:
+    // 3a. a variable name character `@\p{L}\p{Nl}\p{Sc}\d_!`. Also allowed is a bracket or a comma, this is to handle multiple vars `const (a,b)`.
+    // 3b. a `, ` comma-space, to treat `const a, b` but not `for a in
+    // 4. a `$` to match the end of the line
+    let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) ([@\p{L}\p{Nl}\p{Sc}\d_!,\(\)]|, )*$/u)
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
@@ -328,9 +319,9 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
 
 /** @returns {Promise<autocomplete.CompletionResult?>} */
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
-    if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
@@ -386,30 +377,58 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
 const special_latex_examples = ["\\sqrt", "\\pi", "\\approx"]
 const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", "🐸", "🐔", "🐧"]
 
+/** Apply completion to detail when completion is equal to detail
+ * https://codemirror.net/docs/ref/#autocomplete.Completion.apply
+ * Example:
+ * For latex completions, if inside string only complete to label unless label is already fully typed.
+ * \lamb<tab> -> λ
+ * "\lamb<tab>" -> "\lambda"
+ * "\lambda<tab>" -> "λ"
+ * For emojis, we always complete to detail:
+ * \:cat:<tab> -> 🐱
+ * "\:ca" -> 🐱
+ * @param {EditorView} view
+ * @param {autocomplete.Completion} completion
+ * @param {number} from
+ * @param {number} to
+ * */
+const apply_completion = (view, completion, from, to) => {
+    const currentComp = view.state.sliceDoc(from, to)
+
+    let insert = completion.detail ?? completion.label
+    const is_emoji = completion.label.startsWith("\\:")
+    if (!is_emoji && currentComp !== completion.label) {
+        const is_inside_string = match_string_complete(view.state, to)
+        if (is_inside_string) {
+            insert = completion.label
+        }
+    }
+
+    view.dispatch({ changes: { from, to, insert }, annotations: autocomplete.pickedCompletion.of(completion) })
+}
+
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
     let found = null
 
     const get_special_symbols = async () => {
         if (found == null) {
-            let data = await request_special_symbols().catch((e) => {
+            const data = await request_special_symbols().catch((e) => {
                 console.warn("Failed to fetch special symbols", e)
                 return null
             })
 
             if (data != null) {
                 const { latex, emoji } = data
-                found = [true, false].map((is_inside_string) =>
-                    [true, false].flatMap((is_emoji) =>
-                        Object.entries(is_emoji ? emoji : latex).map(([label, value]) => {
-                            return {
-                                label,
-                                apply: value != null && (!is_inside_string || is_emoji) ? value : label,
-                                detail: value ?? undefined,
-                                type: "c_special_symbol",
-                                boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
-                            }
-                        })
-                    )
+                found = [emoji, latex].flatMap((map) =>
+                    Object.entries(map).map(([label, value]) => {
+                        return {
+                            label,
+                            apply: apply_completion,
+                            detail: value ?? undefined,
+                            type: "c_special_symbol",
+                            boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
+                        }
+                    })
                 )
             }
         }
@@ -417,14 +436,12 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     }
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (writing_variable_name_or_keyword(ctx)) return null
         if (!match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number", "Comment"]) != null) return null
+        if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment"]) != null) return null
 
         const result = await get_special_symbols()
-
-        let is_inside_string = match_string_complete(ctx)
-        return await autocomplete.completeFromList(is_inside_string ? result[0] : result[1])(ctx)
+        return await autocomplete.completeFromList(result ?? [])(ctx)
     }
 }
 
@@ -493,7 +510,6 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
     }
 
     return [
-        tabCompletionState,
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [

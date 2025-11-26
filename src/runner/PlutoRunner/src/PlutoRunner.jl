@@ -17,6 +17,10 @@
 # loaded on a runner process, which is something that we might want to change
 # in the future.
 
+# DEVELOPMENT TIP
+# If you are editing this file, you cannot use Revise unfortunately.
+# However! You don't need to restart Pluto to test your changes! You just need to restart the notebook from the Pluto main menu, and the new PlutoRunner.jl will be loaded.
+
 module PlutoRunner
 
 # import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
@@ -1003,10 +1007,17 @@ const default_iocontext = IOContext(devnull,
     :pluto_with_js_link => (io, callback, on_cancellation) -> core_with_js_link(io, callback, on_cancellation),
 )
 
+# `stdout` mimics a TTY, the only relevant property is :color
 const default_stdout_iocontext = IOContext(devnull, 
-    :color => true, 
-    :limit => true, 
-    :displaysize => (18, 75), 
+    :color => true,
+    :is_pluto => false,
+)
+
+# `display` sees a richer context like in the REPL, see #2727
+const default_display_iocontext = IOContext(devnull,
+    :color => true,
+    :limit => true,
+    :displaysize => (18, 75),
     :is_pluto => false,
 )
 
@@ -2025,8 +2036,8 @@ function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = FuzzyCompletions.completions(
         query, pos, workspace;
         enable_questionmark_methods=false,
-        enable_expanduser=false,
-        enable_path=false,
+        enable_expanduser=true,
+        enable_path=true,
         enable_methods=false,
         enable_packages=false,
     )
@@ -2034,16 +2045,22 @@ function completion_fetcher(query, pos, workspace::Module)
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     elseif endswith(partial, '/')
         filter!(is_path_completion, results)
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     else
-        isenough(x) = x ≥ 0
-        filter!(r -> is_kwarg_completion(r) || isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
+        contains_slash = '/' ∈ partial
+        if !contains_slash
+            filter!(!is_path_completion, results)
+        end
+        filter!(
+            r -> is_kwarg_completion(r) || score(r) >= 0,
+            results
+        ) # too many candidates otherwise
     end
 
     exported = completions_exported(results)
@@ -2782,8 +2799,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = pipe.in
-    pe_stderr = pipe.in
+    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
@@ -2816,7 +2833,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     end
 
     # To make the `display` function work.
-    redirect_display = TextDisplay(IOContext(pe_stdout, default_stdout_iocontext))
+    redirect_display = TextDisplay(IOContext(pe_stdout, default_display_iocontext))
     pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.

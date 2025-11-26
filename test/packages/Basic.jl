@@ -47,7 +47,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > 0
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
@@ -79,7 +79,11 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > last_install_time
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestB"] != ""
+        @test occursin("+ PlutoPkgTestB", notebook.nbpkg_terminal_outputs["PlutoPkgTestB"])
+
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
@@ -189,6 +193,11 @@ import Malt
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["Dates"] != ""
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["Dates"])
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("Dates", ptoml_contents()) == 0
 
@@ -202,6 +211,11 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_install_time_ns === nothing # removing a package means that we lose our estimate
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestD"] != ""
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["PlutoPkgTestD"])
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
@@ -680,15 +694,15 @@ import Malt
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
         precomp_entries() = readdir(mkpath(compilation_dir_testA))
         
-        # clear cache
-        let
-            # sleep workaround for julia issue 34700.
-            sleep(3)
-            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
-        end
-        @test precomp_entries() == []
-
+        
         @testset "Match compiler options: $(match)" for match in [true, false]
+            # clear cache
+            let
+                # sleep workaround for julia issue 34700.
+                sleep(3)
+                isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+            end
+            @test precomp_entries() == []
             
             before_sync = precomp_entries()
             
@@ -746,14 +760,12 @@ import Malt
             after_run = precomp_entries()
             
 
+            full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
+
             # There should be a log message about loading the cache.
-            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
-                occursin(r"Loading.*cache"i, log["msg"][1])
-            end
+            VERSION >= v"1.9.0-aaa" && @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
-            @test !any(notebook.cells[1].logs) do log
-                occursin(r"reject.*cache"i, log["msg"][1])
-            end
+            @test !occursin(r"reject.*cache"i, full_logs)
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
             @test after_sync == after_run

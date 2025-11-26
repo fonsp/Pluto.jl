@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
+import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, Throttled
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -186,10 +186,9 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
         end
     end
     
-    notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 20) do
-        # TODO: this throttle should be trailing
+    notebook.status_tree.update_listener_ref[] = Throttled.throttled(1.0 / 8; runtime_multiplier=4.0) do
         Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
-    end)
+    end
 
     return notebook
 end

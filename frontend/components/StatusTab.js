@@ -14,7 +14,7 @@ import { NotifyWhenDone } from "./NotifyWhenDone.js"
  * my_clock_is_ahead_by: number,
  * }} props
  */
-export let ProcessTab = ({ status, notebook, backend_launch_logs, my_clock_is_ahead_by }) => {
+export const StatusTab = ({ status, notebook, backend_launch_logs, my_clock_is_ahead_by }) => {
     return html`
         <section>
             <${StatusItem}
@@ -123,14 +123,14 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
     const busy_time = Math.max(local_busy_time, mytime - start - (mystatus.timing === "local" ? 0 : my_clock_is_ahead_by))
 
     useEffect(() => {
-        if (busy) {
+        if (busy || mystatus.success === false) {
             let handle = setTimeout(() => {
                 set_is_open(true)
             }, Math.max(100, 500 - path.length * 200))
 
             return () => clearTimeout(handle)
         }
-    }, [busy])
+    }, [busy || mystatus.success === false])
 
     useEffectWithPrevious(
         ([old_finished]) => {
@@ -171,7 +171,6 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
         let total = kids.length
 
         let failed_indices = kids.reduce((acc, x, i) => (x.success === false ? [...acc, i] : acc), [])
-        console.log({ kids })
 
         return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} failed_indices=${failed_indices} />`
     }

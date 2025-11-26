@@ -54,7 +54,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                                   button_label=${"Open from URL"}
                                   placeholder=${"Enter a URL..."}
                                   client=${dummy_client}
-                                  force_on_blur=${false}
+                                  clear_on_blur=${false}
                               />
                           </div>
                       </div>
@@ -65,6 +65,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                           client=${client}
                           value=""
                           on_submit=${on_open_path}
+                          clear_on_blur=${false}
                           button_label=${window.plutoDesktop ? "Open File" : "Open"}
                           placeholder=${picker.placeholder}
                       />

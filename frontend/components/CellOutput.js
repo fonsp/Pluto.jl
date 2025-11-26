@@ -21,7 +21,7 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 
-import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
+import { pluto_syntax_colors_julia, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
@@ -29,7 +29,7 @@ import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 const prettyAssignee = (assignee) =>
-    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6)}` : assignee
+    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
 
 export class CellOutput extends Component {
     constructor() {
@@ -137,7 +137,7 @@ export let PlutoImage = ({ body, mime }) => {
  * body: any,
  * cell_id: string,
  * persist_js_state: boolean | string,
- * last_run_timestamp: number,
+ * last_run_timestamp: number?,
  * sanitize_html?: boolean | string,
  * }} args
  */
@@ -419,7 +419,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                 setBoundElementValueLikePluto: set_input_value,
                                 getBoundElementEventNameLikePluto: eventof,
 
-                                getNotebookMetadataExperimental: (key) => pluto_actions.get_notebook()?.metadata[key],
+                                getNotebookMetadataExperimental: (key) => pluto_actions.get_notebook()?.metadata?.[key],
                                 setNotebookMetadataExperimental: (key, value) =>
                                     pluto_actions.update_notebook((notebook) => {
                                         notebook.metadata[key] = value
@@ -433,7 +433,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                     ? {}
                                     : {
                                           getCellMetadataExperimental: (key, { cell_id = null } = {}) =>
-                                              pluto_actions.get_notebook()?.cell_inputs?.[cell_id ?? cell.id]?.metadata[key],
+                                              pluto_actions.get_notebook()?.cell_inputs?.[cell_id ?? cell.id]?.metadata?.[key],
                                           setCellMetadataExperimental: (key, value, { cell_id = null } = {}) =>
                                               pluto_actions.update_notebook((notebook) => {
                                                   notebook.cell_inputs[cell_id ?? cell.id].metadata[key] = value
@@ -622,6 +622,18 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 } catch (err) {
                     console.warn("Highlighting failed", err)
                 }
+
+                // Find code blocks and add a copy button:
+                try {
+                    if (container.firstElementChild?.matches("div.markdown")) {
+                        container.querySelectorAll("pre > code").forEach((code_element) => {
+                            const pre = code_element.parentElement
+                            generateCopyCodeButton(pre)
+                        })
+                    }
+                } catch (err) {
+                    console.warn("Adding markdown code copy button failed", err)
+                }
             } finally {
                 js_init_set?.delete(container)
             }
@@ -664,7 +676,7 @@ export let highlight = (code_element, language) => {
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
-                        syntaxHighlighting(pluto_syntax_colors),
+                        syntaxHighlighting(pluto_syntax_colors_julia),
                         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
@@ -687,4 +699,28 @@ export let highlight = (code_element, language) => {
             hljs.highlightElement(code_element)
         }
     }
+}
+
+/**
+ * Generates a copy button for Markdown code blocks.
+ */
+export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
+    if (!pre) return
+
+    // create copy button
+    const button = document.createElement("button")
+    button.title = "Copy to Clipboard"
+    button.className = "markdown-code-block-button"
+    button.addEventListener("click", (e) => {
+        const txt = pre.textContent ?? ""
+        navigator.clipboard.writeText(txt)
+
+        button.classList.add("markdown-code-block-copied-code-button")
+        setTimeout(() => {
+            button.classList.remove("markdown-code-block-copied-code-button")
+        }, 2000)
+    })
+
+    // Append copy button to the code block element
+    pre.prepend(button)
 }

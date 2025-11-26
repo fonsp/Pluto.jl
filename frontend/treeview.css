@@ -2,7 +2,7 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
-@import url("juliamono.css");
+@import url("./fonts/juliamono.css");
 
 /*  */
 
@@ -241,7 +241,7 @@ pluto-tree p-r pre {
 
 jlerror {
     font-size: 0.75rem;
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--julia-mono-font-stack);
 }
 jlerror {
     display: block;
@@ -257,9 +257,12 @@ jlerror > header {
     color: var(--jlerror-header-color);
     border-left: 3px solid var(--jlerror-header-color);
     padding: 0.7rem;
+    background: var(--white);
+    border-radius: 3px;
 }
 jlerror > header > p {
     margin-block-end: 0.2em;
+    white-space: pre-wrap;
 }
 jlerror > header > p:first-child {
     font-weight: bold;
@@ -330,7 +333,7 @@ jlerror li.from_this_notebook .classical-frame {
 jlerror li a.frame-line-preview {
     display: block;
     text-decoration: none;
-    border: 3px solid var(--cm-clickable-underline);
+    border: 3px solid var(--cm-color-clickable-underline);
     --br: 0.6em;
     border-radius: var(--br);
     --crop: -0.5em;
@@ -365,7 +368,7 @@ jlerror li .frame-line-preview pre > code:not(.frame-line) {
 }
 jlerror li .frame-line-preview pre > code::before {
     content: var(--before-content);
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
     margin-right: 0.7em;
     width: 2ch;
     display: inline-block;

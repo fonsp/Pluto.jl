@@ -1,4 +1,4 @@
-import immer from "../imports/immer.js"
+import { produce } from "../imports/immer.js"
 import { BackendLaunchPhase } from "./Binder.js"
 import { timeout_promise } from "./PlutoConnection.js"
 import { with_query_params } from "./URLTools.js"
@@ -18,7 +18,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         if (launch_params.pluto_server_url == null || launch_params.notebookfile == null) throw Error("Invalid launch parameters for starting locally.")
 
         await setStatePromise(
-            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.backend_launch_phase = BackendLaunchPhase.responded
                 state.disable_ui = false
                 // Clear the Status of the process that generated the HTML
@@ -68,7 +68,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         }
 
         await setStatePromise(
-            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.notebook.notebook_id = new_notebook_id
                 state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })

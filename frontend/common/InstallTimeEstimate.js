@@ -79,7 +79,6 @@ export const time_estimate = (/** @type {PackageTimingData} */ data, /** @type {
         .map((pkg) => data.times.get(pkg))
         .filter((x) => x != null)
 
-    console.log({ packages, deps, times, z: _.uniq([...packages, ...deps]) })
     let sum = (xs) => xs.reduce((acc, x) => acc + (x == null || isNaN(x) ? 0 : x), 0)
 
     return {

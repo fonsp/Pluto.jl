@@ -46,7 +46,7 @@ import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } 
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
-import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
@@ -60,10 +60,12 @@ import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
+import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
-export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") === "true"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE =
+    (window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") ?? (/Mac/.test(navigator.platform) ? "true" : "false")) === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -92,229 +94,101 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
     window.location.reload()
 }
 
-export const pluto_syntax_colors = HighlightStyle.define(
-    [
-        /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
-        // Symbol
-        // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+const common_style_tags = [
+    { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
+    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
+    { tag: tags.variableName, color: "var(--cm-color-var)", fontWeight: 700 },
+    { tag: tags.typeName, color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.typeOperator, color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.tagName, color: "var(--cm-color-tag)" }, // JS
+    { tag: tags.propertyName, color: "var(--cm-color-property)" },
+    // TODO: tags.labelName
+    { tag: tags.macroName, color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.string, color: "var(--cm-color-string)" },
+    // TODO: tags.character
+    { tag: tags.number, color: "var(--cm-color-number)" },
+    { tag: tags.bool, color: "var(--cm-color-builtin)", fontWeight: 700 },
+    // TODO: tags.escape
+    // TODO: tags.self, tags.null
+    { tag: tags.atom, color: "var(--cm-color-atom)" },
+    { tag: tags.unit, color: "var(--cm-color-tag)" }, // TODO: Remove
+    // TODO? tags.operator
+    { tag: tags.bracket, color: "var(--cm-color-bracket)" },
+    { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
+]
 
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)` },
+    scope: julia_andrey().language,
+})
 
-        // I (ab)use `special(brace)` for interpolations.
-        // lang-javascript does the same so I figure it is "best practice" 😅
-        { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 },
+export const pluto_syntax_colors_javascript = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
+    scope: javascriptLanguage,
+})
 
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-    ],
-    {
-        all: { color: `var(--cm-editor-text-color)` },
-        scope: julia_andrey().language,
-    }
-)
-
-export const pluto_syntax_colors_javascript = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // JAVASCRIPT SPECIFIC
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
-    ],
-    {
-        scope: javascriptLanguage,
-        all: {
-            color: `var(--cm-editor-text-color)`,
-            filter: `contrast(0.5)`,
-        },
-    }
-)
-
-export const pluto_syntax_colors_python = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // PYTHON SPECIFIC
-    ],
-    {
-        scope: pythonLanguage,
-        all: {
-            color: "var(--cm-editor-text-color)",
-            filter: `contrast(0.5)`,
-        },
-    }
-)
+export const pluto_syntax_colors_python = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
+    scope: pythonLanguage,
+})
 
 export const pluto_syntax_colors_css = HighlightStyle.define(
     [
-        { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
-        { tag: tags.keyword, color: "var(--cm-css-color)" },
-        { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.variableName, color: "var(--cm-color-css-accent)", fontWeight: 700 },
+        { tag: tags.propertyName, color: "var(--cm-color-css-accent)", fontWeight: 700 },
+        { tag: tags.tagName, color: "var(--cm-color-css)", fontWeight: 700 },
+        //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        { tag: tags.definitionOperator, color: "var(--cm-color-css)" },
+        { tag: tags.keyword, color: "var(--cm-color-css)" },
+        { tag: tags.modifier, color: "var(--cm-color-css-accent)" },
+        { tag: tags.literal, color: "var(--cm-color-css)" },
+        // { tag: tags.unit,              color: "var(--cm-color-css-accent)" },
         { tag: tags.punctuation, opacity: 0.5 },
-        { tag: tags.literal, color: "var(--cm-css-color)" },
-        // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
-        { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
-        { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-
-        // Comment from julia
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
         scope: cssLanguage,
-        all: { color: "var(--cm-css-color)" },
+        all: { color: "var(--cm-color-css)" },
     }
 )
 
 export const pluto_syntax_colors_html = HighlightStyle.define(
     [
-        { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
-        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
-        { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
-        { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.content, color: "var(--cm-color-html)", fontWeight: 400 },
+        { tag: tags.tagName, color: "var(--cm-color-html-accent)", fontWeight: 600 },
+        { tag: tags.documentMeta, color: "var(--cm-color-html-accent)" },
+        { tag: tags.attributeName, color: "var(--cm-color-html-accent)", fontWeight: 600 },
+        { tag: tags.attributeValue, color: "var(--cm-color-html-accent)" },
+        { tag: tags.angleBracket, color: "var(--cm-color-html-accent)", fontWeight: 600, opacity: 0.7 },
     ],
     {
+        all: { color: "var(--cm-color-html)" },
         scope: htmlLanguage,
-        all: {
-            color: "var(--cm-html-color)",
-        },
     }
 )
 
-// https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
+// https://github.com/lezer-parser/markdown/blob/d4de2b03180ced4610bad9cef0ad3a805c43b63a/src/markdown.ts#L1890
 export const pluto_syntax_colors_markdown = HighlightStyle.define(
     [
-        { tag: tags.content, color: "var(--cm-md-color)" },
-        { tag: tags.quote, color: "var(--cm-md-color)" },
-        { tag: tags.link, textDecoration: "underline" },
-        { tag: tags.url, color: "var(--cm-md-color)", textDecoration: "none" },
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.content, color: "var(--cm-color-md)" },
+        { tag: tags.heading, color: "var(--cm-color-md)", fontWeight: 700 },
+        // TODO? tags.list
+        { tag: tags.quote, color: "var(--cm-color-md)" },
         { tag: tags.emphasis, fontStyle: "italic" },
         { tag: tags.strong, fontWeight: "bolder" },
+        { tag: tags.link, textDecoration: "underline" },
+        { tag: tags.url, color: "var(--cm-color-md)", textDecoration: "none" },
+        { tag: tags.monospace, color: "var(--cm-color-md-accent)" },
 
-        { tag: tags.heading, color: "var(--cm-md-color)", fontWeight: 700 },
-        {
-            tag: tags.comment,
-            color: "var(--cm-comment-color)",
-            fontStyle: "italic",
-        },
-        {
-            // These are all the things you won't see in the result:
-            // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
-            tag: tags.processingInstruction,
-            color: "var(--cm-md-accent-color) !important",
-            opacity: "0.5",
-        },
-        { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
+        // Marks: `-` for lists, `#` for headers, etc.
+        { tag: tags.processingInstruction, color: "var(--cm-color-md-accent) !important", opacity: "0.5" },
     ],
     {
+        all: { color: "var(--cm-color-md)" },
         scope: markdownLanguage,
-        all: {
-            color: "var(--cm-md-color)",
-        },
     }
 )
 
@@ -367,6 +241,7 @@ export const CellInput = ({
     cm_forced_focus,
     set_cm_forced_focus,
     show_input,
+    skip_static_fake = false,
     on_submit,
     on_delete,
     on_add_after,
@@ -421,7 +296,41 @@ export const CellInput = ({
         }, [on_change])
     )
 
-    useLayoutEffect(function cellinput_setup_codemirror() {
+    const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
+
+    const show_static_fake_excuses_ref = useRef(false)
+    show_static_fake_excuses_ref.current ||= navigator.userAgent.includes("Firefox") || focus_after_creation || cm_forced_focus != null || skip_static_fake
+
+    const show_static_fake = show_static_fake_excuses_ref.current ? false : show_static_fake_state
+
+    useLayoutEffect(() => {
+        if (!show_static_fake) return
+        let node = dom_node_ref.current
+        if (node == null) return
+        let observer
+
+        const show = () => {
+            set_show_static_fake(false)
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+
+        observer = new IntersectionObserver((e) => {
+            if (e.some((e) => e.isIntersecting)) {
+                show()
+            }
+        })
+
+        observer.observe(node)
+        window.addEventListener("beforeprint", show)
+        return () => {
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+    }, [])
+
+    useLayoutEffect(() => {
+        if (show_static_fake) return
         if (dom_node_ref.current == null) return
 
         const keyMapSubmit = (/** @type {EditorView} */ cm) => {
@@ -571,7 +480,7 @@ export const CellInput = ({
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
 
                 // workaround for https://github.com/preactjs/preact/issues/4235
-                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
+                // but the scrollIntoView behaviour is nice, also when the preact issue is fixed.
                 requestIdleCallback(() => {
                     cm.dispatch({
                         // TODO: remove me after fix
@@ -591,6 +500,11 @@ export const CellInput = ({
                 return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
             }
         }
+        const keyMapFold = (/** @type {EditorView} */ cm, new_value) => {
+            set_cm_forced_focus(true)
+            pluto_actions.fold_remote_cells([cell_id], new_value)
+            return true
+        }
 
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
@@ -608,7 +522,8 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
             { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
             { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
-
+            { key: "Ctrl-Shift-[", mac: "Cmd-Alt-[", run: (x) => keyMapFold(x, true) },
+            { key: "Ctrl-Shift-]", mac: "Cmd-Alt-]", run: (x) => keyMapFold(x, false) },
             mod_d_command,
         ]
 
@@ -656,7 +571,7 @@ export const CellInput = ({
 
                     pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
-                    syntaxHighlighting(pluto_syntax_colors),
+                    syntaxHighlighting(pluto_syntax_colors_julia),
                     syntaxHighlighting(pluto_syntax_colors_html),
                     syntaxHighlighting(pluto_syntax_colors_markdown),
                     syntaxHighlighting(pluto_syntax_colors_javascript),
@@ -679,7 +594,7 @@ export const CellInput = ({
                     rectangularSelection({
                         eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
-                    highlightSelectionMatches(),
+                    highlightSelectionMatches({ minSelectionLength: 2 }),
                     bracketMatching(),
                     docs_updater,
                     tab_help_plugin,
@@ -770,7 +685,6 @@ export const CellInput = ({
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
                     EditorView.lineWrapping,
-                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
 
                     // Reset diagnostics on change
@@ -843,7 +757,7 @@ export const CellInput = ({
                 lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
             }
         }
-    }, [])
+    }, [show_static_fake])
 
     useEffect(() => {
         if (newcm_ref.current == null) return
@@ -881,6 +795,7 @@ export const CellInput = ({
                     head: cm.state.selection.main.head,
                 },
             })
+        } else if (cm_forced_focus === true) {
         } else {
             let new_selection = {
                 anchor: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[0]),
@@ -922,6 +837,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}
@@ -933,9 +849,12 @@ export const CellInput = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
             />
+            ${PreviewHiddenCode}
         </pluto-input>
     `
 }
+
+const PreviewHiddenCode = html`<div class="preview_hidden_code_info">👀 Reading hidden code</div>`
 
 const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
@@ -992,11 +911,16 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
-    useEventListener(window, "keydown", (e) => {
-        if (e.key === "Escape") {
-            setOpen(false)
-        }
-    })
+    useEventListener(
+        window,
+        "keydown",
+        (/** @type {KeyboardEvent} */ e) => {
+            if (e.key === "Escape") {
+                setOpen(false)
+            }
+        },
+        []
+    )
 
     return html`
         <button
@@ -1088,3 +1012,43 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
             <span class=${`${tag} ctx_icon`} />${contents}
         </button>
     </li>`
+
+const StaticCodeMirrorFaker = ({ value }) => {
+    const lines = value.split("\n").map((line, i) => {
+        const start_tabs = get_start_tabs(line)
+
+        const tabbed_line =
+            start_tabs.length == 0
+                ? line
+                : html`<span class="awesome-wrapping-plugin-the-tabs"><span class="ͼo">${start_tabs}</span></span
+                      >${line.substring(start_tabs.length)}`
+
+        return html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: ${4 * start_tabs.length}ch;">
+            ${line.length === 0 ? html`<br />` : tabbed_line}
+        </div>`
+    })
+
+    return html`
+        <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
+            <div tabindex="-1" class="cm-scroller">
+                <div class="cm-gutters" aria-hidden="true">
+                    <div class="cm-gutter cm-lineNumbers"></div>
+                </div>
+                <div
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    translate="no"
+                    contenteditable="false"
+                    style="tab-size: 4;"
+                    class="cm-content cm-lineWrapping"
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-autocomplete="list"
+                >
+                    ${lines}
+                </div>
+            </div>
+        </div>
+    `
+}

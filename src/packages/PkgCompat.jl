@@ -8,7 +8,7 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-
+const PRESERVE_ALL_INSTALLED = isdefined(Pkg, :PRESERVE_ALL_INSTALLED) ? Pkg.PRESERVE_ALL_INSTALLED : Pkg.PRESERVE_ALL
 
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
@@ -168,7 +168,7 @@ end
 
 # I'm a pirate harrr 🏴‍☠️
 @static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = get(io, :sneaky_enable_tty, false) === true
 end
 
 ###
@@ -278,7 +278,7 @@ is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
 
 # Initial fill of registry cache
-function    __init__()
+function __init__()
     refresh_registry_cache()
     global global_ctx=PkgContext()
 end
@@ -299,7 +299,9 @@ end
 function _registered_package_completions(partial_name::AbstractString)::Vector{String}
 	# compat
 	try
-		@static if hasmethod(REPLMode.complete_remote_package, (String,))
+		@static if hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
+			REPLMode.complete_remote_package(partial_name; hint=false)
+		elseif hasmethod(REPLMode.complete_remote_package, (String,))
 			REPLMode.complete_remote_package(partial_name)
 		else
 			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
@@ -349,7 +351,7 @@ end
 
 # ✅ "Public" API using RegistryInstances
 """
-Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
+Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
 """
 function package_versions(package_name::AbstractString)::Vector
     if is_stdlib(package_name)
@@ -367,7 +369,7 @@ function package_versions(package_name::AbstractString)::Vector
 						[]
 					end
 				end
-			end
+			end |> sort!
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]

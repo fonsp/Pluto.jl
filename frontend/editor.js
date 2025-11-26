@@ -32,7 +32,7 @@ const truthy = (x) => x === "" || x === "true"
 const falsey = (x) => x === "false"
 
 const from_attribute = (element, name) => {
-    const val = element.getAttribute(name)
+    const val = element.getAttribute(name) ?? element.getAttribute(name.replaceAll("_", "-"))
     if (name === "disable_ui") {
         return truthy(val) ? true : falsey(val) ? false : null
     } else if (name === "isolated_cell_id") {
@@ -91,7 +91,10 @@ const get_statefile =
     window?.pluto_injected_environment?.custom_get_statefile?.(read_Uint8Array_with_progress, without_path_entries, unpack) ??
     (async (launch_params, set_statefile_download_progress) => {
         set_statefile_download_progress("indeterminate")
-        const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity ?? undefined }))
+        const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity ?? undefined }), {
+            // @ts-ignore
+            priority: "high",
+        })
         set_statefile_download_progress(0.2)
         const data = await read_Uint8Array_with_progress(r, (x) => set_statefile_download_progress(x * 0.8 + 0.2))
         const state = without_path_entries(unpack(data))

@@ -115,20 +115,6 @@ function notebook_to_js(notebook::Notebook)
                 "metadata" => cell.metadata,
             )
         for (id, cell) in notebook.cells_dict),
-        "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
-            id => Dict{String,Any}(
-                "cell_id" => cell.cell_id,
-                "downstream_cells_map" => Dict{String,Vector{UUID}}(
-                    String(s) => cell_id.(r)
-                    for (s, r) in cell.cell_dependencies.downstream_cells_map
-                ),
-                "upstream_cells_map" => Dict{String,Vector{UUID}}(
-                    String(s) => cell_id.(r)
-                    for (s, r) in cell.cell_dependencies.upstream_cells_map
-                ),
-                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
-            )
-        for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
@@ -167,7 +153,8 @@ function notebook_to_js(notebook::Notebook)
             )
         end,
         "status_tree" => Status.tojs(notebook.status_tree),
-        "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
+        "cell_dependencies" => notebook._cached_cell_dependencies,
+        "cell_execution_order" => cell_id.(collect(notebook._cached_topological_order)),
     )
 end
 
@@ -212,14 +199,17 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
     try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
 
-"Like `deepcopy`, but anything onther than `Dict` gets a shallow (reference) copy."
-function deep_enough_copy(d::Dict{A,B}) where {A, B}
-    Dict{A,B}(
-        k => deep_enough_copy(v)
-        for (k, v) in d
-    )
+"Like `deepcopy`, but anything other than `Dict` gets a shallow (reference) copy."
+@generated function deep_enough_copy(d::Dict)
+	quote
+		out = $d()
+		for (k,v) in d
+			out[k] = deep_enough_copy(v)
+		end
+		out
+	end
 end
-deep_enough_copy(x) = x
+deep_enough_copy(d) = d
 
 """
 A placeholder path. The path elements that it replaced will be given to the function as arguments.
@@ -424,7 +414,9 @@ end
 
 responses[:reset_shared_state] = function response_reset_shared_state(🙋::ClientRequest)
     delete!(current_state_for_clients, 🙋.initiator.client)
-    send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
+    if 🙋.notebook !== nothing
+        send_notebook_changes!(🙋; commentary=Dict(:from_reset => true))
+    end
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)

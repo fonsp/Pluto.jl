@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
-import immer from "../imports/immer.js"
+import { produce } from "../imports/immer.js"
 import { useDialog } from "../common/useDialog.js"
 import { FeaturedCard } from "./welcome/FeaturedCard.js"
 import { useEventListener } from "../common/useEventListener.js"
@@ -26,7 +26,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
 
     const fm_setter = (key) => (value) =>
         set_frontmatter(
-            immer((fm) => {
+            produce((fm) => {
                 _.set(fm, key, value)
             })
         )
@@ -37,12 +37,16 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         set_frontmatter(remote_frontmatter ?? {})
         close()
     }
+
+    const set_remote_frontmatter_ref = useRef(set_remote_frontmatter)
+    set_remote_frontmatter_ref.current = set_remote_frontmatter
+
     const submit = useCallback(() => {
-        set_remote_frontmatter(clean_data(frontmatter) ?? {}).then(() =>
-            alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.")
-        )
+        set_remote_frontmatter_ref
+            .current(clean_data(frontmatter) ?? {})
+            .then(() => alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports."))
         close()
-    }, [clean_data, set_remote_frontmatter, frontmatter, close])
+    }, [clean_data, frontmatter, close])
 
     useEventListener(window, "open pluto frontmatter", open)
 
@@ -52,7 +56,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         (e) => {
             if (dialog_ref.current != null) if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
         },
-        [dialog_ref, submit]
+        [submit]
     )
 
     const frontmatter_with_defaults = {
@@ -83,7 +87,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                             onClick=${() => {
                                 //  TODO
                                 set_frontmatter(
-                                    immer((fm) => {
+                                    produce((fm) => {
                                         _.unset(fm, path)
                                     })
                                 )
@@ -99,7 +103,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                     const fieldname = prompt("Field name:")
                     if (fieldname) {
                         set_frontmatter(
-                            immer((fm) => {
+                            produce((fm) => {
                                 _.set(fm, `${base_path}${fieldname}`, null)
                             })
                         )
@@ -176,8 +180,19 @@ const clean_data = (obj) => {
         ? obj.map(clean_data).filter((x) => x != null)
         : obj
 
-    return _.isEmpty(a) ? null : a
+    return !_.isNumber(a) && _.isEmpty(a) ? null : a
 }
+
+let test = clean_data({ a: 1, b: "", c: null, d: [], e: [1, "", null, 2], f: {}, g: [{}], h: [{ z: "asdf" }] })
+
+console.assert(
+    _.isEqual(test, {
+        a: 1,
+        e: [1, 2],
+        h: [{ z: "asdf" }],
+    }),
+    test
+)
 
 const special_field_names = ["tags", "date", "license", "url", "color"]
 
