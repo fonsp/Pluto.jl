@@ -4,6 +4,7 @@ import { html, useContext, useEffect, useMemo, useState } from "../imports/Preac
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { t, th } from "../common/lang.js"
 
 export const RunArea = ({
     runtime,
@@ -33,20 +34,19 @@ export const RunArea = ({
     }
 
     const titlemap = {
-        interrupt: "Interrupt (Ctrl + Q)",
-        save: "Save code without running",
-        jump: "This cell depends on a disabled cell",
-        run: "Run cell (Shift + Enter)",
+        interrupt: t("t_interrupt_cell"),
+        save: t("t_save_cell"),
+        jump: t("t_jump_cell"),
+        run: t("t_run_cell"),
     }
 
     const on_double_click = (/** @type {MouseEvent} */ e) => {
-        console.log(running_disabled)
         if (running_disabled)
             open_pluto_popup({
                 type: "info",
                 source_element: /** @type {HTMLElement?} */ (e.target),
-                body: html`${`This cell is disabled. `}
-                    <a
+                body: th("t_cell_is_disabled", {
+                    link: html`<a
                         href="#"
                         onClick=${(e) => {
                             //@ts-ignore
@@ -55,9 +55,9 @@ export const RunArea = ({
                             e.preventDefault()
                             window.dispatchEvent(new CustomEvent("close pluto popup"))
                         }}
-                        >Enable this cell</a
-                    >
-                    ${` to run the code.`}`,
+                        >${t("t_cell_is_disabled_link")}</a
+                    >`,
+                }),
             })
     }
 

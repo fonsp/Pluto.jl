@@ -5,6 +5,7 @@ import { AudioPlayer } from "./AudioPlayer.js"
 import immer from "../imports/immer.js"
 import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
 import { pack, unpack } from "../common/MsgPack.js"
+import { t, th } from "../common/lang.js"
 
 const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
 let run = (x) => x()
@@ -187,7 +188,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                               start_recording({ want_audio: true })
                           }}
                       >
-                          <span><b>Start recording</b><span class="microphone-icon pluto-icon"></span></span>
+                          <span>${th("t_recording_ui_start_recording")}<span class="microphone-icon pluto-icon"></span></span>
                       </button>
                   </div>
                   <div class="overlay-button record-no-audio">
@@ -196,7 +197,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                               start_recording({ want_audio: false })
                           }}
                       >
-                          <span><b>Start recording</b> (no audio)<span class="mute-icon pluto-icon"></span></span>
+                          <span>${th("t_recording_ui_start_recording_muted")}<span class="mute-icon pluto-icon"></span></span>
                       </button>
                   </div>
               </div>`
@@ -208,7 +209,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                               stop_recording()
                           }}
                       >
-                          <span><b>Stop recording</b><span class="stop-recording-icon pluto-icon"></span></span>
+                          <span>${th("t_recording_ui_stop_recording")}<span class="stop-recording-icon pluto-icon"></span></span>
                       </button>
                   </div>
               </div>`
@@ -300,7 +301,8 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
 
         let new_timestamp = audio.currentTime
         let forward = new_timestamp >= current_state_timestamp_ref.current
-        let directed = forward ? _.identity : _.reverse
+        /** @type {<T>(x: T[]) => T[]} */
+        let directed = (x) => (forward ? x : [...x].reverse())
 
         let lower = Math.min(current_state_timestamp_ref.current, new_timestamp)
         let upper = Math.max(current_state_timestamp_ref.current, new_timestamp)
@@ -453,7 +455,11 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
                                         if (was_playing_before_scrollout_ref.current && audio_element_ref.current) audio_element_ref.current.play()
                                     }}
                                 >
-                                    <span>Back to <b>recording</b> <span class="follow-recording-icon pluto-icon"></span></span>
+                                    <span
+                                        >${th("t_recording_ui_back_to_recording", {
+                                            icon: html`<span class="follow-recording-icon pluto-icon"></span>`,
+                                        })}</span
+                                    >
                                 </button>
                             </div>
                         </div>`

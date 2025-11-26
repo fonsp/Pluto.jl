@@ -432,6 +432,23 @@ end
         ])
         @test keys(nb.cells_dict) == Set(nb.cell_order)
     end
+    
+    @testset "Recover from missing cell order" begin
+        contents =  read(Pluto.project_relative_path("sample", "Basic no cell order.jl"), String)
+        
+        path = tempname()
+        write(path, contents)
+        
+        nb = load_notebook(path)
+        
+        @test nb.cell_order == UUID.([
+            "b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e",
+            "b2d792c2-7f73-11ea-0c65-a5042701e9f3",
+            "b2d79330-7f73-11ea-0d1c-a9aad1efaae1",
+            "b2d79376-7f73-11ea-2dce-cb9c449eece6",
+        ])
+        @test keys(nb.cells_dict) == Set(nb.cell_order)
+    end
 
     # Some notebooks are designed to error (inside/outside Pluto)
     expect_error = [String(nameof(bad_code_notebook)), String(nameof(project_notebook)), "sample Interactivity.jl"]

@@ -3,6 +3,7 @@ import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/d
 
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { getCurrentLanguage, t, th } from "../common/lang.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -43,6 +44,7 @@ export const WarnForVisisblePasswords = () => {
         )
     ) {
         alert(
+            // Super rare so no need for translation
             "Warning: this notebook includes a password input with something typed in it. The contents of this password field will be included in the exported file in an unsafe way. \n\nClear the password field and export again to avoid this problem."
         )
     }
@@ -114,11 +116,11 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
     return html`
         <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${prideMonth ? "pride" : ""}>
             <div id="container">
-                <div class="export_title">export</div>
+                <div class="export_title">${t("t_export_category_export")}</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
                 <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
-                    <header role="none"><${Triangle} fill="#a270ba" /> Notebook file</header>
-                    <section>Download a copy of the <b>.jl</b> script.</section>
+                    <header role="none"><${Triangle} fill="#a270ba" /> ${t("t_export_card_notebook_file")}</header>
+                    <section>${th("t_export_card_notebook_file_description")}</section>
                 </a>
                 <a
                     href=${notebookexport_url}
@@ -130,15 +132,15 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         exportNotebook(e, 1)
                     }}
                 >
-                    <header role="none"><${Square} fill="#E86F51" /> Static HTML</header>
-                    <section>An <b>.html</b> file for your web page, or to share online.</section>
+                    <header role="none"><${Square} fill="#E86F51" /> ${t("t_export_card_static_html")}</header>
+                    <section>${th("t_export_card_static_html_description")}</section>
                 </a>
                 <a href="#" class="export_card" onClick=${() => window.print()}>
-                    <header role="none"><${Square} fill="#619b3d" /> PDF</header>
-                    <section>A static <b>.pdf</b> file for print or email.</section>
+                    <header role="none"><${Square} fill="#619b3d" />${t("t_export_card_pdf")}</header>
+                    <section>${th("t_export_card_pdf_description")}</section>
                 </a>
                 ${html`
-                    <div class="export_title">record</div>
+                    <div class="export_title">${t("t_export_category_record")}</div>
                     <a
                         href="#"
                         onClick=${(e) => {
@@ -148,20 +150,27 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                             e.preventDefault()
                         }}
                         class="export_card"
+                        data-size=${getCurrentLanguage() === "el"
+                            ? "26"
+                            : getCurrentLanguage() === "de"
+                            ? "24"
+                            : getCurrentLanguage() === "pt-PT"
+                            ? "26"
+                            : null}
                     >
-                        <header role="none"><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
-                        <section>Capture the entire notebook, and any changes you make.</section>
+                        <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
+                        <section>${th("t_export_card_record_description")}</section>
                     </a>
                 `}
                 ${prideMonth
                     ? html`<div class="pride_message">
-                          <p>The future is <strong>queer</strong>!</p>
+                          <p>${th("t_export_card_pride_month_message")}</p>
                       </div>`
                     : null}
             </div>
             <div class="export_small_btns">
                 <button
-                    title="Edit frontmatter"
+                    title=${t("t_edit_frontmatter")}
                     class="toggle_frontmatter_edit"
                     onClick=${() => {
                         onClose()
@@ -171,7 +180,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     <span></span>
                 </button>
                 <button
-                    title="Start presentation"
+                    title=${t("t_start_presentation")}
                     class="toggle_presentation"
                     onClick=${() => {
                         onClose()
@@ -181,7 +190,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                 >
                     <span></span>
                 </button>
-                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                <button title=${t("t_close")} class="toggle_export" onClick=${() => onClose()}>
                     <span></span>
                 </button>
             </div>

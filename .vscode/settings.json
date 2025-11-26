@@ -17,5 +17,8 @@
     "[html]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
         "editor.formatOnSave": true
-    }
+    },
+    "i18n-ally.localesPaths": [
+        "frontend/lang"
+    ]
 }

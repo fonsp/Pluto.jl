@@ -8,6 +8,7 @@ import { open_bottom_right_panel } from "../BottomRightPanel.js"
 import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
 import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
 import { STRING_NODE_NAMES } from "./mixedParsers.js"
+import { sub_charmap, sup_charmap } from "../../common/UnicodeTools.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion, selectedCompletion } = autocomplete
 
@@ -158,7 +159,7 @@ const validFor = (/** @type {string} */ text) => {
 
 const not_explicit_and_too_boring = (/** @type {autocomplete.CompletionContext} */ ctx, allow_strings = false) => {
     if (ctx.explicit) return false
-    if (ctx.matchBefore(/[ =)+-/,*:]$/)) return true
+    if (ctx.matchBefore(/[ =)+-/,*:'"]$/)) return true
     if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return true
     if (!allow_strings) {
         if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
@@ -459,7 +460,13 @@ const keyword_completions = sorted_keywords.map((label) => ({
 const keyword_completions_generator = make_it_julian(autocomplete.completeFromList(keyword_completions))
 
 const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (ctx.matchBefore(/[a-z]$/) == null) return null
+    if (
+        // require a space or bracket-open before the keyword,
+        ctx.matchBefore(/[\s\(\[][a-z]*$/) == null &&
+        // or a line start
+        ctx.matchBefore(/^[a-z]*$/) == null
+    )
+        return null
     if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
     if (not_explicit_and_too_boring(ctx)) return null
@@ -555,39 +562,76 @@ const apply_completion = (view, completion, from, to) => {
 }
 
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
-    let found = null
-
-    const get_special_symbols = async () => {
-        if (found == null) {
-            const data = await request_special_symbols().catch((e) => {
-                console.warn("Failed to fetch special symbols", e)
-                return null
+    let list = null
+    const get_list = () => {
+        if (list == null) {
+            list = request_special_symbols().then((data) => {
+                if (data != null) {
+                    const { latex, emoji } = data
+                    return [emoji, latex].flatMap((map) =>
+                        Object.entries(map).map(([label, value]) => {
+                            return {
+                                label,
+                                apply: apply_completion,
+                                detail: value ?? undefined,
+                                type: "c_special_symbol",
+                                boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
+                            }
+                        })
+                    )
+                }
             })
-
-            if (data != null) {
-                const { latex, emoji } = data
-                found = [emoji, latex].flatMap((map) =>
-                    Object.entries(map).map(([label, value]) => {
-                        return {
-                            label,
-                            apply: apply_completion,
-                            detail: value ?? undefined,
-                            type: "c_special_symbol",
-                            boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
-                        }
-                    })
-                )
-            }
         }
-        return found
+        return list
     }
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (!match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
         if (not_explicit_and_too_boring(ctx, true)) return null
-        const result = await get_special_symbols()
-        return await autocomplete.completeFromList(result ?? [])(ctx)
+        return await autocomplete.completeFromList((await get_list()) ?? [])(ctx)
+    }
+}
+
+const superscript_subscript_completion = () => {
+    const match_sup = new RegExp(
+        `\\\\\\\^([${Object.keys(sup_charmap)
+            .map((x) => (x.match(/[\w\d]/) ? x : `\\${x}`))
+            .join("")}]{2,})$`
+    )
+    const match_sub = new RegExp(
+        `\\\\\\\_([${Object.keys(sub_charmap)
+            .map((x) => (x.match(/[\w\d]/) ? x : `\\${x}`))
+            .join("")}]{2,})$`
+    )
+
+    return (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        const sup_match_result = ctx.matchBefore(match_sup)
+        const sub_match_result = ctx.matchBefore(match_sub)
+
+        let match_result = sup_match_result ?? sub_match_result
+        let dict = sup_match_result != null ? sup_charmap : sub_charmap
+
+        if (match_result) {
+            const { text, from, to } = match_result
+            const todo = text.slice(2)
+            const result = [...todo].map((char) => dict[char] ?? "").join("")
+            return {
+                from,
+                to,
+                filter: false,
+                options: [
+                    {
+                        label: text,
+                        apply: apply_completion,
+                        detail: result ?? undefined,
+                        type: "c_special_symbol",
+                        boost: -1,
+                    },
+                ],
+            }
+        }
+        return null
     }
 }
 
@@ -650,17 +694,29 @@ export let pluto_autocomplete = ({
         return await last_result
     }
 
+    /** @type {Promise<SpecialSymbols | null>?} */
+    let special_symbols_result = null
+    const get_special_symbols_debounced = () => {
+        if (special_symbols_result == null) {
+            special_symbols_result = request_special_symbols().catch((e) => {
+                console.warn("Failed to fetch special symbols", e)
+                return null
+            })
+        }
+        return special_symbols_result
+    }
+
     return [
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
                 global_variables_completion(request_unsubmitted_global_definitions, cell_id),
-                special_symbols_completion(request_special_symbols),
+                special_symbols_completion(get_special_symbols_debounced),
+                superscript_subscript_completion(),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_keyword,
                 complete_package_name(request_packages),
                 // complete_anyword,
-                // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary

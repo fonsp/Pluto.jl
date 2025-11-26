@@ -1,15 +1,19 @@
 
-<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto – introduction (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
+> # Install Pluto
+> Installing Pluto is easy! Start **Julia**, and run:
+> ```julia
+> import Pluto
+> Pluto.run()
+> ```
+> See [plutojl.org/#install](https://plutojl.org/#install) for a complete guide to install Julia and Pluto!
 
 <br>
-<p align="center"><a href="https://www.youtube.com/watch?v=HiI4jgDyDhY">🌐 Pluto – one year later (25 min) at <b>Juliacon 2021</b> 🌐</a></p>
-
 <br>
-<p align="center"><a href="https://www.youtube.com/watch?v=Rg3r3gG4nQo">🪐 Pluto – reactive and reproducible (25 min) at <b>JupyterCon 2023</b> 🪐</a></p>
-
 <br>
-
-
+<br>
+<br>
+<br>
+<br>
 
 
 
@@ -23,8 +27,14 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 - **_lightweight_** - Pluto is written in pure Julia and is easy to install.
 - **_simple_** - no hidden workspace state; friendly UI.
 
-<img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
+
 <p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
+
+
+<img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
+
+
+
 
 ### Input
 
@@ -38,6 +48,17 @@ Cells can contain _arbitrary_ Julia code, and you can use external libraries. Th
 Your notebooks are **saved as pure Julia files** ([sample](https://github.com/fonsp/Pluto.jl/blob/main/sample/Basic.jl)), which you can then import as if you had been programming in a regular editor all along. You can also export your notebook with cell outputs as attractive HTML and PDF documents. By reordering cells and hiding code, you have full control over how you tell your story.
 
 <br >
+
+<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto – introduction (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
+
+<br>
+<p align="center"><a href="https://www.youtube.com/watch?v=HiI4jgDyDhY">🌐 Pluto – one year later (25 min) at <b>Juliacon 2021</b> 🌐</a></p>
+
+<br>
+<p align="center"><a href="https://www.youtube.com/watch?v=Rg3r3gG4nQo">🪐 Pluto – reactive and reproducible (25 min) at <b>JupyterCon 2023</b> 🪐</a></p>
+
+<br>
+
 
 ## Dynamic environment
 
@@ -53,7 +74,7 @@ Your programming environment becomes interactive by splitting your code into mul
 
 In the example below, changing the parameter `A` and running the first cell will directly re-evaluate the second cell and display the new plot.
 
-<img alt="plotting screencap" src="https://user-images.githubusercontent.com/6933510/80637344-24ac0180-8a5f-11ea-82dd-813dbceca9c9.gif" width="50%">
+<img alt="Example of interactive ODE" src="https://github.com/user-attachments/assets/a31840fe-1f6f-4849-8d7e-8e78a9a142aa" width="50%">
 
 <br >
 
@@ -67,17 +88,17 @@ To ensure reproducibility, the information to exactly reproduce the package envi
 
 <br >
 
-### HTML interaction
+### Interactivity with `@bind`
 
-Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to create a **live bond between an HTML object and a Julia variable**. Combined with reactivity, this is a very powerful tool!
+Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to create a **live bond between an browser widget and a Julia variable**. Combined with reactivity, this is a very powerful tool!
 
-<img alt="@bind macro screencap" src="https://user-images.githubusercontent.com/6933510/134825003-bd72ef08-677b-42fa-a655-e842868b10f6.gif" width="50%">
+<img alt="bind macro example where moving a slider changes the value of a variable, and a value that is computed from the variable" src="https://github.com/user-attachments/assets/06286537-fff3-4cef-aafb-036a4a0ea1f5" width="50%">
 
 <br >
 
-You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
+The [PlutoUI package](https://github.com/JuliaPluto/PlutoUI.jl) contains basic inputs like sliders, buttons, and much more! [Read the docs →](https://featured.plutojl.org/basic/plutoui.jl)
 
-But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
+> For those who want to dive deeper - you can use Julia, HTML, JavaScript and CSS to write your own widgets! [Learn more →](https://plutojl.org/en/docs/advanced-widgets/)
 
 <br >
 
@@ -87,6 +108,7 @@ Pluto was developed alongside the free online course [Introduction to Computatio
 
 Are you interested in using Pluto for your class? Here are some presentations by people who are using it already: [the MIT team](https://www.youtube.com/watch?v=LFRI3s0DE-o), [Gerhard Dorn](https://www.youtube.com/watch?v=6Qs5EXDpZBI), [Daniel Molina](https://www.youtube.com/watch?v=NrIxgnFXslg), [Henki W. Ashadi](https://youtu.be/GnEKgW23PvY?t=586) and [Max Köhler](https://www.youtube.com/watch?v=8H5KgSIWsWQ).
 
+[**Learn more →**](https://plutojl.org/en/docs/education/)
 
 https://user-images.githubusercontent.com/6933510/134824521-7cefa38a-7102-4767-bee4-777caf30ba47.mp4
 
@@ -94,45 +116,17 @@ _([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1
 
 <br >
 <hr >
+<hr >
+<hr >
 <br >
 
 # Let's do it!
 
-### Ingredients
-
-For one tasty notebook 🥞 you will need:
-
-- [**Julia** v1.6 or above](https://julialang.org/downloads/#current_stable_release)
-- Mozilla **Firefox** or Google **Chrome**
-
-### Installation
-
-<p align="center"><a href="https://www.youtube.com/watch?v=OOjKEgbt8AI">🎈 How to install <b>Julia & Pluto</b> (6 min) 🎈</a></p>
-
-Run Julia, enter `]` to bring up Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/),
-and add the Pluto package:
-
-```julia
-julia> ]
-(v1.10) pkg> add Pluto
-```
-
-_Press `Ctrl+C` to return to the `julia>` prompt._
-
-### Usage
-
-To run Pluto, run the following commands in your Julia REPL:
-
-```julia
-julia> import Pluto
-julia> Pluto.run()
-```
-
-Pluto will open in your browser, and you can get started!
+See [plutojl.org/#install](https://plutojl.org/#install) for an easy guide to install Pluto!
 
 ## Questions and Help
 
-Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
+Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki) and the [documentation](https://plutojl.org).
 <br>
 <br>
 <br>
@@ -197,4 +191,4 @@ Development of Pluto.jl is partially sponsored by
 | <a href="https://numfocus.org/"><img title="Julia Computing" src="https://user-images.githubusercontent.com/6933510/110683397-42e4a100-81dc-11eb-9bdb-db58f9c283b4.png" width=400 alt="NumFOCUS logo"></a> | The mission of **NumFOCUS** is to promote open practices in research, data, and scientific computing by serving as a fiscal sponsor for open source projects and organizing community-driven educational programs. |
 | <a href="https://biaslab.github.io/"><img src="https://upload.wikimedia.org/wikipedia/commons/6/67/Eindhoven_University_of_Technology_logo_new.svg" alt="TU Eindhoven logo"></a> | Fons works at **TU Eindhoven** to make the course [Bayesian Machine Learning and Information Processing](https://bmlip.nl/) interactive. |
 
-_Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
+_Created by [**Fons van der Plas**](https://github.com/fonsp), [**Mikołaj Bochenski**](https://github.com/malyvsen) and friends. Inspired by [Observable](https://observablehq.com/)._

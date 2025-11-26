@@ -64,6 +64,7 @@ import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { AIContext } from "./AIContext.js"
 import { AiSuggestionPlugin } from "./CellInput/ai_suggestion.js"
+import { t } from "../common/lang.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
@@ -391,7 +392,6 @@ export const CellInput = ({
             const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
-            console.table({ value, trimmed, offset })
             if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
                 // Markdown cell, change to code
                 let start, end
@@ -708,7 +708,7 @@ export const CellInput = ({
                         focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
                     }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
-                    placeholder("Enter cell code..."),
+                    placeholder(t("t_cell_input_placeholder")),
 
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
@@ -886,7 +886,7 @@ export const CellInput = ({
     `
 }
 
-const PreviewHiddenCode = html`<div class="preview_hidden_code_info">👀 Reading hidden code</div>`
+const PreviewHiddenCode = html`<div class="preview_hidden_code_info">${t("t_reading_hidden_code")}</div>`
 
 const InputContextMenu = ({
     on_delete,
@@ -945,10 +945,12 @@ const InputContextMenu = ({
         if (cell_result == null) return false
 
         return (
-            (!cell_result.errored && cell_result.output.mime === "text/plain" && cell_result.output.body != null) ||
+            (!cell_result.errored && cell_result.output.mime === "text/plain" && !!cell_result.output.body) ||
             (cell_result.errored && cell_result.output.mime === "application/vnd.pluto.stacktrace+object")
         )
     }
+
+    const strip_ansi_codes = (s) => (typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s)
 
     const copy_output = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
@@ -962,7 +964,7 @@ const InputContextMenu = ({
                   cell_result.output.body.plain_error
 
         if (cell_output != null)
-            navigator.clipboard.writeText(cell_output).catch(() => {
+            navigator.clipboard.writeText(strip_ansi_codes(cell_output)).catch(() => {
                 alert(`Error copying cell output`)
             })
     }
@@ -1022,20 +1024,20 @@ const InputContextMenu = ({
         >
             ${open
                 ? html`<ul onMouseenter=${mouseenter}>
-                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+                      <${InputContextMenuItem} tag="delete" contents=${t("t_delete_cell_action")} title=${t("t_delete_cell_action")} onClick=${on_delete} setOpen=${setOpen} />
 
                       <${InputContextMenuItem}
-                          title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                          title=${running_disabled ? t("t_enable_and_run_cell") : t("t_disable_this_cell_and_all_cells_that_depend_on_it")}
                           tag=${running_disabled ? "enable_cell" : "disable_cell"}
-                          contents=${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                          contents=${running_disabled ? html`<b>${t("t_enable_cell_action")}</b>` : html`${t("t_disable_cell_action")}`}
                           onClick=${toggle_running_disabled}
                           setOpen=${setOpen}
                       />
                       ${any_logs
                           ? html`<${InputContextMenuItem}
-                                title=${show_logs ? "Show cell logs" : "Hide cell logs"}
+                                title=${show_logs ? t("t_show_logs_action_description") : t("t_hide_logs_action_description")}
                                 tag=${show_logs ? "hide_logs" : "show_logs"}
-                                contents=${show_logs ? "Hide logs" : "Show logs"}
+                                contents=${show_logs ? t("t_hide_logs_action") : t("t_show_logs_action")}
                                 onClick=${toggle_logs}
                                 setOpen=${setOpen}
                             />`
@@ -1043,25 +1045,29 @@ const InputContextMenu = ({
                       ${is_copy_output_supported()
                           ? html`<${InputContextMenuItem}
                                 tag="copy_output"
-                                contents="Copy output"
-                                title="Copy the output of this cell to the clipboard."
+                                contents=${t("t_copy_output_action")}
+                                title=${t("t_copy_output_action_description")}
                                 onClick=${copy_output}
                                 setOpen=${setOpen}
                             />`
                           : null}
 
                       <${InputContextMenuItem}
-                          title=${skip_as_script
-                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          title=${skip_as_script ? t("t_enable_in_file_action_description") : t("t_disable_in_file_action_description")}
                           tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
-                          contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                          contents=${skip_as_script ? html`<b>${t("t_enable_in_file_action")}</b>` : html`${t("t_disable_in_file_action")}`}
                           onClick=${toggle_skip_as_script}
                           setOpen=${setOpen}
                       />
 
                       ${pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features !== false
-                          ? html`<${InputContextMenuItem} tag="ask_ai" contents="Ask AI" title="Ask AI about this cell" onClick=${ask_ai} setOpen=${setOpen} />`
+                          ? html`<${InputContextMenuItem}
+                                tag="ask_ai"
+                                contents=${t("t_ask_ai_action")}
+                                title=${t("t_ask_ai_action_description")}
+                                onClick=${ask_ai}
+                                setOpen=${setOpen}
+                            />`
                           : null}
                   </ul>`
                 : html``}

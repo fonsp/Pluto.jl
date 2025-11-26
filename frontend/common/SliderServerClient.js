@@ -6,7 +6,7 @@ import _ from "../imports/lodash.js"
 
 const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
 
-const actions_to_keep = ["get_published_object", "get_notebook"]
+const actions_to_keep = ["get_published_object", "get_launch_params", "get_notebook"]
 
 const where_referenced = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, /** @type {Set<string> | string[]} */ vars) => {
     const all_cells = Object.keys(graph)

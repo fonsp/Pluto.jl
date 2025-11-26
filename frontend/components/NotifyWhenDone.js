@@ -5,6 +5,7 @@ import { is_finished, total_done } from "./StatusTab.js"
 import { useDelayedTruth } from "./BottomRightPanel.js"
 import { url_logo_small } from "./Editor.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { t, th } from "../common/lang.js"
 
 /**
  * @param {{
@@ -26,9 +27,9 @@ export let NotifyWhenDone = ({ status }) => {
             let timeouthandler = setTimeout(() => {
                 setEnabled(false)
                 let count = total_done(status)
-                notification = new Notification("Pluto: notebook ready", {
+                notification = new Notification(t("t_ready_notif_title"), {
                     tag: "notebook ready",
-                    body: `✓ All ${count} steps completed`,
+                    body: t("t_ready_notif_body", { count }),
                     lang: "en-US",
                     dir: "ltr",
                     icon: url_logo_small,
@@ -63,7 +64,7 @@ export let NotifyWhenDone = ({ status }) => {
     return html`
         <div class=${cl({ visible, "notify-when-done": true })} inert=${!visible}>
             <label
-                >${"Notify when done"}
+                >${t("t_ready_notif")}
                 <input
                     type="checkbox"
                     checked=${enabled}
@@ -79,10 +80,7 @@ export let NotifyWhenDone = ({ status }) => {
                                 if (!granted)
                                     open_pluto_popup({
                                         type: "warn",
-                                        body: html`
-                                            Pluto needs permission to show notifications. <strong>Enable notifications</strong> in your browser settings to use
-                                            this feature.
-                                        `,
+                                        body: th("t_ready_notif_permission"),
                                     })
                             })
                         } else {

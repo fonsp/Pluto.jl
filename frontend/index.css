@@ -297,6 +297,34 @@ span.ionicon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
 }
 
+#recent li {
+    position: relative;
+}
+#recent li .clear-btn {
+    position: absolute;
+    right: 0.5em;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 0.2em 0.4em;
+    background: var(--welcome-recentnotebook-bg);
+    color: var(--black);
+    border: none;
+    border-radius: 100%;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    font-family: var(--system-ui-font-stack);
+}
+#recent li:hover .clear-btn {
+    opacity: 0.3;
+}
+#recent li .clear-btn:hover {
+    opacity: 1;
+}
+
 loading-bar {
     height: 6px;
     width: 100vw;

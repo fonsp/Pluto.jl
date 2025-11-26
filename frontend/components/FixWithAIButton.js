@@ -3,6 +3,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { start_ai_suggestion } from "./CellInput/ai_suggestion.js"
+import { t } from "../common/lang.js"
 
 const ai_server_url = "https://pluto-simple-llm-features.deno.dev/"
 const endpoint_url = `${ai_server_url}fix-syntax-error-v1`
@@ -55,16 +56,16 @@ const AIPermissionPrompt = ({ onAccept, onDecline }) => {
 
     return html`
         <div class="ai-permission-prompt">
-            <h3>Use AI to fix syntax errors?</h3>
-            <p>Pluto will send code from this cell to a commericial LLM service to fix syntax errors. Updated code will not run without confirmation.</p>
-            <p>Submitted code can be used (anonymously) by Pluto developers to improve the AI service.</p>
+            <h3>${t("t_ai_permission_prompt_title")}</h3>
+            <p>${t("t_ai_permission_prompt_body")}</p>
+            <p>${t("t_ai_permission_prompt_body_2")}</p>
             <label class="ask-next-time">
                 <input type="checkbox" checked=${dontAskAgain} onChange=${(e) => setDontAskAgain(e.target.checked)} />
-                Don't ask again
+                ${t("t_dont_ask_again")}
             </label>
             <div class="button-group" role="group">
-                <button onClick=${handleDecline} class="decline" title="Decline AI syntax fix and close">No</button>
-                <button onClick=${handleAccept} class="accept" title="Accept AI syntax fix and close">Yes</button>
+                <button onClick=${handleDecline} class="decline" title=${t("t_ai_decline_and_close")}>${t("t_no")}</button>
+                <button onClick=${handleAccept} class="accept" title=${t("t_ai_accept_and_close")}>${t("t_yes")}</button>
             </div>
         </div>
     `
@@ -152,7 +153,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
 
             if (!response.ok) {
                 const error = await response.json()
-                throw new Error(error.error || "Failed to fix syntax error")
+                throw new Error(error.error || "unkown error")
             }
 
             const { fixed_code } = await response.json()
@@ -160,7 +161,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             console.debug("fixed_code", fixed_code)
 
             // Update the cell's local code without running it
-            if (fixed_code.trim() == "missing") throw new Error("Failed to fix syntax error")
+            if (fixed_code.trim() == "missing") throw new Error("refused")
             await start_ai_suggestion(node_ref.current, { code: fixed_code })
             setButtonState("success")
         } catch (error) {
@@ -170,7 +171,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
             open_pluto_popup({
                 type: "warn",
                 source_element: node_ref.current,
-                body: html`<p>Failed to fix syntax error: ${error.message}</p>`,
+                body: html`<p>${t("t_ai_syntax_fix_failed", { error: error.message })}</p>`,
             })
         }
     }
@@ -193,15 +194,15 @@ export const FixWithAIButton = ({ cell_id, diagnostics, last_run_timestamp }) =>
         <button
             ref=${node_ref}
             onClick=${buttonState === "success" ? handleRunCell : handleFixWithAI}
-            title=${buttonState === "success" ? "Run the fixed cell" : "Attempt to fix this syntax error using an LLM service"}
+            title=${buttonState === "success" ? t("t_ai_accept_and_run_description") : t("t_ai_fix_syntax_with_ai_description")}
             aria-busy=${buttonState === "loading"}
             aria-live="polite"
             disabled=${buttonState === "loading"}
         >
-            ${buttonState === "success" ? "Accept & Run" : buttonState === "loading" ? "Loading..." : "Fix syntax with AI"}
+            ${buttonState === "success" ? t("t_ai_accept_and_run") : buttonState === "loading" ? t("t_ai_loading") : t("t_ai_fix_syntax_with_ai")}
         </button>
         ${buttonState === "success"
-            ? html`<button onClick=${handleRejectAI} class="reject-ai-fix" title="Reject the AI fix and revert to original code">Reject</button>`
+            ? html`<button onClick=${handleRejectAI} class="reject-ai-fix" title=${t("t_ai_reject_and_revert")}>${t("t_ai_reject")}</button>`
             : null}
     </div>`
 }
