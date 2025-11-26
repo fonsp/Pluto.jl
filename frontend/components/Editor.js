@@ -51,7 +51,7 @@ import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
 import { BigPkgTerminal } from "./PkgTerminalView.js"
-import { is_desktop } from "./DesktopInterface.js"
+import { is_desktop, move_notebook, wait_for_file_move } from "./DesktopInterface.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1226,31 +1226,22 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
         this.desktop_submit_file_change = async () => {
             this.setState({ moving_file: true })
-            /**
-             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
-             * frontend to communicate with the electron side. It is an IPC
-             * bridge between render process and main process. More info
-             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
-             *
-             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
-             * once the move is complete, we listen to it using `once`.
-             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
-             */
-            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
-                if (!!loc)
-                    await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
-                            state.notebook.in_temp_dir = false
-                            state.notebook.path = loc
-                        })
-                    )
-                this.setState({ moving_file: false })
-                // @ts-ignore
-                document.activeElement?.blur()
-            })
 
-            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
-            window.plutoDesktop?.fileSystem.moveNotebook()
+            const file_moved_promise = wait_for_file_move()
+            // ask the electron backend to start moving the notebook. The promise above will be resolved once it is done.
+            move_notebook()
+
+            const loc = await file_moved_promise
+            if (!!loc)
+                await this.setStatePromise(
+                    immer((/** @type {EditorState} */ state) => {
+                        state.notebook.in_temp_dir = false
+                        state.notebook.path = loc
+                    })
+                )
+            this.setState({ moving_file: false })
+            // @ts-ignore
+            document.activeElement?.blur()
         }
 
         this.delete_selected = () => {
