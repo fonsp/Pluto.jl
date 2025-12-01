@@ -39,7 +39,7 @@ jobs:
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v6
 
             # Makes the `julia` command available
             - uses: julia-actions/setup-julia@v2
@@ -54,7 +54,7 @@ jobs:
               with:
                   coverage: false
 
-            - uses: actions/upload-artifact@v4
+            - uses: actions/upload-artifact@v5
               if: failure()
               with:
                   name: test-snapshots-${{ matrix.julia-version }}-${{ matrix.os }}
