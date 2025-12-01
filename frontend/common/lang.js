@@ -6,6 +6,7 @@ import _ from "../imports/lodash.js"
 import {
     // in alphabetical order
     chinese_simplified,
+    dansk_dk,
     deutsch,
     ellinika,
     english,
@@ -29,6 +30,9 @@ i18next.use(LanguageDetector).init({
     resources: {
         "zh": {
             translation: without_empty_keys(chinese_simplified),
+        },
+        "da-DK": {
+            translation: without_empty_keys(dansk_dk),
         },
         "de": {
             translation: without_empty_keys(deutsch),
