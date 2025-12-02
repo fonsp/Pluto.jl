@@ -51,6 +51,7 @@ import { LanguagePicker } from "./LanguagePicker.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import { PlutoLandUpload } from "./PlutoLandUpload.js"
 import { BigPkgTerminal } from "./PkgTerminalView.js"
+import { is_desktop, move_notebook, wait_for_file_move } from "./DesktopInterface.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -983,14 +984,16 @@ all patches: ${JSON.stringify(patches, null, 1)}
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
-            create_pluto_connection({
-                ws_address: ws_address,
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) => {
+            const psu = this.props.launch_params.pluto_server_url
+            return create_pluto_connection({
+                ws_address: ws_address ?? (psu ? ws_address_from_base(psu) : undefined),
                 on_unrequested_update: on_update,
                 on_connection_status: on_connection_status,
                 on_reconnect: on_reconnect,
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
+        }
 
         this.on_disable_ui = () => {
             set_disable_ui_css(this.state.disable_ui, props.pluto_editor_element)
@@ -1028,7 +1031,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${is_desktop() ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1223,31 +1226,22 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
         this.desktop_submit_file_change = async () => {
             this.setState({ moving_file: true })
-            /**
-             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
-             * frontend to communicate with the electron side. It is an IPC
-             * bridge between render process and main process. More info
-             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
-             *
-             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
-             * once the move is complete, we listen to it using `once`.
-             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
-             */
-            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
-                if (!!loc)
-                    await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
-                            state.notebook.in_temp_dir = false
-                            state.notebook.path = loc
-                        })
-                    )
-                this.setState({ moving_file: false })
-                // @ts-ignore
-                document.activeElement?.blur()
-            })
 
-            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
-            window.plutoDesktop?.fileSystem.moveNotebook()
+            const file_moved_promise = wait_for_file_move()
+            // ask the electron backend to start moving the notebook. The promise above will be resolved once it is done.
+            move_notebook()
+
+            const loc = await file_moved_promise
+            if (!!loc)
+                await this.setStatePromise(
+                    immer((/** @type {EditorState} */ state) => {
+                        state.notebook.in_temp_dir = false
+                        state.notebook.path = loc
+                    })
+                )
+            this.setState({ moving_file: false })
+            // @ts-ignore
+            document.activeElement?.blur()
         }
 
         this.delete_selected = () => {
@@ -1493,7 +1487,7 @@ ${t("t_key_autosave_description")}`
             )
             this.updateLang()
         } else {
-            this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
+            this.connect()
         }
     }
 
