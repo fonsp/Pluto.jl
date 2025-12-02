@@ -138,6 +138,8 @@
         --pkg-popup-bg: #3d2f44;
         --pkg-popup-border-color: #574f56;
         --pkg-popup-buttons-bg-color: var(--input-context-menu-bg-color);
+        --pkg-version-color: #bbb;
+
         --black: white;
         --white: black;
         --pkg-terminal-bg-color: #252627;

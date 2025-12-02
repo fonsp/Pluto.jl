@@ -308,5 +308,22 @@
     "t_undo_delete_other": "{{count}} cells deleted",
     "t_undo_delete_link": "UNDO",
     "t_auto_disabled": "{{another_cell}} has been disabled because it also defined {{variable}}.",
-    "t_auto_disabled_link": "Another cell"
+    "t_auto_disabled_link": "Another cell",
+    "t_project_toml_editor_title": "Project.toml <em>(feature preview)</em>",
+    "t_project_toml_editor_description": "This notebook has its own package environment. You can edit the Project.toml file to specify the packages used in this notebook.",
+    "t_project_toml_editor_what_is_project_toml": "What is Project.toml?",
+    "t_project_toml_editor_compat_description": "You can change the <code>[compat]</code> entries to specify the <strong>package versions</strong> used in this notebook. By adding <code>[sources]</code>, you can use <em>unregistered</em> or <em>local</em> packages.",
+    "t_project_toml_editor_feature_preview_note": "<strong>Note:</strong> This is a feature preview. It may not always work as expected. Please let us know what you think!",
+    "t_project_toml_editor_status_tab_note": "After submitting, use the <strong>Status</strong> tab to see the logs.",
+    "t_project_toml_editor_backup_checkbox": "Create a backup of the notebook before saving?",
+    "t_project_toml_editor_cancel": "Cancel",
+    "t_project_toml_editor_save": "Save & resolve",
+    "t_project_toml_editor_placeholder": "This is a TOML file. You can set metadata for your project here.",
+    "t_project_toml_editor_wait_cells": "Please wait for all cells to finish executing.",
+    "t_project_toml_editor_wait_packages": "Please wait for all package operations to finish (also in other notebooks).",
+    "t_project_toml_editor_synchronized": "Project TOML synchronized ✔\n\nView the Status tab for logs.",
+    "t_project_toml_editor_sync_failed": "Project TOML synchronization failed: {{error}}",
+    "t_project_toml_editor_start_notebook_first": "You need to start the notebook before you can edit the Project.toml. This might be supported in the future.",
+    "t_project_toml_editor_version_latest": "Latest",
+    "t_project_toml_editor_version_latest_compatible": "Latest compatible"
 }

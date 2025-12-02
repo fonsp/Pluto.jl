@@ -134,10 +134,12 @@
         /* ai features */
         --ai-gradient-bg: linear-gradient(20deg, #f9ecff, #fff4f2);
         --ai-prompt-bg: #fbffff;
+
         /*Pkg status*/
         --pkg-popup-bg: white;
         --pkg-popup-border-color: #f0e4ee;
         --pkg-popup-buttons-bg-color: white;
+        --pkg-version-color: #666;
         --black: black;
         --white: white;
         --pkg-terminal-bg-color: #232433;

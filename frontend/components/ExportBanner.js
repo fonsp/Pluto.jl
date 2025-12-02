@@ -4,6 +4,7 @@ import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/d
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
+import * as desktop from "./DesktopInterface.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -55,11 +56,9 @@ export const exportNotebookDesktop = (
     /** @type {Desktop.PlutoExport} */ type,
     /** @type {string} */ notebook_id
 ) => {
-    // @ts-ignore
-    const isDesktop = !!window.plutoDesktop
-    if (isDesktop) {
+    if (desktop.is_desktop()) {
         e.preventDefault()
-        window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
+        desktop.export_notebook(notebook_id, type)
     }
 }
 
@@ -154,12 +153,12 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                             e.preventDefault()
                         }}
                         class="export_card"
-                        data-size=${getCurrentLanguage() === "el"
-                            ? "26"
+                        style=${getCurrentLanguage() === "el"
+                            ? "--size: 26ch"
                             : getCurrentLanguage() === "de"
-                            ? "24"
+                            ? "--size: 24ch"
                             : getCurrentLanguage() === "pt-PT"
-                            ? "26"
+                            ? "--size: 26ch"
                             : null}
                     >
                         <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>

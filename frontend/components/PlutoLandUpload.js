@@ -7,6 +7,7 @@ import { useEventListener } from "../common/useEventListener.js"
 import { t, th } from "../common/lang.js"
 import { exportNotebookDesktop, WarnForVisisblePasswords } from "./ExportBanner.js"
 import { useMillisSinceTruthy } from "./RunArea.js"
+import { cl } from "../common/ClassTable.js"
 
 /**
  * @param {{
@@ -91,7 +92,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                         close()
                     }}
                 >
-                    ${th("t_plutoland_download")} ${InlineIonicon("download-outline")}
+                    ${th("t_plutoland_download")} ${InlineIonicon("download-outline", { inlineMargin: true })}
                 </a>
             </div>
         </div>
@@ -118,7 +119,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                               ${th("t_plutoland_upload_upload", {
                                   plutoland: html`<strong>pluto.land</strong>`,
                               })}
-                              ${InlineIonicon("cloud-upload-outline")}
+                              ${InlineIonicon("cloud-upload-outline", { inlineMargin: true })}
                           </a>
                       `
                     : upload_flow_state === "uploading" || upload_flow_state === "generating"
@@ -149,7 +150,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                                       set_plutoland_data({})
                                   }}
                               >
-                                  ${InlineIonicon("trash-bin-outline")}
+                                  ${InlineIonicon("trash-bin-outline", { inlineMargin: true })}
                               </a>
                           </div>
                       </div>`
@@ -160,8 +161,8 @@ export const PlutoLandUpload = ({ notebook_id }) => {
     </dialog>`
 }
 
-export const InlineIonicon = (icon_name) => {
-    return html`<span class="ionicon-icon" data-icon=${icon_name} data-inline="true"></span>`
+export const InlineIonicon = (icon_name, { inlineMargin = false } = {}) => {
+    return html`<span class=${cl({ "ionicon-icon": true, "ionicon-icon-margin": inlineMargin })} data-icon=${icon_name} data-inline="true"></span>`
 }
 
 // Transfer file data to the pluto.land API

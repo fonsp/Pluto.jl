@@ -141,7 +141,7 @@ Also think about the **writing style**. Does the AI generate text in a style (fo
 You are free to modify existing localization strings contributed by other people, if you see a way to improve! For large changes, we ask you to contact previous authors and find a consensus together.
 
 ## New languages
-If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how another language (like "nederlands" (`nl`)) is set up, and copy the structure.
+If you want to contribute a new language/dialect that does not yet have a JSON file, then go for it! The Pluto developers are happy to set this up for you, but you can also try it yourself. Take a look at how another language (like "nederlands_nl" (`nl-NL`)) is set up, and copy the structure.
 
 **All languages and dialects are welcome!** Even if the language is not spoken by many people, or less represented in the scientific programming world, we would really like your contribution!
 
