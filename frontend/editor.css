@@ -907,8 +907,26 @@ nav#at_the_top img#logo-small {
     }
 }
 
+.desktop_picker button {
+    background: var(--footer-filepicker-focus-color);
+    border-radius: 3px;
+    border: 2px solid var(--nav-filepicker-focus-color);
+    color: var(--white);
+    font-family: "Roboto Mono", monospace;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+nav#at_the_top > div.desktop_picker_group span {
+    padding: 0 5px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+}
+
 nav#at_the_top > pluto-filepicker,
-nav#at_the_top > div.desktop_picker {
+nav#at_the_top > div.desktop_picker_group {
     width: 210px;
     flex-grow: 1;
     display: flex;
@@ -916,7 +934,7 @@ nav#at_the_top > div.desktop_picker {
 }
 
 nav#at_the_top > pluto-filepicker .cm-editor,
-nav#at_the_top > div.desktop_picker span {
+div.desktop_picker_group span {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     min-width: 10rem;
@@ -1062,27 +1080,27 @@ nav#at_the_top:after {
 
 @media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .cm-editor,
-    nav#at_the_top > div.desktop_picker span {
+    nav#at_the_top > div.desktop_picker_group span {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
     }
     nav#at_the_top > pluto-filepicker button,
-    nav#at_the_top > div.desktop_picker button {
+    nav#at_the_top > div.desktop_picker_group button {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
     header:hover > nav#at_the_top > pluto-filepicker .cm-editor,
     header:focus-within > nav#at_the_top > pluto-filepicker .cm-editor,
-    header:hover > nav#at_the_top > div.desktop_picker span,
-    header:focus-within > nav#at_the_top > div.desktop_picker span {
+    header:hover > nav#at_the_top > div.desktop_picker_group span,
+    header:focus-within > nav#at_the_top > div.desktop_picker_group span {
         border: 2px solid var(--footer-input-border-color);
         border-right: none;
     }
     header:hover > nav#at_the_top > pluto-filepicker button,
     header:focus-within > nav#at_the_top > pluto-filepicker button,
-    header:hover > nav#at_the_top > div.desktop_picker button,
-    header:focus-within > nav#at_the_top > div.desktop_picker button {
+    header:hover > nav#at_the_top > div.desktop_picker_group button,
+    header:focus-within > nav#at_the_top > div.desktop_picker_group button {
         opacity: 1;
     }
 }
@@ -3310,6 +3328,7 @@ footer input {
 }
 
 header#pluto-nav pluto-filepicker button,
+header#pluto-nav .desktop_picker_group button,
 footer button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
