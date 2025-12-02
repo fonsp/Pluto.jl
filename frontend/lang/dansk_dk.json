@@ -83,7 +83,7 @@
         "Ups! 💣",
         "Du er ikke alene – prøv at spørge på Julia Discourse!"
     ],
-    "t_package_could_not_load": "<p>Pakken <strong>{{package}}.jl</strong> kunne ikke indlæses, fordi den fejlede under initialisering.</p><p>Det var ikke så rart! Ting du kan prøve:</p>",
+    "t_package_could_not_load": "<p>Pakken <strong>{{package}}.jl</strong> kunne ikke indlæses, fordi den fejlede under initialisering.</p><p>Det var ikke så rart! Her er nogle ting, du kan prøve:</p>",
     "t_package_could_not_load_things_you_could_try": "<ul><li>Genstart notebooken.</li><li>Prøv en anden Julia-version.</li><li>Kontakt udviklerne af {{package}}.jl om denne fejl.</li></ul>",
     "t_might_find_info_in_pkg_log": "Du kan måske finde nyttig information i installationsloggen for pakken:",
     "t_edit_frontmatter": "Redigér frontmatter",
@@ -258,7 +258,7 @@
     "t_pkg_will_be_installed": "{{package}} vil blive installeret, når du kører denne notebook.",
     "t_pkg_is_installing": "{{package}} installeres...",
     "t_pkg_is_installed": "{{package}} er installeret i notebooken.",
-    "t_pkg_not_found": "Pakken {{package}} blev ikke fundet i registret. Har du lavet en slåfejl?",
+    "t_pkg_not_found": "Pakken {{package}} blev ikke fundet i registret. Har du lavet en tastefejl?",
     "t_pkg_will_be_installed_in_notebook": "{{package}} bliver installeret i notebooken, når du kører denne celle.",
     "t_pkg_installation_can_take": "Installationen kan tage {{time_install}}.<br/>Bagefter indlæses den på {{time_load}}.",
     "t_pkg_update_packages": "Opdatér pakker",
