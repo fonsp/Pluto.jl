@@ -307,5 +307,22 @@
     "t_undo_delete_other": "{{count}} celle eliminate",
     "t_undo_delete_link": "ANNULLA",
     "t_auto_disabled": "{{another_cell}} è stata disabilitata perché definiva anche {{variable}}.",
-    "t_auto_disabled_link": "Un'altra cella"
+    "t_auto_disabled_link": "Un'altra cella",
+    "t_project_toml_editor_title": "Project.toml <em>(funzionalità sperimentale)</em>",
+    "t_project_toml_editor_description": "Questo notebook ha il suo environment pacchetto. Puoi modificare il file Project.toml file per specificare quale pacchetti usare in questo notebook.",
+    "t_project_toml_editor_what_is_project_toml": "Cosa è il file Project.toml?",
+    "t_project_toml_editor_compat_description": "Puoi cambiare le voci <code>[compat]</code> per specificare le <strong>versioni dei pacchetti</strong> usate in questo notebook. Aggiungendo una voce <code>[sources]</code>, puoi usare pacchetti <em>non registrati</em> o <em>locali</em>.",
+    "t_project_toml_editor_feature_preview_note": "<strong>Nota:</strong> Questa è una funzionalità sperimentale. Potrebbe non sempre funzionare correttamente. Per favore facci sapere cosa ne pensi!",
+    "t_project_toml_editor_status_tab_note": "Dopo aver sottomesso i cambiament, usa il tab <strong>Status</strong> per vedere i logs.",
+    "t_project_toml_editor_backup_checkbox": "Creare un backup del notebook prima di salvare?",
+    "t_project_toml_editor_cancel": "Cancellare",
+    "t_project_toml_editor_save": "Salva e risolvi",
+    "t_project_toml_editor_placeholder": "Questo è un file TOML. Qui puoi impostare metadati per il tuo progetto.",
+    "t_project_toml_editor_wait_cells": "Per favore attendi che tutte le celle abbiano terminato l'esecuzione.",
+    "t_project_toml_editor_wait_packages": "Per favore aspetta che tutti le operazioni sui pacchetti siano terminate (incluso in altri notebooks).",
+    "t_project_toml_editor_synchronized": "Project TOML synchronized ✔\n\nView the Status tab for logs.",
+    "t_project_toml_editor_sync_failed": "Sincronizzazione Project TOML fallita: {{error}}",
+    "t_project_toml_editor_start_notebook_first": "Devi far partire il notebook prima di poter modificare il Project.toml. Questa funzionalità potrebbe essere supportata in futuro.",
+    "t_project_toml_editor_version_latest": "Ultima",
+    "t_project_toml_editor_version_latest_compatible": "Ultima compatibile"
 }
