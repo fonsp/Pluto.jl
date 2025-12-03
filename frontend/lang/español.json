@@ -6,7 +6,7 @@
     "t_confirmdeletencells": "¿Estás segure de que quieres eliminar {{count}} celdas?",
     "t_FORGET": "OLVIDAR",
     "t_live_docs_search_placeholder": "Buscar en la documentación...",
-    "t_live_docs_body": "<p>¡Bienvenide a la <b>documentación en vivo</b>! Mantén esta pequeña ventana abierta mientras trabajas en el cuaderno, ¡y obtendrás documentación de todo lo que escribas!</p><p>También puedes escribir una consulta arriba.</p><hr><p><em>¿Sigues atascado? Aquí hay <a target=\"_blank\" href=\"https://julialang.org/about/help/\">algunos consejos</a>.</em></p>",
+    "t_live_docs_body": "<p>¡Bienvenide a la <b>documentación en vivo</b>! Mantén esta pequeña ventana abierta mientras trabajas en el cuaderno, ¡y obtendrás documentación de todo lo que escribas!</p><p>También puedes escribir una consulta arriba.</p><hr><p><em>¿Sigues atascade? Aquí hay <a target=\"_blank\" href=\"https://julialang.org/about/help/\">algunos consejos</a>.</em></p>",
     "t_panel_status": "Estado del proceso",
     "t_panel_status_short": "Estado",
     "t_panel_docs": "Documentación en vivo",
