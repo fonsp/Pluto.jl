@@ -20,8 +20,7 @@ import { t, th } from "../../lang/lang.js"
 #### `t(key, options?)` - Plain Text
 Use for plain text strings (button titles, tooltips, etc.):
 ```js
-t("t_stop_notebook_session")
-t("t_confirmdeletencells", { count: 5 })
+alert(t("t_confirm_move_file"), {old_path, new_path})
 ```
 
 #### `th(key, insertions?)` - HTML Content
