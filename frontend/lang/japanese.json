@@ -3,7 +3,6 @@
     "t_my_work": "履歴",
     "t_newnotebook": "<strong>ノートブック</strong>の作成",
     "t_welcome_to_pluto": "{{pluto}}へようこそ",
-    "t_confirmdeletencells": "{{count}}個のセルを削除しますか？",
     "t_FORGET": "削除",
     "t_live_docs_search_placeholder": "ノートブックを探す",
     "t_live_docs_body": "<p><b>Live docs</b>へようこそ！ここではノートブック中のコードやライブラリについて開いたまま調べることができます。</p><p>上の検索窓を用いることもできます。</p><hr><p><em>お困りですか？<a target=\"_blank\" href=\"https://julialang.org/about/help/\">ヘルプ</a></em></p>",

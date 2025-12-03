@@ -4,7 +4,6 @@
     "t_my_work": "Moje prace",
     "t_newnotebook": "Stwórz <strong>nowy notatnik</strong>",
     "t_welcome_to_pluto": "Witaj w {{pluto}}",
-    "t_confirmdeletencells": "Czy na pewny chcesz usunąć te komórki? ({{count}})?",
     "t_FORGET": "ZAPOMNIJ",
 
     "t_live_docs_search_placeholder": "Szukaj w dokumentacji...",

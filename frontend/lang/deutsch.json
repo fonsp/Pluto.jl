@@ -3,7 +3,6 @@
     "t_my_work": "Meine Arbeit",
     "t_newnotebook": "Ein <strong>neues Notebook</strong> erstellen",
     "t_welcome_to_pluto": "Willkommen bei {{pluto}}",
-    "t_confirmdeletencells": "Bist du sicher, dass du {{count}} Zellen löschen möchtest?",
     "t_FORGET": "VERGESSEN",
     "t_live_docs_search_placeholder": "Dokumentation durchsuchen...",
     "t_live_docs_body": "<p>Willkommen bei der <b>Live-Dokumentation</b>! Lass dieses kleine Fenster offen, während du am Notebook arbeitest, und du erhältst Dokumentation zu allem, was du eingibst!</p><p>Du kannst auch eine Suchanfrage oben eingeben.</p><hr><p><em>Immer noch nicht weitergekommen? Hier sind <a target=\"_blank\" href=\"https://julialang.org/about/help/\">einige Tipps</a>.</em></p>",

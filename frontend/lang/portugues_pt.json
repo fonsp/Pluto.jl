@@ -3,7 +3,6 @@
     "t_my_work": "O meu trabalho",
     "t_newnotebook": "Criar <strong>um novo notebook</strong>",
     "t_welcome_to_pluto": "bem-vindo ao {{pluto}}",
-    "t_confirmdeletencells": "Tens a certeza que queres apagar {{count}} células?",
     "t_FORGET": "ESQUECER",
     "t_live_docs_search_placeholder": "Pesquisar documentação...",
     "t_live_docs_body": "<p>Bem-vindo à <b>Documentação ao vivo</b>! Mantém esta pequena janela aberta enquanto trabalhas no notebook e receberás documentação sobre tudo o que escreveres!</p><p>Podes também escrever na caixa de pesquisa acima.</p><hr><p><em>Continuas com dúvidas? Aqui estão <a target=\"_blank\" href=\"https://julialang.org/about/help/\">algumas dicas</a>.</em></p>",

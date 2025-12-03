@@ -3,7 +3,6 @@
     "t_my_work": "Mitt arbeid",
     "t_newnotebook": "Opprett en <strong>ny notebook</strong>",
     "t_welcome_to_pluto": "velkommen til {{pluto}}",
-    "t_confirmdeletencells": "Er du sikker på at du vil slette {{count}} celler?",
     "t_FORGET": "GLEM",
     "t_live_docs_search_placeholder": "Søk i dokumentasjon...",
     "t_live_docs_body": "<p>Velkommen til <b>Live docs</b>! Hold dette lille vinduet åpent mens du jobber med notebooken, så får du dokumentasjon av alt du skriver!</p><p>Du kan også skrive en søkefrase ovenfor.</p><hr><p><em>Står du fortsatt fast? Her er <a target=\"_blank\" href=\"https://julialang.org/about/help/\">noen tips</a>.</em></p>",

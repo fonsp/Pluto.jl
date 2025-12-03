@@ -3,7 +3,6 @@
     "t_my_work": "我的工作",
     "t_newnotebook": "创建一个<strong>新笔记本</strong>",
     "t_welcome_to_pluto": "欢迎使用 {{pluto}}",
-    "t_confirmdeletencells": "您确定要删除 {{count}} 个单元格吗？",
     "t_FORGET": "忘记",
     "t_live_docs_search_placeholder": "搜索文档...",
     "t_live_docs_body": "<p>欢迎使用<b>实时文档</b>！在处理笔记本时保持此小窗口打开，您将获得关于您输入的所有内容的文档！</p><p>您也可以在此处输入内容。</p><hr><p><em>仍然卡住了？这里有一些<a target=\"_blank\" href=\"https://julialang.org/about/help/\">提示</a>。</em></p>",
