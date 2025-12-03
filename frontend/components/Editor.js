@@ -1467,7 +1467,6 @@ ${t("t_key_autosave_description")}`
     updateLang() {
         const lang = this.state.notebook.metadata?.frontmatter?.language
         document.documentElement.lang = lang ?? getCurrentLanguage()
-        console.error("Updated lang to", document.documentElement.lang)
     }
 
     componentDidMount() {

@@ -1,7 +1,10 @@
-import i18next from "../imports/i18next.js"
-import LanguageDetector from "../imports/i18next-browser-languagedetector.js"
 import { html } from "../imports/Preact.js"
 import _ from "../imports/lodash.js"
+
+// This file does not use i18next because of the following reasons:
+// - Depending on a library requires more maintenance.
+// - The package provides a lot of additional functionality that we don't need.
+// - The main funcionality we need is simple enough.
 
 import {
     // in alphabetical order
@@ -25,73 +28,71 @@ const without_empty_keys = (obj) => {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== ""))
 }
 
-i18next.use(LanguageDetector).init({
-    debug: false,
-    fallbackLng: "en",
-    resources: {
-        "zh": {
-            translation: without_empty_keys(chinese_simplified),
-        },
-        "da": {
-            translation: without_empty_keys(dansk),
-        },
-        "de": {
-            translation: without_empty_keys(deutsch),
-        },
-        "el": {
-            translation: ellinika,
-        },
-        "en": {
-            translation: without_empty_keys(english),
-        },
-        "en-US-x-corp": {
-            translation: without_empty_keys(corporate_english),
-        },
-        "es": {
-            translation: without_empty_keys(español),
-        },
-        "fi": {
-            translation: without_empty_keys(suomi),
-        },
-        "fr": {
-            translation: without_empty_keys(french),
-        },
-        "ja": {
-            translation: without_empty_keys(japanese),
-        },
-        "nl-NL": {
-            translation: without_empty_keys(nederlands_nl),
-        },
-        "nb": {
-            translation: without_empty_keys(norsk_bokmål),
-        },
-        "pt-PT": {
-            translation: without_empty_keys(portugues_pt),
-        },
-        "pl": {
-            translation: without_empty_keys(polski),
-        },
-    },
-    detection: {
-        order: ["localStorage", "navigator"],
-        caches: ["localStorage"],
-        lookupLocalStorage: "i18nextLng",
-    },
-})
+const resources = {
+    "zh": without_empty_keys(chinese_simplified),
+    "da": without_empty_keys(dansk),
+    "de": without_empty_keys(deutsch),
+    "el": without_empty_keys(ellinika),
+    "en": english,
+    "en-US-x-corp": without_empty_keys(corporate_english),
+    "es": without_empty_keys(español),
+    "fi": without_empty_keys(suomi),
+    "fr": without_empty_keys(french),
+    "ja": without_empty_keys(japanese),
+    "nl-NL": without_empty_keys(nederlands_nl),
+    "nb": without_empty_keys(norsk_bokmål),
+    "pt-PT": without_empty_keys(portugues_pt),
+    "pl": without_empty_keys(polski),
+}
 
-export const t = i18next.t
+export const t = (/** @type {string} */ key, options = {}) => {
+    const { count, interpolation = {}, returnObjects = false, defaultValue = key, fallbackLng = true, lng } = options
+    const { escapeValue = false } = interpolation // not implemented
+
+    const lang = lng ?? getCurrentLanguage()
+
+    const find_entry = (search_lang) => {
+        let keys_to_search = [key]
+        if (count != null && typeof count === "number") {
+            keys_to_search = [`${key}_${new Intl.PluralRules(lang).select(count)}`, key]
+        }
+
+        for (const key of keys_to_search) {
+            const entry = resources[search_lang]?.[key]
+            if (entry != null) return entry
+        }
+        return null
+    }
+
+    /** @type {string | Object | string[]} */
+    const found =
+        find_entry(lang) ??
+        (fallbackLng ? find_entry("en") : null) ??
+        (() => {
+            console.warn(`Missing localization for key "${key}" in language "${lang}"`)
+            return defaultValue
+        })()
+    if (returnObjects) return found
+
+    return Object.keys(options).reduce(
+        (str, interp) =>
+            // Interpolate
+            str.replaceAll(`{{${interp}}}`, options[interp]),
+        found
+    )
+}
 
 /**
  * Get available languages with their display names and translation completeness
  * @returns {Array<{code: string, name: string, completeness: number}>}
  */
 export const getAvailableLanguages = () => {
-    const languages = Object.keys(i18next.options.resources || {})
-    const englishKeys = Object.keys(i18next.options.resources?.en?.translation || {})
+    const languages = Object.keys(resources)
+    const englishKeys = Object.keys(resources.en ?? {})
     const totalKeys = englishKeys.length
 
     return languages.map((lang) => {
-        const lang_entries = Object.entries(i18next.options.resources?.[lang]?.translation || {}).filter(([key, value]) => value !== "")
+        const lang_entries = Object.entries(resources[lang] ?? {}).filter(([key, value]) => value !== "")
         const completeness = totalKeys > 0 ? Math.round((lang_entries.length / totalKeys) * 100) : 100
 
         return {
@@ -107,7 +108,7 @@ export const getAvailableLanguages = () => {
  * @param {string} language - Language code
  */
 export const changeLanguage = async (language) => {
-    await i18next.changeLanguage(language)
+    localStorage.setItem("i18nextLng", language)
 }
 
 /**
@@ -115,8 +116,33 @@ export const changeLanguage = async (language) => {
  * @returns {string}
  */
 export const getCurrentLanguage = () => {
-    return i18next.language
+    const from_local_storage = localStorage.getItem("i18nextLng")
+    const from_navigator = navigator.languages
+
+    const to_search = [from_local_storage, ...from_navigator]
+    return getLanguage(to_search)
 }
+
+const getLanguage = _.memoize((to_search) => {
+    for (const lang of to_search) {
+        console.log("yooooo")
+        if (lang != null) {
+            const only_lang_region = (code) => {
+                const loc = new Intl.Locale(code)
+                return `${loc.language}-${loc.region}`
+            }
+            const only_lang = (code) => new Intl.Locale(code).language
+
+            const available = [...Object.keys(resources)]
+
+            let lr = available.find((x) => only_lang_region(x) == only_lang_region(lang))
+            if (lr) return lr
+            let l = available.find((x) => only_lang(x) == only_lang(lang))
+            if (l) return l
+        }
+    }
+    return "en"
+}, JSON.stringify)
 
 /**
  * Like t, but you can interpolate Preact elements.
