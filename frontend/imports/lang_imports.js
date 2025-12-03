@@ -6,9 +6,11 @@
 // in alphabetical order
 
 export { default as chinese_simplified } from "../lang/chinese.json" with { type: "json" }
+export { default as dansk } from "../lang/dansk.json" with { type: "json" }
 export { default as deutsch } from "../lang/deutsch.json" with { type: "json" }
 export { default as ellinika } from "../lang/ellinika.json" with { type: "json" }
 export { default as english } from "../lang/english.json" with { type: "json" }
+export { default as español } from "../lang/español.json" with { type: "json" }
 export { default as french } from "../lang/french.json" with { type: "json" }
 export { default as italiano } from "../lang/italiano.json" with { type: "json" }
 export { default as japanese } from "../lang/japanese.json" with { type: "json" }
