@@ -548,7 +548,7 @@ export const CellInput = ({
 
             if (update.docChanged || update.selectionSet) {
                 let state = update.state
-                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Live docs updater")
+                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Live docs updater from docChange or selectionSet")
                 try {
                     let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
                     if (result != null) {
@@ -697,7 +697,7 @@ export const CellInput = ({
                         },
                         request_packages: () => pluto_actions.send("all_registered_package_names").then(({ message }) => message.results),
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
-                        on_update_doc_query: on_update_doc_query,
+                        on_update_doc_query,
                         request_unsubmitted_global_definitions: () => pluto_actions.get_unsubmitted_global_definitions(),
                         cell_id,
                     }),

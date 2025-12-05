@@ -127,7 +127,6 @@ export const getCurrentLanguage = () => {
 
 const getLanguage = _.memoize((to_search) => {
     for (const lang of to_search) {
-        console.log("yooooo")
         if (lang != null) {
             const only_lang_region = (code) => {
                 const loc = new Intl.Locale(code)

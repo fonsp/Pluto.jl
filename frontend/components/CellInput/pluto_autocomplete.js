@@ -411,7 +411,7 @@ const make_it_julian = (/** @type {autocomplete.CompletionSource} */ source) => 
 
 // Get this list with
 // import REPL; REPL.REPLCompletions.sorted_keywords ∪ REPL.REPLCompletions.sorted_keyvals |> repr |> clipboard
-const sorted_keywords = [
+export const sorted_keywords = [
     "abstract type",
     "baremodule",
     "begin",
