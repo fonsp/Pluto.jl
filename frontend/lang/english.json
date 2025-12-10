@@ -129,6 +129,7 @@
     "t_safe_preview_body": "You are reading and editing this file without running Julia code.",
     "t_safe_preview_run_this_notebook": "When you are ready, you can {{run_this_notebook}}.",
     "t_safe_preview_run_this_notebook_link": "run this notebook",
+    "t_export_safe_preview_warning": "This notebook is still in Safe Preview (no execution). You might want to run the file first, and then export again.",
     "t_instant_feedback_ellipsis": "Instant feedback...",
     "t_instant_feedback_send": "Send",
     "t_how_can_we_improve": "🙋 How can we make {{pluto}} better?",

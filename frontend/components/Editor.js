@@ -1627,6 +1627,7 @@ ${t("t_key_autosave_description")}`
                             }
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
+                            process_waiting_for_permission=${status.process_waiting_for_permission}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                             start_recording=${() => this.setState({ recording_waiting_to_start: true })}
