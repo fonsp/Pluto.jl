@@ -48,7 +48,8 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 
     package_url = package_url ?? `https://juliahub.com/ui/Packages/General/${package_name}`
 
-    const chosen_version = nbpkg?.installed_versions[package_name] ?? null
+    let chosen_version = nbpkg?.installed_versions[package_name] ?? null
+    if (chosen_version === "nothing") chosen_version = "..."
     const nbpkg_waiting_for_permission = nbpkg?.waiting_for_permission ?? false
     const busy = !nbpkg_waiting_for_permission && ((nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true))
 
