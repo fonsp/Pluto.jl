@@ -753,8 +753,8 @@ export class Editor extends Component {
                                 }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
-                                /** @type {String} Example: `"a.b[2].c"` */
-                                const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
+                                /** Example: `"a.b[2].c"` */
+                                const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? String(exception)
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
                                 const ignore = should_ignore_patch_error(failing_path)
@@ -1517,13 +1517,6 @@ ${t("t_key_autosave_description")}`
         }
         if (!this.state.initializing) {
             setup_mathjax()
-        }
-
-        if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
-            console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
-        }
-        if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
-            console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
         }
 
         if (old_state.notebook.metadata?.frontmatter?.language !== new_state.notebook.metadata?.frontmatter?.language) {

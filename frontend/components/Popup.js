@@ -257,7 +257,6 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                               alert(t("t_pkg_currently_busy"))
                           } else {
                               if (confirm(t("t_pkg_update_packages_description"))) {
-                                  console.warn("Pkg.updating!")
                                   pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
                               }
                           }

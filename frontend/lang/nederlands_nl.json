@@ -86,7 +86,7 @@
         "je doet het supergoed!"
     ],
     "t_package_could_not_load": "<p>Het pakket <strong>{{package}}.jl</strong> kon niet laden omdat de initialisatie mis ging.</p><p>Oh jee! Dit kan je proberen:</p>",
-    "t_package_could_not_load_things_you_could_try": "<ul><li>Hertsart de notebook.</li><li>Probeer een andere Julia-versie.</li><li>Stuur een bericht naar de ontwikkelaars van {{package}}.jl over deze foutmelding.</li></ul>",
+    "t_package_could_not_load_things_you_could_try": "<ul><li>Herstart de notebook.</li><li>Probeer een andere Julia-versie.</li><li>Stuur een bericht naar de ontwikkelaars van {{package}}.jl over deze foutmelding.</li></ul>",
     "t_might_find_info_in_pkg_log": "Je vindt misschien nuttige informatie in het installatie-logboek van dit pakket:",
     "t_edit_frontmatter": "",
     "t_start_presentation": "Start presentatie",
