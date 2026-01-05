@@ -178,6 +178,12 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", ::AxisKeys.KeyedArray) = false
         end,
     ),
+    Integration(
+        id = Base.PkgId(UUID("33c8b6b6-d38a-422a-b730-caa89a2f386c"), "ProgressLogging"),
+        code = quote
+            preprocess_log_msg(ps::ProgressLogging.ProgressString) = ps.progress.name
+        end,
+    ),
 ]
 
 function load_integration_if_needed(integration::Integration)
