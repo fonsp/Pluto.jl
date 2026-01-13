@@ -68,8 +68,7 @@ import { t } from "../common/lang.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
-export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE =
-    (window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") ?? (/Mac/.test(navigator.platform) ? "true" : "false")) === "true"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = (window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") ?? "true") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
