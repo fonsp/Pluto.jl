@@ -10,6 +10,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { SafePreviewOutput } from "./SafePreviewUI.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { t, th } from "../common/lang.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -100,6 +101,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  *  focus_after_creation: boolean,
  *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
+ *  inspecting_hidden_code: boolean,
  *  [key: string]: any,
  * }} props
  * */
@@ -119,6 +121,7 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
     is_first_cell,
+    inspecting_hidden_code,
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
@@ -134,7 +137,7 @@ export const Cell = ({
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
     const [, resetError] = useErrorBoundary((error) => {
-        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+        console.log(`An error occurred in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
         setKey(key + 1)
         resetError()
     })
@@ -205,15 +208,21 @@ export const Cell = ({
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
-    const class_code_folded = code_folded && cm_forced_focus == null
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
 
+    // When reading the code in a static HTML preview
+    const [inspecting_hidden_code_here, set_inspecting_hidden_code_here] = useState(false)
+    useEffect(() => {
+        if (!inspecting_hidden_code) set_inspecting_hidden_code_here(false)
+    }, [inspecting_hidden_code])
+
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
-    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || !class_code_folded)
+    let show_input =
+        !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded || inspecting_hidden_code_here)
 
     const [line_heights, set_line_heights] = useState([15])
-    const node_ref = useRef(null)
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     const disable_input_ref = useRef(disable_input)
     disable_input_ref.current = disable_input
@@ -230,7 +239,7 @@ export const Cell = ({
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const on_delete = useCallback(() => {
-        pluto_actions.confirm_delete_multiple("Delete", pluto_actions.get_selected_cells(cell_id, selected))
+        pluto_actions.confirm_delete_multiple(pluto_actions.get_selected_cells(cell_id, selected))
     }, [pluto_actions, selected, cell_id])
     const on_submit = useCallback(() => {
         if (!disable_input_ref.current) {
@@ -252,8 +261,12 @@ export const Cell = ({
         pluto_actions.add_remote_cell(cell_id, "after")
     }, [pluto_actions, cell_id, selected])
     const on_code_fold = useCallback(() => {
-        pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
-    }, [pluto_actions, cell_id, selected, code_folded])
+        if (inspecting_hidden_code) {
+            set_inspecting_hidden_code_here(!inspecting_hidden_code_here)
+        } else {
+            pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
+        }
+    }, [pluto_actions, cell_id, selected, code_folded, inspecting_hidden_code_here, inspecting_hidden_code])
     const on_run = useCallback(() => {
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
     }, [pluto_actions, cell_id, selected])
@@ -292,7 +305,8 @@ export const Cell = ({
                 errored,
                 selected,
                 code_differs: class_code_differs,
-                code_folded: class_code_folded,
+                code_folded,
+                inspecting_hidden_code: code_folded && inspecting_hidden_code_here,
                 skip_as_script,
                 running_disabled,
                 depends_on_disabled_cells,
@@ -310,13 +324,13 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
-                title="Add cell (Ctrl + Enter)"
+                title=${t("t_add_cell", { key: "Ctrl + Enter" })}
                 tabindex=${is_first_cell ? undefined : "-1"}
             >
                 <span></span>
             </button>
-            <pluto-shoulder draggable="true" title="Drag to move cell">
-                <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
+            <pluto-shoulder draggable="true" title=${t("t_drag_to_move_cell")}>
+                <button onClick=${on_code_fold} class="foldcode" title=${t("t_show_hide_code")}>
                     <span></span>
                 </button>
             </pluto-shoulder>
@@ -329,13 +343,13 @@ export const Cell = ({
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
-                cell_dependencies=${cell_dependencies}
                 global_definition_locations=${global_definition_locations}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 show_input=${show_input}
+                skip_static_fake=${is_first_cell}
                 on_submit=${on_submit}
                 on_delete=${on_delete}
                 on_add_after=${on_add_after}
@@ -384,37 +398,35 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 class="add_cell after"
-                title="Add cell (Ctrl + Enter)"
+                title=${t("t_add_cell", { key: "Ctrl + Enter" })}
             >
                 <span></span>
             </button>
             ${skip_as_script
                 ? html`<div
                       class="skip_as_script_marker"
-                      title=${`This cell is directly flagged as disabled in file. Click to know more!`}
+                      title=${t("t_cell_disabled_in_file_tooltip")}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
-                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
-                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  Use the context menu to enable it again`,
+                              body: th("t_cell_disabled_in_file_explanation"),
                           })
                       }}
                   ></div>`
                 : depends_on_skipped_cells
                 ? html`<div
                       class="depends_on_skipped_marker"
-                      title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
+                      title=${t("t_cell_indirectly_disabled_in_file_tooltip")}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
-                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
-                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
-                                  <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect
-                                  this cell.`,
+                              body: th("t_cell_indirectly_disabled_in_file_explanation", {
+                                  upstreamLink: html`<span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline">
+                                      ${t("t_cell_upstreamLink")}</span
+                                  >`,
+                              }),
                           })
                       }}
                   ></div>`
@@ -430,7 +442,7 @@ export const Cell = ({
  * }} props
  * */
 export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden, sanitize_html = true }) => {
-    const node_ref = useRef(null)
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const { show_logs } = metadata

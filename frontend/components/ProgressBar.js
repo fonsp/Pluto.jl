@@ -1,19 +1,8 @@
+import { t } from "../common/lang.js"
 import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { useDelayedTruth } from "./BottomRightPanel.js"
 import { scroll_cell_into_view } from "./Scroller.js"
-
-export const useDelayed = (value, delay = 500) => {
-    const [current, set_current] = useState(null)
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            set_current(value)
-        }, delay)
-        return () => clearTimeout(timer)
-    }, [value])
-
-    return current
-}
 
 /**
  * @param {{
@@ -51,8 +40,13 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
     let progress = binder_loading ? backend_launch_phase ?? 0 : cell_progress
 
     const anything = (binder_loading || recently_running.length !== 0) && progress !== 1
-    const anything_for_a_short_while = useDelayed(anything, 500) ?? false
-    // const anything_for_a_long_while = useDelayed(anything, 500)
+    // Double inversion with ! to short-circuit the true, not the false
+    const anything_for_a_short_while = !useDelayedTruth(!anything, 500)
+    const anything_for_a_long_while = !useDelayedTruth(!anything, 2000)
+
+    if (!(anything || anything_for_a_short_while || anything_for_a_long_while)) {
+        return null
+    }
 
     // set to 1 when all cells completed, instead of moving the progress bar to the start
     if (anything_for_a_short_while && !(binder_loading || recently_running.length !== 0)) {
@@ -60,27 +54,37 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
     }
 
     const title = binder_loading
-        ? "Loading binder..."
-        : `Running cells... (${recently_running.length - currently_running.length}/${recently_running.length} done)`
+        ? t("t_process_status_loading_binder")
+        : t("t_process_running_cells", {
+              done: recently_running.length - currently_running.length,
+              total: recently_running.length,
+          })
 
     return html`<loading-bar
         class=${binder_loading ? "slow" : "fast"}
         style=${`
             width: ${100 * progress}vw; 
-            opacity: ${anything && anything_for_a_short_while ? 1 : 0}; 
+            opacity: ${anything && anything_for_a_short_while ? 1 : 0};
             ${anything || anything_for_a_short_while ? "" : "transition: none;"}
             pointer-events: ${anything ? "auto" : "none"};
             cursor: ${!binder_loading && anything ? "pointer" : "auto"};
         `}
         onClick=${(e) => {
             if (!binder_loading) {
-                const running_cell = Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued)
-                if (running_cell) {
-                    scroll_cell_into_view(running_cell.cell_id)
-                }
+                scroll_to_busy_cell(notebook)
             }
         }}
         aria-hidden="true"
         title=${title}
     ></loading-bar>`
+}
+
+export const scroll_to_busy_cell = (notebook) => {
+    const running_cell_id =
+        notebook == null
+            ? (document.querySelector("pluto-cell.running") ?? document.querySelector("pluto-cell.queued"))?.id
+            : (Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued))?.cell_id
+    if (running_cell_id) {
+        scroll_cell_into_view(running_cell_id)
+    }
 }

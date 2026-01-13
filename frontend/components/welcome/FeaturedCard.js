@@ -13,9 +13,10 @@ const str_to_degree = (s) => ([...s].reduce((a, b) => a + b.charCodeAt(0), 0) * 
  *  entry: import("./Featured.js").SourceManifestNotebookEntry,
  *  direct_html_links: boolean,
  *  disable_links: boolean,
+ *  image_loading?: string,
  * }} props
  */
-export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disable_links }) => {
+export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disable_links, image_loading }) => {
     const title = entry.frontmatter?.title
 
     const { source_url } = source_manifest ?? {}
@@ -42,7 +43,7 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
         : with_query_params(`edit`, {
               statefile: u(entry.statefile_path),
               notebookfile: u(entry.notebookfile_path),
-              notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,
+              notebookfile_integrity: entry.hash == null ? null : `sha256-${base64url_to_base64(entry.hash)}`,
               disable_ui: `true`,
               name: title == null ? null : `sample ${title}`,
               pluto_server_url: `.`,
@@ -54,12 +55,12 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
 
     return html`
         <featured-card style=${`--card-color-hue: ${str_to_degree(entry.id)}deg;`}>
-            <a class="banner" href=${href}><img src=${u(entry?.frontmatter?.image) ?? transparent_svg} /></a>
+            <a class="banner" href=${href}><img src=${u(entry?.frontmatter?.image) ?? transparent_svg} loading=${image_loading} /></a>
             ${author?.name == null
                 ? null
                 : html`
                       <div class="author">
-                          <img src=${author.image ?? transparent_svg} />
+                          <img src=${author.image ?? transparent_svg} loading=${image_loading} />
                           <span>
                               <a href=${author.url}>${author.name}</a>
                               ${author.has_coauthors ? html` and others` : null}

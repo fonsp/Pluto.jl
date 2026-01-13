@@ -13,15 +13,15 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.6", "1.7"]
+                julia-version: ["lts", "1"]
                 os: [windows-latest, ubuntu-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
 
             # Makes thes `julia` command available
-            - uses: julia-actions/setup-julia@v1
+            - uses: julia-actions/setup-julia@v2
               with:
                   version: ${{ matrix.julia-version }}
 

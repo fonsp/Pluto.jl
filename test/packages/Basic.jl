@@ -6,6 +6,7 @@ import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, Se
 import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Malt
+import TOML
 
 
 @testset "Built-in Pkg" begin
@@ -47,7 +48,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > 0
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
@@ -79,7 +80,11 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > last_install_time
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestB"] != ""
+        @test occursin("+ PlutoPkgTestB", notebook.nbpkg_terminal_outputs["PlutoPkgTestB"])
+
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
@@ -171,7 +176,7 @@ import Malt
             @test count("PlutoPkgTestD", ptoml_contents()) == 2
             @test count("Dates", ptoml_contents()) == 1 # once in [deps], but not in [compat] because it is a stdlib
 
-            ptoml = Pkg.TOML.parse(ptoml_contents())
+            ptoml = TOML.parse(ptoml_contents())
 
             @test haskey(ptoml["compat"], "PlutoPkgTestA")
             @test haskey(ptoml["compat"], "PlutoPkgTestB")
@@ -189,6 +194,11 @@ import Malt
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["Dates"] != ""
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["Dates"])
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("Dates", ptoml_contents()) == 0
 
@@ -202,6 +212,11 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_install_time_ns === nothing # removing a package means that we lose our estimate
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestD"] != ""
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["PlutoPkgTestD"])
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
@@ -209,7 +224,7 @@ import Malt
         cleanup(🍭, notebook)
     end
 
-    simple_import_path = joinpath(@__DIR__, "simple_import.jl")
+    simple_import_path = joinpath(pkg_fixtures, "simple_import.jl")
     simple_import_notebook = read(simple_import_path, String)
 
     @testset "Manifest loading" begin
@@ -237,7 +252,7 @@ import Malt
     end
     
     @testset "Package added by url" begin
-        url_notebook = read(joinpath(@__DIR__, "url_import.jl"), String)
+        url_notebook = read(joinpath(pkg_fixtures, "url_import.jl"), String)
 
         🍭 = ServerSession()
 
@@ -261,7 +276,7 @@ import Malt
         cleanup(🍭, notebook)
     end
     
-    future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
+    future_notebook = read(joinpath(pkg_fixtures, "future_nonexisting_version.jl"), String)
     @testset "Recovery from unavailable versions" begin
         🍭 = ServerSession()
 
@@ -340,13 +355,13 @@ import Malt
         cleanup(🍭, notebook)
     end
     
-    pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
+    pkg_cell_notebook = read(joinpath(pkg_fixtures, "pkg_cell.jl"), String)
     @testset "Pkg cell -- loaded from file" begin
         🍭 = ServerSession()
 
         dir = mktempdir()
         for n in ["Project.toml", "Manifest.toml"]
-            cp(joinpath(@__DIR__, "pkg_cell_env", n), joinpath(dir, n))
+            cp(joinpath(pkg_fixtures, "pkg_cell_env", n), joinpath(dir, n))
         end
         path = joinpath(dir, "hello.jl")
         write(path, pkg_cell_notebook)
@@ -413,14 +428,14 @@ import Malt
         end
 
         @test index_order == [3, 2, 1]
+        
+        cleanup(🍭, notebook)
     end
-
-    pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
-    local post_pkg_notebook = nothing
 
     @testset "File format -- Backwards compat" begin
         🍭 = ServerSession()
-
+        
+        pre_pkg_notebook = read(joinpath(pkg_fixtures, "old_import.jl"), String)
         dir = mktempdir()
         path = joinpath(dir, "hello.jl")
         write(path, pre_pkg_notebook)
@@ -444,57 +459,6 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
 
         cleanup(🍭, notebook)
-    end
-
-    @static if VERSION < v"1.10.0-0" # see https://github.com/fonsp/Pluto.jl/pull/2626#issuecomment-1671244510
-        @testset "File format -- Forwards compat" begin
-            # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
-            test_worker = Malt.Worker()
-
-            @test post_pkg_notebook isa String
-
-            Malt.remote_eval_wait(Main, test_worker, quote
-                path = tempname()
-                write(path, $(post_pkg_notebook))
-                import Pkg
-                # optimization:
-                if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
-                    Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
-                end
-
-                Pkg.activate(;temp=true)
-                Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
-                # Distributed is required for old Pluto to work!
-                Pkg.add("Distributed") 
-
-                import Pluto
-                @info Pluto.PLUTO_VERSION
-                @assert Pluto.PLUTO_VERSION == v"0.14.7"
-            end)
-
-            @test Malt.remote_eval_fetch(Main, test_worker, quote
-                s = Pluto.ServerSession()
-                nb = Pluto.SessionActions.open(s, path; run_async=false)
-                nb.cells[2].errored == false
-            end)
-
-            # Cells that use Example will error because the package is not installed.
-
-            # @test Malt.remote_eval_fetch(Main, test_worker, quote
-            #     nb.cells[1].errored == false
-            # end)
-            @test Malt.remote_eval_fetch(Main, test_worker, quote
-                nb.cells[2].errored == false
-            end)
-            # @test Malt.remote_eval_fetch(Main, test_worker, quote
-            #     nb.cells[3].errored == false
-            # end)
-            # @test Malt.remote_eval_fetch(Main, test_worker, quote
-            #     nb.cells[3].output.body == "25"
-            # end)
-
-            Malt.stop(test_worker)
-        end
     end
 
     @testset "PkgUtils -- reset" begin
@@ -532,7 +496,7 @@ import Malt
     @testset "Bad files" begin
         @testset "$(name)" for name in ["corrupted_manifest", "unregistered_import"]
 
-            original_path = joinpath(@__DIR__, "$(name).jl")
+            original_path = joinpath(pkg_fixtures, "$(name).jl")
             original_contents = read(original_path, String)
 
             🍭 = ServerSession()
@@ -678,35 +642,38 @@ import Malt
         compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
         @assert isdir(compilation_dir)
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
-        precomp_entries() = readdir(mkpath(compilation_dir_testA))
+        precomp_entries() = isdir(compilation_dir_testA) ? readdir(compilation_dir_testA) : String[]
         
-        # clear cache
-        let
-            # sleep workaround for julia issue 34700.
-            sleep(3)
-            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
-        end
-        @test precomp_entries() == []
-
+        
         @testset "Match compiler options: $(match)" for match in [true, false]
+            let # clear compilation cache   
+                Sys.iswindows() && sleep(3) # workaround for https://github.com/JuliaLang/julia/issues/34700
+                isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+            end
             
             before_sync = precomp_entries()
+            @test before_sync == []
             
             🍭 = ServerSession()
-            # make compiler settings of the worker (not) match the server settings
+            # make compiler settings of the worker match or not match the server settings
             let
-                # you can find out which settings are relevant for cache validation by running JULIA_DEBUG="loading" julia and then missing a cache. Example output on julia1.9.0-rc1:
-                # ┌ Debug: Rejecting cache file /Applications/Julia-1.9.0-beta4 ARM.app/Contents/Resources/julia/share/julia/compiled/v1.9/SuiteSparse_jll/ME9At_bvckq.ji for  [top-level] since the flags are mismatched
-                # │   current session: use_pkgimages = true, debug_level = 1, check_bounds = 0, inline = true, opt_level = 2
-                # │   cache file:      use_pkgimages = true, debug_level = 1, check_bounds = 1, inline = true, opt_level = 2
-                # └ @ Base loading.jl:2668
+                # you can find out which settings are relevant for cache validation by looking at the field names of `Base.CacheFlags`.
                 flip = !match
-                if VERSION >= v"1.9.0-aaa"
-                    🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
-                end
+                
+                @test Base.JLOptions().use_pkgimages in 0:2
+                @test Base.JLOptions().check_bounds in 0:1
+                @test Base.JLOptions().opt_level in 0:3
+                @test Base.JLOptions().can_inline in 0:1
+                
+                arg_value_from_int(x::Integer) = ("no", "yes", "existing")[x + 1] # this is how the command line argument values map to the JLOptions Integer values
+                dontmatch(current_setting::Integer) = current_setting == 0 ? arg_value_from_int(1) : arg_value_from_int(0)
+
+                🍭.options.compiler.pkgimages = (match ? arg_value_from_int : dontmatch)(Base.JLOptions().use_pkgimages)
                 🍭.options.compiler.check_bounds = (flip ⊻ Base.JLOptions().check_bounds == 1) ? "yes" : "no"
-                🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
                 🍭.options.compiler.optimize = match ? Base.JLOptions().opt_level : 3 - Base.JLOptions().opt_level
+                if VERSION < v"1.12.0-aaa" # https://github.com/JuliaLang/julia/issues/58229
+                    🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
+                end
                 # cant set the debug level but whatevs
             end
             
@@ -725,11 +692,8 @@ import Malt
             # syncing should have called Pkg.precompile(), which should have generated new precompile caches. 
             # If `match == false`, then this is the second run, and the precompile caches should be different. 
             # These new caches use the same filename (weird...), EXCEPT when the pkgimages flag changed, then you get a new filename.
-            if match == true || VERSION >= v"1.9.0-aaa"
-                @test before_sync != after_sync
-                @test length(before_sync) < length(after_sync)
-            end
-            
+            @test before_sync != after_sync
+            @test length(before_sync) < length(after_sync)
             
             
             # Now actually run the import.
@@ -743,19 +707,14 @@ import Malt
             update_save_run!(🍭, notebook, notebook.cells[1])
             @test noerror(notebook.cells[1])
             
-            after_run = precomp_entries()
-            
-
+            full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
             # There should be a log message about loading the cache.
-            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
-                occursin(r"Loading.*cache"i, log["msg"][1])
-            end
+            @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
-            @test !any(notebook.cells[1].logs) do log
-                occursin(r"reject.*cache"i, log["msg"][1])
-            end
+            @test !occursin(r"reject.*cache"i, full_logs)
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+            after_run = precomp_entries()
             @test after_sync == after_run
             
             cleanup(🍭, notebook)

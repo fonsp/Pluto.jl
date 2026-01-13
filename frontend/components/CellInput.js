@@ -40,13 +40,14 @@ import {
     cssLanguage,
     setDiagnostics,
     moveLineUp,
+    Facet,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
-import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
-import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
@@ -60,10 +61,15 @@ import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { AIContext } from "./AIContext.js"
+import { AiSuggestionPlugin } from "./CellInput/ai_suggestion.js"
+import { t } from "../common/lang.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
-export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") !== "false"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE =
+    (window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") ?? (/Mac/.test(navigator.platform) ? "true" : "false")) === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -92,229 +98,102 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
     window.location.reload()
 }
 
-export const pluto_syntax_colors = HighlightStyle.define(
-    [
-        /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
-        // Symbol
-        // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+const common_style_tags = [
+    { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
+    { tag: tags.variableName, color: "var(--cm-color-variable)", fontWeight: 700 },
+    { tag: tags.propertyName, color: "var(--cm-color-symbol)", fontWeight: 700 },
+    { tag: tags.macroName, color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.typeName, filter: "var(--cm-filter-type)", fontWeight: "lighter" },
+    { tag: tags.atom, color: "var(--cm-color-symbol)" },
+    { tag: tags.string, color: "var(--cm-color-string)" },
+    { tag: tags.special(tags.string), color: "var(--cm-color-command)" },
+    { tag: tags.character, color: "var(--cm-color-literal)" },
+    { tag: tags.literal, color: "var(--cm-color-literal)" },
+    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
+    // TODO: normal operators
+    { tag: tags.definitionOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.logicOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.controlOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.bracket, color: "var(--cm-color-bracket)" },
+    // TODO: tags.self, tags.null
+]
 
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)` },
+    scope: julia().language,
+})
 
-        // I (ab)use `special(brace)` for interpolations.
-        // lang-javascript does the same so I figure it is "best practice" 😅
-        { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 },
+export const pluto_syntax_colors_javascript = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
+    scope: javascriptLanguage,
+})
 
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
+export const pluto_syntax_colors_python = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
+    scope: pythonLanguage,
+})
 
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-    ],
-    {
-        all: { color: `var(--cm-editor-text-color)` },
-        scope: julia_andrey().language,
-    }
-)
-
-export const pluto_syntax_colors_javascript = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // JAVASCRIPT SPECIFIC
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
-    ],
-    {
-        scope: javascriptLanguage,
-        all: {
-            color: `var(--cm-editor-text-color)`,
-            filter: `contrast(0.5)`,
-        },
-    }
-)
-
-export const pluto_syntax_colors_python = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // PYTHON SPECIFIC
-    ],
-    {
-        scope: pythonLanguage,
-        all: {
-            color: "var(--cm-editor-text-color)",
-            filter: `contrast(0.5)`,
-        },
-    }
-)
+export const pluto_syntax_color_any = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)` },
+})
 
 export const pluto_syntax_colors_css = HighlightStyle.define(
     [
-        { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
-        { tag: tags.keyword, color: "var(--cm-css-color)" },
-        { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.variableName, color: "var(--cm-color-css-accent)", fontWeight: 700 },
+        { tag: tags.propertyName, color: "var(--cm-color-css-accent)", fontWeight: 700 },
+        { tag: tags.tagName, color: "var(--cm-color-css)", fontWeight: 700 },
+        //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        { tag: tags.definitionOperator, color: "var(--cm-color-css)" },
+        { tag: tags.keyword, color: "var(--cm-color-css)" },
+        { tag: tags.modifier, color: "var(--cm-color-css-accent)" },
+        { tag: tags.literal, color: "var(--cm-color-css)" },
+        // { tag: tags.unit,              color: "var(--cm-color-css-accent)" },
         { tag: tags.punctuation, opacity: 0.5 },
-        { tag: tags.literal, color: "var(--cm-css-color)" },
-        // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
-        { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
-        { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-
-        // Comment from julia
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
         scope: cssLanguage,
-        all: { color: "var(--cm-css-color)" },
+        all: { color: "var(--cm-color-css)" },
     }
 )
 
 export const pluto_syntax_colors_html = HighlightStyle.define(
     [
-        { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
-        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
-        { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
-        { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.content, color: "var(--cm-color-html)", fontWeight: 400 },
+        { tag: tags.tagName, color: "var(--cm-color-html-accent)", fontWeight: 600 },
+        { tag: tags.documentMeta, color: "var(--cm-color-html-accent)" },
+        { tag: tags.attributeName, color: "var(--cm-color-html-accent)", fontWeight: 600 },
+        { tag: tags.attributeValue, color: "var(--cm-color-html-accent)" },
+        { tag: tags.angleBracket, color: "var(--cm-color-html-accent)", fontWeight: 600, opacity: 0.7 },
     ],
     {
+        all: { color: "var(--cm-color-html)" },
         scope: htmlLanguage,
-        all: {
-            color: "var(--cm-html-color)",
-        },
     }
 )
 
-// https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
+// https://github.com/lezer-parser/markdown/blob/d4de2b03180ced4610bad9cef0ad3a805c43b63a/src/markdown.ts#L1890
 export const pluto_syntax_colors_markdown = HighlightStyle.define(
     [
-        { tag: tags.content, color: "var(--cm-md-color)" },
-        { tag: tags.quote, color: "var(--cm-md-color)" },
-        { tag: tags.link, textDecoration: "underline" },
-        { tag: tags.url, color: "var(--cm-md-color)", textDecoration: "none" },
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.content, color: "var(--cm-color-md)" },
+        { tag: tags.heading, color: "var(--cm-color-md)", fontWeight: 700 },
+        // TODO? tags.list
+        { tag: tags.quote, color: "var(--cm-color-md)" },
         { tag: tags.emphasis, fontStyle: "italic" },
         { tag: tags.strong, fontWeight: "bolder" },
+        { tag: tags.link, textDecoration: "underline" },
+        { tag: tags.url, color: "var(--cm-color-md)", textDecoration: "none" },
+        { tag: tags.monospace, color: "var(--cm-color-md-accent)" },
 
-        { tag: tags.heading, color: "var(--cm-md-color)", fontWeight: 700 },
-        {
-            tag: tags.comment,
-            color: "var(--cm-comment-color)",
-            fontStyle: "italic",
-        },
-        {
-            // These are all the things you won't see in the result:
-            // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
-            tag: tags.processingInstruction,
-            color: "var(--cm-md-accent-color) !important",
-            opacity: "0.5",
-        },
-        { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
+        // Marks: `-` for lists, `#` for headers, etc.
+        { tag: tags.processingInstruction, color: "var(--cm-color-md-accent) !important", opacity: "0.5" },
     ],
     {
+        all: { color: "var(--cm-color-md)" },
         scope: markdownLanguage,
-        all: {
-            color: "var(--cm-md-color)",
-        },
     }
 )
 
@@ -330,8 +209,8 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
 
 // Compartments: https://codemirror.net/6/examples/config/
 let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>} */ codemirror_ref, value) => {
-    let compartment = useRef(new Compartment())
-    let initial_value = useRef(compartment.current.of(value))
+    const compartment = useRef(new Compartment())
+    const initial_value = useRef(compartment.current.of(value))
 
     useLayoutEffect(() => {
         codemirror_ref.current?.dispatch?.({
@@ -341,6 +220,11 @@ let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>
 
     return initial_value.current
 }
+
+export const LastRemoteCodeSetTimeFacet = Facet.define({
+    combine: (values) => values[0],
+    compare: _.isEqual,
+})
 
 let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPlutoSetup.js").Text} */ doc, { line, ch }) => {
     let line_object = doc.line(_.clamp(line + 1, 1, doc.lines))
@@ -353,7 +237,6 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
- *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  global_definition_locations: { [variable_name: string]: string },
  *  [key: string]: any,
@@ -409,6 +292,10 @@ export const CellInput = ({
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+    let last_remote_code_set_time_compartment = useCompartment(
+        newcm_ref,
+        useMemo(() => LastRemoteCodeSetTimeFacet.of(Date.now()), [remote_code])
+    )
 
     let on_change_compartment = useCompartment(
         newcm_ref,
@@ -424,7 +311,10 @@ export const CellInput = ({
 
     const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
 
-    const show_static_fake = cm_forced_focus != null || skip_static_fake ? false : show_static_fake_state
+    const show_static_fake_excuses_ref = useRef(false)
+    show_static_fake_excuses_ref.current ||= navigator.userAgent.includes("Firefox") || focus_after_creation || cm_forced_focus != null || skip_static_fake
+
+    const show_static_fake = show_static_fake_excuses_ref.current ? false : show_static_fake_state
 
     useLayoutEffect(() => {
         if (!show_static_fake) return
@@ -456,8 +346,6 @@ export const CellInput = ({
         if (show_static_fake) return
         if (dom_node_ref.current == null) return
 
-        console.log("Rendering cell input", cell_id)
-
         const keyMapSubmit = (/** @type {EditorView} */ cm) => {
             autocomplete.closeCompletion(cm)
             on_submit()
@@ -478,7 +366,7 @@ export const CellInput = ({
             return true
         }
 
-        let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
+        let accept_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
             // I think this only gets called when we are not in an autocomplete situation, otherwise `tab_completion_command` is called. I think it only happens when you have a selection.
 
@@ -486,19 +374,20 @@ export const CellInput = ({
                 return false
             }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command?.run?.(cm)) {
+            if (accept_autocomplete_command?.run?.(cm)) {
                 return true
             }
 
-            // TODO Multicursor?
-            let selection = cm.state.selection.main
-            if (!selection.empty) {
+            const anySelect = cm.state.selection.ranges.some((r) => !r.empty)
+            if (anySelect) {
                 return indentMore(cm)
             } else {
-                cm.dispatch({
-                    changes: { from: selection.from, to: selection.to, insert: "\t" },
-                    selection: EditorSelection.cursor(selection.from + 1),
-                })
+                cm.dispatch(
+                    cm.state.changeByRange((selection) => ({
+                        range: EditorSelection.cursor(selection.from + 1),
+                        changes: { from: selection.from, to: selection.to, insert: "\t" },
+                    }))
+                )
                 return true
             }
         }
@@ -507,7 +396,6 @@ export const CellInput = ({
             const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
-            console.table({ value, trimmed, offset })
             if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
                 // Markdown cell, change to code
                 let start, end
@@ -605,7 +493,7 @@ export const CellInput = ({
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
 
                 // workaround for https://github.com/preactjs/preact/issues/4235
-                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
+                // but the scrollIntoView behaviour is nice, also when the preact issue is fixed.
                 requestIdleCallback(() => {
                     cm.dispatch({
                         // TODO: remove me after fix
@@ -625,6 +513,11 @@ export const CellInput = ({
                 return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
             }
         }
+        const keyMapFold = (/** @type {EditorView} */ cm, new_value) => {
+            set_cm_forced_focus(true)
+            pluto_actions.fold_remote_cells([cell_id], new_value)
+            return true
+        }
 
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
@@ -642,7 +535,8 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
             { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
             { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
-
+            { key: "Ctrl-Shift-[", mac: "Cmd-Alt-[", run: (x) => keyMapFold(x, true) },
+            { key: "Ctrl-Shift-]", mac: "Cmd-Alt-]", run: (x) => keyMapFold(x, false) },
             mod_d_command,
         ]
 
@@ -654,7 +548,7 @@ export const CellInput = ({
 
             if (update.docChanged || update.selectionSet) {
                 let state = update.state
-                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Live docs updater")
+                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Live docs updater from docChange or selectionSet")
                 try {
                     let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
                     if (result != null) {
@@ -662,6 +556,17 @@ export const CellInput = ({
                     }
                 } finally {
                     DOCS_UPDATER_VERBOSE && console.groupEnd()
+                }
+            }
+        })
+
+        const unsubmitted_globals_updater = EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+                const before = [...update.startState.field(ScopeStateField).definitions.keys()]
+                const after = [...update.state.field(ScopeStateField).definitions.keys()]
+
+                if (!_.isEqual(before, after)) {
+                    pluto_actions.set_unsubmitted_global_definitions(cell_id, after)
                 }
             }
         })
@@ -678,6 +583,7 @@ export const CellInput = ({
                     highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    last_remote_code_set_time_compartment,
                     highlightLinePlugin(),
                     highlightRangePlugin(),
 
@@ -690,7 +596,7 @@ export const CellInput = ({
 
                     pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
-                    syntaxHighlighting(pluto_syntax_colors),
+                    syntaxHighlighting(pluto_syntax_colors_julia),
                     syntaxHighlighting(pluto_syntax_colors_html),
                     syntaxHighlighting(pluto_syntax_colors_markdown),
                     syntaxHighlighting(pluto_syntax_colors_javascript),
@@ -713,9 +619,10 @@ export const CellInput = ({
                     rectangularSelection({
                         eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
-                    highlightSelectionMatches(),
+                    highlightSelectionMatches({ minSelectionLength: 2, wholeWords: true }),
                     bracketMatching(),
                     docs_updater,
+                    unsubmitted_globals_updater,
                     tab_help_plugin,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
@@ -767,26 +674,32 @@ export const CellInput = ({
                           ]
                         : [
                               //
-                              julia_andrey(),
+                              julia(),
                           ]),
                     go_to_definition_plugin,
+                    AiSuggestionPlugin(),
                     pluto_autocomplete({
-                        request_autocomplete: async ({ text }) => {
+                        request_autocomplete: async ({ query, query_full }) => {
                             let response = await timeout_promise(
-                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                pluto_actions.send("complete", { query, query_full }, { notebook_id: notebook_id_ref.current }),
                                 5000
                             ).catch(console.warn)
                             if (!response) return null
 
                             let { message } = response
+
                             return {
-                                start: utf8index_to_ut16index(text, message.start),
-                                stop: utf8index_to_ut16index(text, message.stop),
+                                start: utf8index_to_ut16index(query_full ?? query, message.start),
+                                stop: utf8index_to_ut16index(query_full ?? query, message.stop),
                                 results: message.results,
+                                too_long: message.too_long,
                             }
                         },
+                        request_packages: () => pluto_actions.send("all_registered_package_names").then(({ message }) => message.results),
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
-                        on_update_doc_query: on_update_doc_query,
+                        on_update_doc_query,
+                        request_unsubmitted_global_definitions: () => pluto_actions.get_unsubmitted_global_definitions(),
+                        cell_id,
                     }),
 
                     // I put plutoKeyMaps separately because I want make sure we have
@@ -799,12 +712,11 @@ export const CellInput = ({
                         focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
                     }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
-                    placeholder("Enter cell code..."),
+                    placeholder(t("t_cell_input_placeholder")),
 
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
                     EditorView.lineWrapping,
-                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
 
                     // Reset diagnostics on change
@@ -915,6 +827,7 @@ export const CellInput = ({
                     head: cm.state.selection.main.head,
                 },
             })
+        } else if (cm_forced_focus === true) {
         } else {
             let new_selection = {
                 anchor: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[0]),
@@ -967,12 +880,30 @@ export const CellInput = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
+                get_current_code=${() => {
+                    let cm = newcm_ref.current
+                    return cm == null ? "" : getValue6(cm)
+                }}
             />
+            ${PreviewHiddenCode}
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
+const PreviewHiddenCode = html`<div class="preview_hidden_code_info">${t("t_reading_hidden_code")}</div>`
+
+const InputContextMenu = ({
+    on_delete,
+    cell_id,
+    run_cell,
+    skip_as_script,
+    running_disabled,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    set_cell_disabled,
+    get_current_code,
+}) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
@@ -1015,23 +946,54 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const is_copy_output_supported = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
         let cell_result = notebook?.cell_results?.[cell_id]
-        return !!cell_result && !cell_result.errored && !cell_result.queued && cell_result.output.mime === "text/plain" && cell_result.output.body
+        if (cell_result == null) return false
+
+        return (
+            (!cell_result.errored && cell_result.output.mime === "text/plain" && !!cell_result.output.body) ||
+            (cell_result.errored && cell_result.output.mime === "application/vnd.pluto.stacktrace+object")
+        )
     }
+
+    const strip_ansi_codes = (s) => (typeof s === "string" ? s.replace(/\x1b\[[0-9;]*m/g, "") : s)
 
     const copy_output = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
-        let cell_output = notebook?.cell_results?.[cell_id]?.output.body ?? ""
-        cell_output &&
-            navigator.clipboard.writeText(cell_output).catch((err) => {
+        let cell_result = notebook?.cell_results?.[cell_id]
+        if (cell_result == null) return
+
+        let cell_output =
+            cell_result.output.mime === "text/plain"
+                ? cell_result.output.body
+                : // @ts-ignore
+                  cell_result.output.body.plain_error
+
+        if (cell_output != null)
+            navigator.clipboard.writeText(strip_ansi_codes(cell_output)).catch(() => {
                 alert(`Error copying cell output`)
             })
     }
 
-    useEventListener(window, "keydown", (e) => {
-        if (e.key === "Escape") {
-            setOpen(false)
-        }
-    })
+    const ask_ai = () => {
+        open_pluto_popup({
+            type: "info",
+            big: true,
+            css_class: "ai-context",
+            should_focus: true,
+            // source_element: button_ref.current,
+            body: html`<${AIContext} cell_id=${cell_id} current_code=${get_current_code()} />`,
+        })
+    }
+
+    useEventListener(
+        window,
+        "keydown",
+        (/** @type {KeyboardEvent} */ e) => {
+            if (e.key === "Escape") {
+                setOpen(false)
+            }
+        },
+        []
+    )
 
     return html`
         <button
@@ -1066,20 +1028,26 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         >
             ${open
                 ? html`<ul onMouseenter=${mouseenter}>
-                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+                      <${InputContextMenuItem}
+                          tag="delete"
+                          contents=${t("t_delete_cell_action")}
+                          title=${t("t_delete_cell_action")}
+                          onClick=${on_delete}
+                          setOpen=${setOpen}
+                      />
 
                       <${InputContextMenuItem}
-                          title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                          title=${running_disabled ? t("t_enable_and_run_cell") : t("t_disable_this_cell_and_all_cells_that_depend_on_it")}
                           tag=${running_disabled ? "enable_cell" : "disable_cell"}
-                          contents=${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                          contents=${running_disabled ? html`<b>${t("t_enable_cell_action")}</b>` : html`${t("t_disable_cell_action")}`}
                           onClick=${toggle_running_disabled}
                           setOpen=${setOpen}
                       />
                       ${any_logs
                           ? html`<${InputContextMenuItem}
-                                title=${show_logs ? "Show cell logs" : "Hide cell logs"}
+                                title=${show_logs ? t("t_show_logs_action_description") : t("t_hide_logs_action_description")}
                                 tag=${show_logs ? "hide_logs" : "show_logs"}
-                                contents=${show_logs ? "Hide logs" : "Show logs"}
+                                contents=${show_logs ? t("t_hide_logs_action") : t("t_show_logs_action")}
                                 onClick=${toggle_logs}
                                 setOpen=${setOpen}
                             />`
@@ -1087,22 +1055,30 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                       ${is_copy_output_supported()
                           ? html`<${InputContextMenuItem}
                                 tag="copy_output"
-                                contents="Copy output"
-                                title="Copy the output of this cell to the clipboard."
+                                contents=${t("t_copy_output_action")}
+                                title=${t("t_copy_output_action_description")}
                                 onClick=${copy_output}
                                 setOpen=${setOpen}
                             />`
                           : null}
 
                       <${InputContextMenuItem}
-                          title=${skip_as_script
-                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          title=${skip_as_script ? t("t_enable_in_file_action_description") : t("t_disable_in_file_action_description")}
                           tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
-                          contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                          contents=${skip_as_script ? html`<b>${t("t_enable_in_file_action")}</b>` : html`${t("t_disable_in_file_action")}`}
                           onClick=${toggle_skip_as_script}
                           setOpen=${setOpen}
                       />
+
+                      ${pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features !== false
+                          ? html`<${InputContextMenuItem}
+                                tag="ask_ai"
+                                contents=${t("t_ask_ai_action")}
+                                title=${t("t_ask_ai_action_description")}
+                                onClick=${ask_ai}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
                   </ul>`
                 : html``}
         </div>
@@ -1125,7 +1101,19 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
     </li>`
 
 const StaticCodeMirrorFaker = ({ value }) => {
-    const lines = value.split("\n").map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line}</div>`)
+    const lines = value.split("\n").map((line, i) => {
+        const start_tabs = get_start_tabs(line)
+
+        const tabbed_line =
+            start_tabs.length == 0
+                ? line
+                : html`<span class="awesome-wrapping-plugin-the-tabs"><span class="ͼo">${start_tabs}</span></span
+                      >${line.substring(start_tabs.length)}`
+
+        return html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: ${4 * start_tabs.length}ch;">
+            ${line.length === 0 ? html`<br />` : tabbed_line}
+        </div>`
+    })
 
     return html`
         <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">

@@ -3,6 +3,7 @@ import Pluto
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 using Test
 import Pkg
+import TOML
 
 
 @testset "PkgCompat" begin
@@ -22,6 +23,18 @@ import Pkg
         @test PkgCompat.package_exists("Dates")
 
         @test PkgCompat.is_stdlib("Dates")
+        @test PkgCompat.is_stdlib("Markdown")
+        @test PkgCompat.is_stdlib("Sockets")
+        @test PkgCompat.is_stdlib("MbedTLS_jll")
+        @test PkgCompat.is_stdlib("Test")
+        @test PkgCompat.is_stdlib("Pkg")
+        @test PkgCompat.is_stdlib("Random")
+        @test PkgCompat.is_stdlib("FileWatching")
+        @test PkgCompat.is_stdlib("Distributed")
+        # upgradable stdlibs:
+        @test PkgCompat.is_stdlib("Statistics")
+        @test PkgCompat.is_stdlib("DelimitedFiles")
+
         @test !PkgCompat.is_stdlib("PlutoUI")
 
 
@@ -30,6 +43,12 @@ import Pkg
         @test isempty(vs)
         @test !PkgCompat.package_exists("Dateskjashdfkjahsdfkjh")
         
+    end
+    
+    @testset "URL" begin
+        @test PkgCompat.package_url("HTTP") == "https://github.com/JuliaWeb/HTTP.jl.git"
+        @test PkgCompat.package_url("HefefTTP") === nothing
+        @test PkgCompat.package_url("Downloads") == "https://docs.julialang.org/en/v1/stdlib/Downloads/"
     end
     
     @testset "Registry queries" begin
@@ -66,20 +85,15 @@ import Pkg
     end
 
     @testset "Completions" begin
-        cs = PkgCompat.package_completions("Hyper")
+        cs = PkgCompat.registered_package_names()
         @test "HypertextLiteral" ∈ cs
         @test "Hyperscript" ∈ cs
 
-        cs = PkgCompat.package_completions("Date")
         @test "Dates" ∈ cs
-
-        cs = PkgCompat.package_completions("Dateskjashdfkjahsdfkjh")
-
-        @test isempty(cs)
     end
 
     @testset "Compat manipulation" begin
-        old_path = joinpath(@__DIR__, "old_artifacts_import.jl")
+        old_path = joinpath(pkg_fixtures, "old_artifacts_import.jl")
         old_contents = read(old_path, String)
         
         dir = mktempdir()
@@ -97,7 +111,7 @@ import Pkg
         
         @test Pluto.only_versions_or_lineorder_differ(old_path, path)
         
-        ptoml = Pkg.TOML.parse(ptoml_contents())
+        ptoml = TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")
         @test haskey(ptoml["deps"], "Artifacts")
         @test haskey(ptoml["compat"], "PlutoPkgTestA")
@@ -105,7 +119,7 @@ import Pkg
         
         PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
         
-        ptoml = Pkg.TOML.parse(ptoml_contents())
+        ptoml = TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")
         @test haskey(ptoml["deps"], "Artifacts")
         @test haskey(ptoml["compat"], "PlutoPkgTestA")
@@ -116,7 +130,7 @@ import Pkg
         old_a_compat_entry = ptoml["compat"]["PlutoPkgTestA"]
         PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
         
-        ptoml = Pkg.TOML.parse(ptoml_contents())
+        ptoml = TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")
         @test haskey(ptoml["deps"], "Artifacts")
         @test !haskey(ptoml, "compat")
@@ -126,7 +140,7 @@ import Pkg
         
         PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
         
-        ptoml = Pkg.TOML.parse(ptoml_contents())
+        ptoml = TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")
         @test haskey(ptoml["deps"], "Artifacts")
         @test haskey(ptoml["compat"], "PlutoPkgTestA")

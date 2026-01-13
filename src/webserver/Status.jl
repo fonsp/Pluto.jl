@@ -1,3 +1,11 @@
+"""
+This module contains the "Status" system from Pluto, which you can see in the bottom right in the Pluto editor. It's used to track what is currently happening, for how long. (E.g. "Notebook startup > Julia process starting".)
+
+The Status system is hierachical: a status item can have multiple subtasks. E.g. the "Package manager" status can have subtask "instantiate" and "precompile". In the UI, these are sections that you can fold out.
+
+!!! warning
+    This module is not public API of Pluto.
+"""
 module Status
 
 _default_update_listener() = nothing
@@ -8,7 +16,7 @@ Base.@kwdef mutable struct Business
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()
-    update_listener_ref::Ref{Function}=Ref{Function}(_default_update_listener)
+    update_listener_ref::Ref{Any}=Ref{Any}(_default_update_listener)
     lock::Threads.SpinLock=Threads.SpinLock()
 end
 
@@ -77,11 +85,16 @@ report_business_started!(parent::Business, name::Symbol) = get_child(parent, nam
 report_business_planned!(parent::Business, name::Symbol) = get_child(parent, name)
 
 
-report_business!(f::Function, parent::Business, args...) = try
-    report_business_started!(parent, args...)
-    f()
-finally
-    report_business_finished!(parent, args...)
+function report_business!(f::Function, parent::Business, name::Symbol)
+    local success = false
+    try
+        business = report_business_started!(parent, name)
+        f()
+        success = true
+        business
+    finally
+        report_business_finished!(parent, name, success)
+    end
 end
 
 delete_business!(business::Business, name::Symbol) = lock(business.lock) do

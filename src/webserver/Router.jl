@@ -1,6 +1,6 @@
 
 function http_router_for(session::ServerSession)
-    router = HTTP.Router(default_404)
+    router = HTTP.Router(default_404_response)
     security = session.options.security
     
     function create_serve_onefile(path)
@@ -11,6 +11,7 @@ function http_router_for(session::ServerSession)
     HTTP.register!(router, "GET", "/edit", create_serve_onefile(project_relative_path(frontend_directory(), "editor.html")))
 
     HTTP.register!(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
+    HTTP.register!(router, "GET", "/auth-check", r -> HTTP.Response(200, "OK!"))
     HTTP.register!(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
     function try_launch_notebook_response(

@@ -1,0 +1,23 @@
+---
+description: 
+globs: *.js,*.css
+alwaysApply: false
+---
+# Pluto Frontend Styling Rules
+
+1. **CSS Location**
+   - All new styles must be added to existing CSS files, often in `editor.css` (not in JS files).
+
+2. **Color Variables**
+   - When introducing new colors, add them as CSS variables to both `light.css` and `dark.css` (for light and dark mode).
+   - Do not use existing color variables with incorrect semantic meaning.
+
+3. **Print Mode**
+   - Pluto uses the same frontend for IDE and Print mode (e.g., PDF export).
+   - If a new UI element should not appear in Print mode, add a rule to `hide-ui.css` to hide it.
+
+4. **CSS Naming**
+   - Prefer creating new custom element names (e.g., `<pluto-pkg-terminal>`) and use those as selectors in CSS.
+
+5. **Inline Styles**
+   - Avoid inline styles, unless it's something small that changes dynamically.

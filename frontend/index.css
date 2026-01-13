@@ -1,11 +1,13 @@
+@charset "UTF-8";
+
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 
-@import url("vollkorn.css");
-@import url("juliamono.css");
+@import url("./fonts/vollkorn.css");
+@import url("./fonts/juliamono.css");
 
-@import url("light_color.css");
-@import url("dark_color.css");
+@import url("./themes/light.css");
+@import url("./themes/dark.css");
 
 @import url("featured-card.css");
 
@@ -21,7 +23,7 @@ html {
     font-size: 2em;
     letter-spacing: 0.08em;
     font-weight: 500;
-    font-family: "Vollkorn", serif;
+    font-family: "Vollkorn", Palatino, serif;
     color: var(--pluto-output-h-color);
     margin: 0px;
     padding: 4rem 1rem 3rem 1rem;
@@ -119,7 +121,7 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
 }
 
 pluto-filepicker button,
-.desktop_picker button {
+.desktop_picker_group button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
@@ -132,22 +134,26 @@ pluto-filepicker button,
 }
 
 .desktop_picker_group {
-    display: inline-flex;
+    flex-grow: 1;
+    /* display: flex; */
+    padding: 5px;
 }
 
-.desktop_picker_group > input {
-    margin-left: 1em;
-}
-
-.desktop_picker > button {
+.desktop_picker_group > button {
     cursor: pointer;
-}
-
-.desktop_picker > button.full_width {
+    padding: 8px;
     width: 100%;
 }
 
-pluto-filepicker button {
+.desktop_picker_group > .option_splitter {
+    color: gray;
+    font-style: italic;
+    text-align: center;
+    margin: 15px 0;
+    font-size: 10pt;
+}
+
+#new pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
@@ -160,7 +166,7 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip {
-    border: 1px solid var(--cm-editor-tooltip-border-color);
+    border: 1px solid var(--cm-color-editor-tooltip-border);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -190,8 +196,8 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: var(--cm-editor-li-aria-selected-color);
-    background: var(--cm-editor-li-aria-selected-bg-color);
+    color: var(--cm-color-editor-li-aria-selected);
+    background: var(--cm-color-editor-li-aria-selected-bg);
 }
 
 .cm-editor .cm-completionIcon {
@@ -291,6 +297,34 @@ span.ionicon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
 }
 
+#recent li {
+    position: relative;
+}
+#recent li .clear-btn {
+    position: absolute;
+    right: 0.5em;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 0.2em 0.4em;
+    background: var(--welcome-recentnotebook-bg);
+    color: var(--black);
+    border: none;
+    border-radius: 100%;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    font-family: var(--system-ui-font-stack);
+}
+#recent li:hover .clear-btn {
+    opacity: 0.3;
+}
+#recent li .clear-btn:hover {
+    opacity: 1;
+}
+
 loading-bar {
     height: 6px;
     width: 100vw;
@@ -300,7 +334,7 @@ loading-bar {
     display: none;
 }
 
-body.loading loading-bar {
+pluto-editor.loading > loading-bar {
     animation: 16s ease-in-out load;
     display: block;
 }

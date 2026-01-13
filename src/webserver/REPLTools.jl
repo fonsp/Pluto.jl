@@ -1,6 +1,4 @@
-import FuzzyCompletions: complete_path, completion_text, score
 import Malt
-import .PkgCompat: package_completions
 using Markdown
 import REPL
 
@@ -9,20 +7,18 @@ import REPL
 ###
 
 function format_path_completion(completion)
-    replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
+    replace(REPL.REPLCompletions.completion_text(completion), "\\ " => " ", "\\\\" => "\\")
 end
 
 responses[:completepath] = function response_completepath(🙋::ClientRequest)
     path = 🙋.body["query"]
     pos = lastindex(path)
 
-    results, loc, found = complete_path(path, pos)
-    # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
-    isenough(x) = x ≥ -0.1
+    results, loc, found = REPL.REPLCompletions.complete_path(path, pos)
     ishidden(path_completion) = let p = path_completion.path
         startswith(basename(isdirpath(p) ? dirname(p) : p), ".")
     end
-    filter!(p -> !ishidden(p) && (isenough ∘ score)(p), results)
+    filter!(!ishidden, results)
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:
@@ -47,17 +43,12 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     end
     stop_utf8 = nextind(path, pos) # advance one unicode char, js uses exclusive upper bound
 
-    scores = [max(0.0, score(r)) for r in results]
     formatted = format_path_completion.(results)
-
-    # sort on score. If a tie (e.g. both score 0.0), sort on dir/file. If a tie, sort alphabetically.
-    perm = sortperm(collect(zip(.-scores, (!isdirpath).(formatted), formatted)))
-
     msg = UpdateMessage(:completion_result, 
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => formatted[perm]
+            :results => formatted,
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
@@ -71,39 +62,34 @@ end
 responses[:complete] = function response_complete(🙋::ClientRequest)
     try require_notebook(🙋) catch; return; end
     query = 🙋.body["query"]
-    pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
+    query_full = get(🙋.body, "query_full", query)
 
-    results, loc, found = if package_name_to_complete(query) !== nothing
-        p = package_name_to_complete(query)
-        cs = package_completions(p) |> sort
-        [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
+    workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
+    
+    results, loc, found, too_long = if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
+        # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
+        # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
+        Malt.remote_eval_fetch(workspace.worker, quote
+            PlutoRunner.completion_fetcher(
+                $query,
+                $query_full,
+                getfield(Main, $(QuoteNode(workspace.module_name))),
+            )
+        end)
     else
-        workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
-        
-        if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
-            # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
-            # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
-            Malt.remote_eval_fetch(workspace.worker, quote
-                PlutoRunner.completion_fetcher(
-                    $query,
-                    $pos,
-                    getfield(Main, $(QuoteNode(workspace.module_name))),
-                )
-            end)
-        else
-            # We can at least autocomplete general julia things:
-            PlutoRunner.completion_fetcher(query, pos, Main)
-        end
+        # We can at least autocomplete general julia things:
+        PlutoRunner.completion_fetcher(query, query_full, Main)
     end
 
     start_utf8 = loc.start
-    stop_utf8 = nextind(query, pos) # advance one unicode char, js uses exclusive upper bound
+    stop_utf8 = nextind(query, lastindex(query)) # advance one unicode char, js uses exclusive upper bound
 
     msg = UpdateMessage(:completion_result, 
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => results
+            :results => results,
+            :too_long => too_long
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)

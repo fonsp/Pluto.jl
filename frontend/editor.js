@@ -18,10 +18,10 @@ const set_attribute_if_needed = (element, attr, value) => {
         element.setAttribute(attr, value)
     }
 }
-export const set_disable_ui_css = (val) => {
-    document.body.classList.toggle("disable_ui", val)
-    set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
+export const set_disable_ui_css = (/** @type {boolean} */ val, /** @type {HTMLElement} */ element) => {
+    element.classList.toggle("disable_ui", val)
 }
+export const is_editor_embedded_inside_editor = (/** @type {HTMLElement} */ element) => element.parentElement?.closest("pluto-editor") != null
 
 /////////////
 // the rest:
@@ -32,7 +32,7 @@ const truthy = (x) => x === "" || x === "true"
 const falsey = (x) => x === "false"
 
 const from_attribute = (element, name) => {
-    const val = element.getAttribute(name)
+    const val = element.getAttribute(name) ?? element.getAttribute(name.replaceAll("_", "-"))
     if (name === "disable_ui") {
         return truthy(val) ? true : falsey(val) ? false : null
     } else if (name === "isolated_cell_id") {
@@ -42,7 +42,7 @@ const from_attribute = (element, name) => {
     }
 }
 
-const preamble_html_comes_from_url_params = url_params.has("preamble_url")
+const preamble_html_comes_from_url_params = url_params.has("preamble_html")
 
 /**
  *
@@ -104,9 +104,10 @@ const get_statefile =
  *
  * @param {{
  *  launch_params: import("./components/Editor.js").LaunchParameters,
+ *  pluto_editor_element: HTMLElement,
  * }} props
  */
-const EditorLoader = ({ launch_params }) => {
+const EditorLoader = ({ launch_params, pluto_editor_element }) => {
     const { statefile, statefile_integrity } = launch_params
     const static_preview = statefile != null
 
@@ -140,7 +141,7 @@ const EditorLoader = ({ launch_params }) => {
     }, [ready_for_editor, static_preview, statefile])
 
     useEffect(() => {
-        set_disable_ui_css(launch_params.disable_ui)
+        set_disable_ui_css(launch_params.disable_ui, pluto_editor_element)
     }, [launch_params.disable_ui])
 
     const preamble_element = launch_params.preamble_html
@@ -150,7 +151,12 @@ const EditorLoader = ({ launch_params }) => {
     return error_banner != null
         ? error_banner
         : ready_for_editor
-        ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
+        ? html`<${Editor}
+              initial_notebook_state=${initial_notebook_state_ref.current}
+              launch_params=${launch_params}
+              preamble_element=${preamble_element}
+              pluto_editor_element=${pluto_editor_element}
+          />`
         : // todo: show preamble html
           html`
               ${preamble_element}
@@ -184,12 +190,14 @@ class PlutoEditorComponent extends HTMLElement {
     }
 
     connectedCallback() {
+        if (this.hasAttribute("skip-custom-element")) return
+
         /** Web components only support text attributes. We deserialize into js here */
         const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
         console.log("Launch parameters: ", new_launch_params)
 
         document.querySelector(".delete-me-when-live")?.remove()
-        render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
+        render(html`<${EditorLoader} launch_params=${new_launch_params} pluto_editor_element=${this} />`, this)
     }
 }
 customElements.define("pluto-editor", PlutoEditorComponent)

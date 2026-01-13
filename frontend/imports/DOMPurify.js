@@ -1,4 +1,4 @@
 // @ts-ignore
-import purify from "https://esm.sh/dompurify@3.0.3?pin=v122"
+import purify from "https://esm.sh/dompurify@3.2.3?pin=v135"
 
 export default purify

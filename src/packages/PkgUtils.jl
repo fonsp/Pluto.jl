@@ -3,22 +3,20 @@ module PkgUtils
 import FileWatching
 import Pkg
 import ..Pluto
-import ..Pluto: Notebook, save_notebook, load_notebook, load_notebook_nobackup, withtoken, Token, readwrite, PkgCompat
+import ..Pluto: Notebook, save_notebook, load_notebook, load_notebook_nobackup, withtoken, Token, readwrite, PkgCompat, WorkspaceManager
 import ..Pluto.PkgCompat: project_file, manifest_file
 
 using Markdown
 
 export activate_notebook
 
-ensure_has_nbpkg(notebook::Notebook) = if notebook.nbpkg_ctx === nothing
+ensure_has_nbpkg(notebook::Notebook) = if !will_use_pluto_pkg(notebook)
 
     # TODO: update_save the notebook to init packages and stuff?
     error("""
-    This notebook is not using Pluto's package manager. This means that either:
-    1. The notebook contains Pkg.activate or Pkg.add calls, or
-    2. The notebook was created before Pluto 0.15.
+    This notebook is not using Pluto's package manager. This means that the notebook contains Pkg.activate or Pkg.add call.
 
-    Open the notebook using Pluto to get started.
+    Open the notebook using Pluto to see what's up.
     """)
 else
     for f in [notebook |> project_file, notebook |> manifest_file]
@@ -81,7 +79,7 @@ nb_and_dir_environments_equal(notebook_path::String, dir::String) = nb_and_dir_e
 reset_notebook_environment(notebook_path::String; keep_project::Bool=false, backup::Bool=true)
 ```
 
-Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup of the notebook file is created by default.
+Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the notebook file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup of the notebook file is created by default.
 """
 function reset_notebook_environment(path::String; kwargs...)
     Pluto.reset_nbpkg!(
@@ -92,22 +90,60 @@ end
 
 """
 ```julia
-reset_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR)
+update_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR)
 ```
 
-Update the embedded `Project.toml` and `Manifest.toml` in a notebook file, modifying the file. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument. A backup file is created by default. 
+Call `Pkg.update` in the package environment embedded in a notebook file, modifying the notebook file. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument. A backup file is created by default. 
 """
 function update_notebook_environment(path::String; kwargs...)
-    Pluto.update_nbpkg(
-        Pluto.ServerSession(),
-        load_notebook_nobackup(path);
-        kwargs...
-    )
+    session = Pluto.ServerSession()
+    notebook = load_notebook_nobackup(path)
+    try
+        Pluto.update_nbpkg(session, notebook; kwargs...)
+    finally
+        WorkspaceManager.unmake_workspace((session, notebook))
+    end
 end
 
+"""
+```julia
+will_use_pluto_pkg(notebook_path::String)::Bool
+```
 
-function activate_notebook_environment(path::String)
-    notebook_ref = Ref(load_notebook(path))
+Will this notebook use the Pluto package manager? `false` means that the notebook contains `Pkg.activate` or another deactivator.
+"""
+will_use_pluto_pkg(path::String) = will_use_pluto_pkg(load_notebook_nobackup(path))
+function will_use_pluto_pkg(notebook::Notebook)
+    ctx = notebook.nbpkg_ctx
+    # if one of the two files is not empty:
+    if ctx !== nothing && !isempty(PkgCompat.read_project_file(ctx)) || !isempty(PkgCompat.read_manifest_file(ctx))
+        return true
+    end
+    
+    # otherwise, check for Pkg.activate:
+    # when nbpkg_ctx is defined but the files are empty: check if the notebook would use one (i.e. that Pkg.activate is not used).
+    topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+    return Pluto.use_plutopkg(topology)
+end
+
+"""
+```julia
+activate_notebook_environment(notebook_path::String; show_help::Bool=true)::Nothing
+```
+
+Activate the package environment embedded in a notebook file, for interactive use. This will allow you to use the Pkg REPL and Pkg commands to modify the environment, and any changes you make will be automatically saved in the notebook file.
+
+More help will be displayed if `show_help` is `true`.
+
+Limitations:
+- Shut down the notebook before using this functionality.
+- Non-interactive use is limited, use the functional form instead, or insert `sleep` calls after modifying the environment.
+
+!!! info
+    This functionality works using file watching. A dummy repository contains a copy of the embedded tomls and gets activated, and the notebook file is updated when the dummy repository changes.
+"""
+function activate_notebook_environment(path::String; show_help::Bool=true)
+    notebook_ref = Ref(load_notebook_nobackup(path))
 
     ensure_has_nbpkg(notebook_ref[])
 
@@ -124,7 +160,7 @@ function activate_notebook_environment(path::String)
                 if !nb_and_dir_environments_equal(notebook_ref[], ourpath)
                     write_dir_to_nb(ourpath, notebook_ref[])
                     println()
-                    @info "Saved notebook package environment ✓"
+                    @info "Notebook file updated ✓"
                     println()
                 end
             end
@@ -137,7 +173,7 @@ function activate_notebook_environment(path::String)
                 if !nb_and_dir_environments_equal(notebook_ref[], ourpath)
                     write_nb_to_dir(notebook_ref[], ourpath)
                     println()
-                    @info "New notebook package environment written to directory ✓"
+                    @info "REPL environment updated from notebook ✓"
                     println()
                 end
             end
@@ -199,39 +235,82 @@ function activate_notebook_environment(path::String)
     #     end
     # end
 
-    println()
-    """
+    if show_help
+        println()
+        """
+        
+        > Notebook environment activated!
+
+        ## Step 1.
+        _Press `]` to open the Pkg REPL._
+        
+        The notebook environment is currently active.
+        
+        ## Step 2. 
+        The notebook file and your REPL environment are now synced. This means that:
+        1. Any changes you make in the REPL environment will be written to the notebook file. For example, you can `pkg> update` or `pkg> add SomePackage`, and the notebook file will update.
+        2. Whenever the notebook file changes, the REPL environment will be updated from the notebook file.
+
+        ## Step 3.
+        When you are done, you can exit the notebook environment by deactivating it:
+
+        ```
+        pkg> activate
+        ```
+        """ |> Markdown.parse |> display
+        println()
+    end
     
-    > Notebook environment activated!
+    nothing
+end
 
-    ## Step 1.
-    _Press `]` to open the Pkg REPL._
+
+
+"""
+```julia
+activate_notebook_environment(f::Function, notebook_path::String)
+```
+
+Temporarily activate the package environment embedded in a notebook file, for use inside scripts. Inside your function `f`, you can use Pkg commands to modify the environment, and any changes you make will be automatically saved in the notebook file after your function finishes. Not thread-safe.
+
+This method is best for scripts that update notebook files. For interactive use, the method `activate_notebook_environment(notebook_path::String)` is recommended.
+
+# Example
+
+```julia
+Pluto.activate_notebook_environment("notebook.jl") do
+    Pkg.add("Example")
+end
+
+# Now the file "notebook.jl" was updated!
+```
+
+!!! warning
+    This function uses the private method `Pkg.activate(f::Function, path::String)`. This API might not be available in future Julia versions. 🤷
+"""
+function activate_notebook_environment(f::Function, path::String)
+    notebook = load_notebook_nobackup(path)
+    ensure_has_nbpkg(notebook)
     
-    The notebook environment is currently active.
+    ourpath = joinpath(mktempdir(), basename(path))
+    mkpath(ourpath)
+    write_nb_to_dir(notebook, ourpath)
     
-    ## Step 2. 
-    The notebook file and your REPL environment are now synced. This means that:
-    1. Any changes you make in the REPL environment will be written to the notebook file. For example, you can `pkg> update` or `pkg> add SomePackage`, and the notebook file will update.
-    2. Whenever the notebook file changes, the REPL environment will be updated from the notebook file.
-
-    ## Step 3.
-    When you are done, you can exit the notebook environment by deactivating it:
-
-    ```
-    pkg> activate
-    ```
-    """ |> Markdown.parse |> display
-    println()
-
-
+    result = Pkg.activate(f, ourpath)
+    
+    if !nb_and_dir_environments_equal(notebook, ourpath)
+        write_dir_to_nb(ourpath, notebook)
+    end
+    
+    result
 end
 
 const activate_notebook = activate_notebook_environment
 
-function testnb()
+function testnb(name="simple_stdlib_import.jl")
     t = tempname()
 
-    readwrite(Pluto.project_relative_path("test","packages","nb.jl"), t)
+    readwrite(Pluto.project_relative_path("test", "packages", "fixtures", name), t)
     t
 end
 

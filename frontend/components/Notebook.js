@@ -1,3 +1,4 @@
+import { t } from "../common/lang.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
@@ -5,7 +6,7 @@ import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
 
 /** Like `useMemo`, but explain to the console what invalidated the memo. */
-const useMemoDebug = (fn, args) => {
+export const useMemoDebug = (fn, args) => {
     const last_values = useRef(args)
     return useMemo(() => {
         const new_values = args
@@ -24,7 +25,7 @@ const useMemoDebug = (fn, args) => {
     }, args)
 }
 
-let CellMemo = ({
+const CellMemo = ({
     cell_result,
     cell_input,
     cell_input_local,
@@ -42,6 +43,7 @@ let CellMemo = ({
     nbpkg,
     global_definition_locations,
     is_first_cell,
+    inspecting_hidden_code,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
@@ -64,6 +66,7 @@ let CellMemo = ({
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
                 is_first_cell=${is_first_cell}
+                inspecting_hidden_code=${inspecting_hidden_code}
             />
         `
     }, [
@@ -98,6 +101,7 @@ let CellMemo = ({
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
         is_first_cell,
+        inspecting_hidden_code,
     ])
 }
 
@@ -125,6 +129,7 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
+ *  inspecting_hidden_code: boolean,
  * }} props
  * */
 export const Notebook = ({
@@ -137,6 +142,7 @@ export const Notebook = ({
     disable_input,
     process_waiting_for_permission,
     sanitize_html = true,
+    inspecting_hidden_code,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -163,7 +169,11 @@ export const Notebook = ({
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
-                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) =>
+                    Object.keys(x.downstream_cells_map)
+                        .filter((variable) => !variable.includes("."))
+                        .map((variable) => [variable, x.cell_id])
+                )
             ),
         [notebook?.cell_dependencies]
     )
@@ -211,51 +221,31 @@ export const Notebook = ({
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
                         is_first_cell=${i === 0}
+                        inspecting_hidden_code=${inspecting_hidden_code}
                     />`
                 )}
-            ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
-                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading more cells...</div>`
-                : null}
+            ${
+                // Waiting for the last deleted cell to be recovered...
+                notebook.cell_order.length === 0 ||
+                // Waiting for all cells to be displayed...
+                (cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum)
+                    ? html`<div
+                          style="
+                        font-family: system-ui;
+                        font-style: italic;
+                        padding: 0.3rem 1rem;
+                        margin: 1rem 0rem;
+                        border-radius: .3rem;
+                        background: var(--blockquote-bg);
+                        opacity: 0.6;
+                        animation: fadeintext .2s 1.5s linear;
+                        animation-fill-mode: both;
+                        margin-bottom: ${Math.max(0, (notebook.cell_order.length - render_cell_outputs_minimum) * 10)}rem;"
+                      >
+                          ${t("t_loading_cells")}
+                      </div>`
+                    : null
+            }
         </pluto-notebook>
     `
 }
-/* Disable this until we understand Notebook memoization better
-export const NotebookMemo = ({
-    is_initializing,
-    notebook,
-    cell_inputs_local,
-    on_update_doc_query,
-    on_cell_input,
-    on_focus_neighbor,
-    disable_input,
-    last_created_cell,
-    selected_cells,
-}) => {
-    return useMemo(() => {
-        return html`
-            <${Notebook}
-                is_initializing=${is_initializing}
-                notebook=${notebook}
-                cell_inputs_local=${cell_inputs_local}
-                on_update_doc_query=${on_update_doc_query}
-                on_cell_input=${on_cell_input}
-                on_focus_neighbor=${on_focus_neighbor}
-                disable_input=${disable_input}
-                last_created_cell=${last_created_cell}
-                selected_cells=${selected_cells}
-            />
-        `
-    }, [
-        is_initializing,
-        notebook,
-        cell_inputs_local,
-        on_update_doc_query,
-        on_cell_input,
-        on_focus_neighbor,
-        disable_input,
-        last_created_cell,
-        selected_cells,
-    ])
-}
-*/
-export const NotebookMemo = Notebook

@@ -30,7 +30,6 @@ function match_try_node(node) {
         finally_node && { from: finally_node.from, to: finally_node.to },
         { from: possibly_end.from, to: possibly_end.to },
     ].filter((x) => x != null)
-
 }
 
 function match_block(node) {
@@ -182,6 +181,7 @@ function match_block(node) {
             iselse = true
         }
         if (node.name === "elseif") node = node.parent.parent
+        if (!node.parent) return null
 
         let try_node = node.parent.firstChild
         let possibly_end = node.parent.lastChild
@@ -207,11 +207,7 @@ function match_block(node) {
         return decorations
     }
 
-    if (node.name === "try"
-        || node.name === "catch"
-        || node.name === "finally"
-        || node.name === "else") {
-
+    if (node.name === "try" || node.name === "catch" || node.name === "finally" || node.name === "else") {
         if (node.name === "catch") node = node.parent
         if (node.name === "finally") node = node.parent
         if (node.name === "else") node = node.parent
@@ -299,8 +295,9 @@ export function matchBrackets(state, pos, dir, config = {}) {
         node = tree.resolveInner(pos, dir)
 
     let result = match_block(node)
-    return result || matchPlainBrackets(state, pos, dir, tree, node.type, maxScanDistance, brackets)
+    return result || matchPlainBrackets(state, pos, dir, tree, bracket_node_name_normalizer(node.name), maxScanDistance, brackets)
 }
+
 function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, brackets) {
     let startCh = dir < 0 ? state.sliceDoc(pos - 1, pos) : state.sliceDoc(pos, pos + 1)
     let bracket = brackets.indexOf(startCh)
@@ -314,7 +311,7 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, b
         let basePos = pos + distance * dir
         for (let pos = dir > 0 ? 0 : text.length - 1, end = dir > 0 ? text.length : -1; pos != end; pos += dir) {
             let found = brackets.indexOf(text[pos])
-            if (found < 0 || tree.resolve(basePos + pos, 1).type != tokenType) continue
+            if (found < 0 || bracket_node_name_normalizer(tree.resolve(basePos + pos, 1).name) != tokenType) continue
             if ((found % 2 == 0) == dir > 0) {
                 depth++
             } else if (depth == 1) {
@@ -331,4 +328,23 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, b
         if (dir > 0) distance += text.length
     }
     return iter.done ? [startToken] : null
+}
+
+/**
+ * Little modification to the original matchPlainBrackets function: in our Julia language, the node that opens a bracket is called "(". In e.g. markdown it's called LinkMark or something (the same name for opening and closing). We don't have this so we make them equal.
+ */
+const bracket_node_name_normalizer = (/** @type {String} */ node_name) => {
+    switch (node_name) {
+        case "(":
+        case ")":
+            return "()"
+        case "[":
+        case "]":
+            return "[]"
+        case "{":
+        case "}":
+            return "{}"
+        default:
+            return node_name
+    }
 }

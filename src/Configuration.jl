@@ -21,6 +21,7 @@ catch e
     homedir()
 end
 
+
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
 const pwd_ref = Ref{String}()
 function notebook_path_suggestion()
@@ -38,6 +39,7 @@ function __init__()
     pwd_ref[] = safepwd()
 end
 
+
 const ROOT_URL_DEFAULT = nothing
 const BASE_URL_DEFAULT = "/"
 const HOST_DEFAULT = "127.0.0.1"
@@ -45,14 +47,14 @@ const PORT_DEFAULT = nothing
 const PORT_HINT_DEFAULT = 1234
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
+const DISMISS_MOTIVATIONAL_QUOTES = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
-const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
+const ENABLE_AI_EDITOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
 const AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT = false
 const NOTEBOOK_DEFAULT = nothing
-const INIT_WITH_FILE_VIEWER_DEFAULT = false
 const SIMULATED_LAG_DEFAULT = 0.0
 const SIMULATED_PKG_LAG_DEFAULT = 0.0
 const INJECTED_JAVASCRIPT_DATA_URL_DEFAULT = "data:text/javascript;base64,"
@@ -70,14 +72,15 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `port_hint::Integer = $PORT_HINT_DEFAULT` If the other setting `port` is not specified, then this setting (`port_hint`) will be used as the starting point in finding an available port to run the server on. 
 - `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
+- `dismiss_motivational_quotes::Bool = $DISMISS_MOTIVATIONAL_QUOTES` If `true`, motivational quotes on error messages won't be shown.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
+- `enable_ai_editor_features::Bool = $ENABLE_AI_EDITOR_FEATURES_DEFAULT` Enable or disable LLM-powered editor features
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
 - `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
 - `auto_reload_from_file_cooldown::Real = $AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT` Experimental, will be removed
 - `auto_reload_from_file_ignore_pkg::Bool = $AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT` Experimental flag, will be removed
 - `notebook::Union{Nothing,String} = $NOTEBOOK_DEFAULT` Optional path of notebook to launch at start
-- `init_with_file_viewer::Bool = $INIT_WITH_FILE_VIEWER_DEFAULT`
 - `simulated_lag::Real=$SIMULATED_LAG_DEFAULT` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
 - `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
@@ -93,14 +96,15 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     port_hint::Integer = PORT_HINT_DEFAULT
     launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
+    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
+    enable_ai_editor_features::Bool = ENABLE_AI_EDITOR_FEATURES_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
     auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
     auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT
     auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT
     notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT
-    init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT
     simulated_lag::Real = SIMULATED_LAG_DEFAULT
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
@@ -158,11 +162,11 @@ Options to change Pluto's evaluation behaviour during internal testing and by do
 These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` When running a notebook (not in Safe mode), should all cells evaluate immediately? Warning: this is only for internal testing, and using it will lead to unexpected behaviour and hard-to-reproduce notebooks. It's not the Pluto way!
-- `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
-- `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes? Distributed will be replaced by Malt.jl, you can use this option to already get the old behaviour. `nothing` means: determine automatically (which is currently `false`).
+- `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process. Setting this to `false` is only meant for very advanced users, many features will be broken or behave unexpectedly (inlcuding anything related to package loading or interrupts).
+- `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes, instead of the new Malt.jl runner? You can use `true` to get the old behaviour. `nothing` means: determine automatically (which is currently `false`).
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
-- `workspace_custom_startup_expr::Union{Nothing,String} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
+- `workspace_custom_startup_expr::Union{Nothing,String} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code. Warning: this will mean that your notebooks are not reproducible.
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
@@ -188,6 +192,7 @@ const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
 const HEAP_SIZE_HINT_DEFAULT = nothing
+const CPU_TARGET_DEFAULT = nothing
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
@@ -238,6 +243,7 @@ These options will be passed as command line argument to newly launched processe
 - `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
 - `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
 - `threads::Union{Nothing,String,Int} = default_number_of_threads()`
+- `cpu_target::Union{Nothing,String} = "$CPU_TARGET_DEFAULT"` By default, cpu_target is nothing which generates very specific (not portable) code.
 """
 @option mutable struct CompilerOptions
     compile::Union{Nothing,String} = COMPILE_DEFAULT
@@ -264,6 +270,7 @@ These options will be passed as command line argument to newly launched processe
     history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT
 
     threads::Union{Nothing,String,Int} = default_number_of_threads()
+    cpu_target::Union{Nothing, String} = CPU_TARGET_DEFAULT
 end
 
 """
@@ -286,14 +293,15 @@ function from_flat_kwargs(;
         port_hint::Integer = PORT_HINT_DEFAULT,
         launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
+        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
+        enable_ai_editor_features::Bool = ENABLE_AI_EDITOR_FEATURES_DEFAULT,
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
         auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
         auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
         auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
         notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
-        init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT,
         simulated_lag::Real = SIMULATED_LAG_DEFAULT,
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
@@ -326,6 +334,7 @@ function from_flat_kwargs(;
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
         threads::Union{Nothing,String,Int} = default_number_of_threads(),
+        cpu_target::Union{Nothing,String} = CPU_TARGET_DEFAULT,
     )
     server = ServerOptions(;
         root_url,
@@ -335,14 +344,15 @@ function from_flat_kwargs(;
         port_hint,
         launch_browser,
         dismiss_update_notification,
+        dismiss_motivational_quotes,
         show_file_system,
+        enable_ai_editor_features,
         notebook_path_suggestion,
         disable_writing_notebook_files,
         auto_reload_from_file,
         auto_reload_from_file_cooldown,
         auto_reload_from_file_ignore_pkg,
         notebook,
-        init_with_file_viewer,
         simulated_lag,
         simulated_pkg_lag,
         injected_javascript_data_url,
@@ -378,6 +388,7 @@ function from_flat_kwargs(;
         startup_file,
         history_file,
         threads,
+        cpu_target,
     )
     return Options(; server, security, evaluation, compiler)
 end
@@ -402,16 +413,11 @@ end
 
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
     option_list = String[]
-    exclude_list = String[]
-
-    if VERSION < v"1.9"
-      push!(exclude_list, "--heap-size-hint")
-    end
 
     for name in fieldnames(CompilerOptions)
         flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
-        if value !== nothing && flagname ∉ exclude_list
+        if value !== nothing
             push!(option_list, string(flagname, "=", value))
         end
     end

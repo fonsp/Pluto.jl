@@ -31,7 +31,7 @@ describe("Paste Functionality", () => {
     })
 
     beforeEach(async () => {
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
         await createNewNotebook(page)
         await page.waitForSelector("pluto-input", { visible: true })
     })

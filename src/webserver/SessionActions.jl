@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
+import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, Throttled
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -19,9 +19,11 @@ function Base.showerror(io::IO, e::UserError)
     print(io, e.msg)
 end
 
+_isboring_original_name(name::AbstractString) = isempty(name) || name in ("notebook", "notebookfile")
+
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
     name_from_url = startswith(url, r"https?://") ? strip(HTTP.unescapeuri(splitext(basename(HTTP.URI(url).path))[1])) : ""
-    new_name = isempty(name_from_url) ? cutename() : name_from_url
+    new_name = _isboring_original_name(name_from_url) ? cutename() : name_from_url
     
     random_notebook = emptynotebook()
     random_notebook.path = numbered_until_new(
@@ -39,6 +41,9 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     end
     return notebook
 end
+
+
+const notebook_loading_lock = ReentrantLock()
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
 function open(session::ServerSession, path::AbstractString; 
@@ -58,17 +63,25 @@ function open(session::ServerSession, path::AbstractString;
         readwrite(path, new_path)
         path = new_path
     end
-
-    for notebook in values(session.notebooks)
-        if isfile(notebook.path) && realpath(notebook.path) == realpath(tamepath(path))
-            throw(NotebookIsRunningException(notebook))
+    
+    notebook = lock(notebook_loading_lock) do
+        # is this path already open?
+        for notebook in values(session.notebooks)
+            if isfile(notebook.path) && realpath(notebook.path) == realpath(tamepath(path))
+                throw(NotebookIsRunningException(notebook))
+            end
         end
+
+        # load the notebook
+        notebook = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+        notebook.notebook_id = notebook_id
+        
+        session.notebooks[notebook.notebook_id] = notebook
+        return notebook
     end
     
-    notebook = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+    # handle "Safe Preview" mode
     execution_allowed = execution_allowed && !haskey(notebook.metadata, "risky_file_source")
-
-    notebook.notebook_id = notebook_id
     if !isnothing(risky_file_source)
         notebook.metadata["risky_file_source"] = risky_file_source
     end
@@ -82,7 +95,6 @@ function open(session::ServerSession, path::AbstractString;
         Pluto.set_frontmatter!(notebook, nothing)
     end
 
-    session.notebooks[notebook.notebook_id] = notebook
     
     if execution_allowed && session.options.evaluation.run_notebook_on_load
         Pluto._report_business_cells_planned!(notebook)
@@ -186,10 +198,9 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
         end
     end
     
-    notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 20) do
-        # TODO: this throttle should be trailing
+    notebook.status_tree.update_listener_ref[] = Throttled.throttled(1.0 / 8; runtime_multiplier=4.0) do
         Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
-    end)
+    end
 
     return notebook
 end
@@ -214,10 +225,6 @@ end
 
 "Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
 function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
-    if session.options.server.init_with_file_viewer
-        @error "DEPRECATED: init_with_file_viewer has been removed."
-    end
-    
     notebook = if session.options.compiler.sysimage === nothing
         emptynotebook()
     else
@@ -263,7 +270,9 @@ function move(session::ServerSession, notebook::Notebook, newpath::String)
     else
         move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-        WorkspaceManager.cd_workspace((session, notebook), newpath)
+        let workspace = WorkspaceManager.get_workspace((session, notebook); allow_creation=false)
+            isnothing(workspace) || WorkspaceManager.cd_workspace(workspace, newpath)
+        end
     end 
 end
 

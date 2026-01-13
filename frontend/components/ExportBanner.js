@@ -3,6 +3,8 @@ import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/d
 
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { getCurrentLanguage, t, th } from "../common/lang.js"
+import * as desktop from "./DesktopInterface.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -43,22 +45,33 @@ export const WarnForVisisblePasswords = () => {
         )
     ) {
         alert(
+            // Super rare so no need for translation
             "Warning: this notebook includes a password input with something typed in it. The contents of this password field will be included in the exported file in an unsafe way. \n\nClear the password field and export again to avoid this problem."
         )
     }
 }
 
-export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
-    // @ts-ignore
-    const isDesktop = !!window.plutoDesktop
-
-    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} */ type) => {
-        if (isDesktop) {
-            e.preventDefault()
-            window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
-        }
+export const exportNotebookDesktop = (
+    /** @type {{ preventDefault: () => void; }} */ e,
+    /** @type {Desktop.PlutoExport} */ type,
+    /** @type {string} */ notebook_id
+) => {
+    if (desktop.is_desktop()) {
+        e.preventDefault()
+        desktop.export_notebook(notebook_id, type)
     }
+}
 
+export const ExportBanner = ({
+    notebook_id,
+    print_title,
+    open,
+    onClose,
+    notebookfile_url,
+    notebookexport_url,
+    start_recording,
+    process_waiting_for_permission,
+}) => {
     //
     let print_old_title_ref = useRef("")
     useEventListener(
@@ -97,23 +110,31 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         }
     }, [open, element_ref.current])
 
+    const onCloseRef = useRef(onClose)
+    onCloseRef.current = onClose
+
     useEventListener(
         element_ref.current,
         "focusout",
         () => {
-            if (!element_ref.current?.matches(":focus-within")) onClose()
+            if (!element_ref.current?.matches(":focus-within")) onCloseRef.current()
         },
-        [onClose]
+        []
     )
+    const pride = true
+    const prideMonth = new Date().getMonth() === 5
+
+    const warn_if_safe_preview = () =>
+        process_waiting_for_permission ? confirm(t("t_export_safe_preview_warning")) : true
 
     return html`
-        <dialog id="export" inert=${!open} open=${open} ref=${element_ref}>
+        <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${prideMonth ? "pride" : ""}>
             <div id="container">
-                <div class="export_title">export</div>
+                <div class="export_title">${t("t_export_category_export")}</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
-                <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
-                    <header role="none"><${Triangle} fill="#a270ba" /> Notebook file</header>
-                    <section>Download a copy of the <b>.jl</b> script.</section>
+                <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebookDesktop(e, 0, notebook_id)}>
+                    <header role="none"><${Triangle} fill="#a270ba" /> ${t("t_export_card_notebook_file")}</header>
+                    <section>${th("t_export_card_notebook_file_description")}</section>
                 </a>
                 <a
                     href=${notebookexport_url}
@@ -121,19 +142,34 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     class="export_card"
                     download=""
                     onClick=${(e) => {
+                        if (!warn_if_safe_preview()) {
+                            e.preventDefault()
+                            return
+                        }
+                        e.preventDefault()
                         WarnForVisisblePasswords()
-                        exportNotebook(e, 1)
+                        window.dispatchEvent(new CustomEvent("open pluto html export", { detail: { download_url: notebookexport_url } }))
                     }}
                 >
-                    <header role="none"><${Square} fill="#E86F51" /> Static HTML</header>
-                    <section>An <b>.html</b> file for your web page, or to share online.</section>
+                    <header role="none"><${Square} fill="#E86F51" /> ${t("t_export_card_static_html")}</header>
+                    <section>${th("t_export_card_static_html_description")}</section>
                 </a>
-                <a href="#" class="export_card" onClick=${() => window.print()}>
-                    <header role="none"><${Square} fill="#619b3d" /> PDF</header>
-                    <section>A static <b>.pdf</b> file for print or email.</section>
+                <a
+                    href="#"
+                    class="export_card"
+                    onClick=${(e) => {
+                        if (!warn_if_safe_preview()) {
+                            e.preventDefault()
+                            return
+                        }
+                        window.print()
+                    }}
+                >
+                    <header role="none"><${Square} fill="#619b3d" />${t("t_export_card_pdf")}</header>
+                    <section>${th("t_export_card_pdf_description")}</section>
                 </a>
                 ${html`
-                    <div class="export_title">record</div>
+                    <div class="export_title">${t("t_export_category_record")}</div>
                     <a
                         href="#"
                         onClick=${(e) => {
@@ -143,15 +179,27 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                             e.preventDefault()
                         }}
                         class="export_card"
+                        style=${getCurrentLanguage() === "el"
+                            ? "--size: 26ch"
+                            : getCurrentLanguage() === "de"
+                            ? "--size: 24ch"
+                            : getCurrentLanguage() === "pt-PT"
+                            ? "--size: 26ch"
+                            : null}
                     >
-                        <header role="none"><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
-                        <section>Capture the entire notebook, and any changes you make.</section>
+                        <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
+                        <section>${th("t_export_card_record_description")}</section>
                     </a>
                 `}
+                ${prideMonth
+                    ? html`<div class="pride_message">
+                          <p>${th("t_export_card_pride_month_message")}</p>
+                      </div>`
+                    : null}
             </div>
             <div class="export_small_btns">
                 <button
-                    title="Edit frontmatter"
+                    title=${t("t_edit_frontmatter")}
                     class="toggle_frontmatter_edit"
                     onClick=${() => {
                         onClose()
@@ -161,7 +209,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     <span></span>
                 </button>
                 <button
-                    title="Start presentation"
+                    title=${t("t_start_presentation")}
                     class="toggle_presentation"
                     onClick=${() => {
                         onClose()
@@ -171,7 +219,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                 >
                     <span></span>
                 </button>
-                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                <button title=${t("t_close")} class="toggle_export" onClick=${() => onClose()}>
                     <span></span>
                 </button>
             </div>

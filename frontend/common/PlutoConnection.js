@@ -1,6 +1,7 @@
 import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
+import { Stack } from "./Stack.js"
 import { with_query_params } from "./URLTools.js"
 
 const reconnect_after_close_delay = 500
@@ -107,6 +108,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
 
         const send_encoded = (message) => {
             const encoded = pack(message)
+            if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) throw new Error("Socket is closed")
             socket.send(encoded)
         }
 
@@ -155,7 +157,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             }
         }
         socket.onclose = async (e) => {
-            console.error(`Socket did an oopsie - ${e.type}`, new Date().toLocaleTimeString(), "was open:", has_been_open, e)
+            console.warn(`Socket did an oopsie - ${e.type}`, new Date().toLocaleTimeString(), "was open:", has_been_open, e)
 
             if (has_been_open) {
                 on_socket_close()
@@ -235,6 +237,12 @@ export const ws_address_from_base = (/** @type {string | URL} */ base_url) => {
     return ws_url_with_secret
 }
 
+export const auth_check_url_from_ws = (/** @type {string | URL} */ ws_url) => {
+    const auth_url = new URL("./auth-check", ws_url)
+    auth_url.protocol = auth_url.protocol.replace("ws", "http")
+    return auth_url.toString()
+}
+
 const default_ws_address = () => ws_address_from_base(window.location.href)
 
 /**
@@ -242,13 +250,14 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  * @type {{
  *  session_options: Record<string,any>,
  *  send: import("./PlutoConnectionSendFn").SendFn,
- *  kill: () => void,
+ *  kill: (allow_reconnect?: boolean) => void,
  *  version_info: {
  *      julia: string,
  *      pluto: string,
  *      dismiss_update_notification: boolean,
  *  },
  *  notebook_exists: boolean,
+ *  message_log: import("./Stack.js").Stack<any>,
  * }}
  */
 
@@ -264,7 +273,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *
  * @param {{
  *  on_unrequested_update: (message: PlutoMessage, by_me: boolean) => void,
- *  on_reconnect: () => boolean,
+ *  on_reconnect: () => Promise<boolean>,
  *  on_connection_status: (connection_status: boolean, hopeless: boolean) => void,
  *  connect_metadata?: Object,
  *  ws_address?: String,
@@ -279,18 +288,22 @@ export const create_pluto_connection = async ({
     ws_address = default_ws_address(),
 }) => {
     let ws_connection = /** @type {WebsocketConnection?} */ (null) // will be defined later i promise
+    const message_log = new Stack(100)
+    // @ts-ignore
+    window.pluto_get_message_log = () => message_log.get()
+    let auto_reconnect = true
 
-    /** @type {PlutoConnection} */
     const client = {
-        send: null,
-        session_options: null,
+        // send: null,
+        // session_options: null,
         version_info: {
             julia: "unknown",
             pluto: "unknown",
             dismiss_update_notification: false,
         },
         notebook_exists: true,
-        kill: null,
+        // kill: null,
+        message_log,
     } // same
 
     const client_id = get_unique_short_id()
@@ -303,6 +316,7 @@ export const create_pluto_connection = async ({
         }
         const request_id = get_unique_short_id()
 
+        // This data will be sent:
         const message = {
             type: message_type,
             client_id: client_id,
@@ -310,8 +324,6 @@ export const create_pluto_connection = async ({
             body: body,
             ...metadata,
         }
-
-        // Note: Message to be sent: message
 
         let p = resolvable_promise()
 
@@ -331,6 +343,8 @@ export const create_pluto_connection = async ({
     const connect = async () => {
         let update_url_with_binder_token = async () => {
             try {
+                const on_a_binder_server = window.location.href.includes("binder")
+                if (!on_a_binder_server) return
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
                 if (!response.ok) {
@@ -350,6 +364,8 @@ export const create_pluto_connection = async ({
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
                 on_message: (update) => {
+                    message_log.push(update)
+
                     const by_me = update.initiator_id == client_id
                     const request_id = update.request_id
 
@@ -365,13 +381,18 @@ export const create_pluto_connection = async ({
                 },
                 on_socket_close: async () => {
                     on_connection_status(false, false)
+                    if (!auto_reconnect) {
+                        console.log("Auto-reconnect is disabled, so we're not reconnecting")
+                        on_connection_status(false, true)
+                        return
+                    }
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
                     await Promises.delay(reconnect_after_close_delay)
                     await connect() // reconnect!
 
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
-                    const accept = on_reconnect()
+                    const accept = await on_reconnect()
                     console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
                     on_connection_status(accept, false)
                     if (!accept) {
@@ -384,10 +405,11 @@ export const create_pluto_connection = async ({
             console.log("Hello?")
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
-            client.kill = () => {
+            client.kill = (allow_reconnect = true) => {
+                auto_reconnect = allow_reconnect
                 if (ws_connection) ws_connection.socket.close()
             }
-            client.session_options = u.message.options
+            client.session_options = u.message.session_options
             client.version_info = u.message.version_info
             client.notebook_exists = u.message.notebook_exists
 
@@ -412,11 +434,24 @@ export const create_pluto_connection = async ({
             return u.message
         } catch (ex) {
             console.error("connect() failed", ex)
+            alert_if_not_authenticated(ws_address, ex).catch(() => null) // No await, we want this to run in the background
             await Promises.delay(retry_after_connect_failure_delay)
             return await connect()
         }
     }
     await connect()
 
-    return client
+    return /** @type {PlutoConnection} */ (client)
+}
+
+const alert_if_not_authenticated = async (/** @type {string | URL} */ ws_url, ex) => {
+    if (ex instanceof CloseEvent) {
+        if (ex.code === 1006) {
+            const auth_url = auth_check_url_from_ws(ws_url)
+            const response = await fetch(auth_url)
+            if (response.status === 403 || response.status === 401) {
+                alert("This window has lost authentication to the Pluto server. Please refresh the page to continue.")
+            }
+        }
+    }
 }

@@ -19,8 +19,9 @@ concurrency:
 jobs:
     trigger:
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               # We use that PAT token instead of GITHUB_TOKEN because we are triggering another github action on the 'release' event.
               # Triggering a workflow from a workflow is only allowed if the relaying event is signed with a PAT.
               # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
@@ -42,13 +43,13 @@ jobs:
                   git reset --hard $GITHUB_SHA
 
             # if this is a PR. then just checkout without fanciness
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               if: github.event_name == 'pull_request'
 
             # Do the actual bundling
             - uses: actions/setup-node@v4
               with:
-                  node-version: 17.x
+                  node-version: 22.x
                   cache: "npm"
                   cache-dependency-path: frontend-bundler/package-lock.json
 
@@ -59,7 +60,34 @@ jobs:
               working-directory: frontend-bundler
               run: |
                 (npm run build) || (npm run build) || (npm run build)
+                                
+            - name: List generated files
+              working-directory: frontend-dist
+              run: |
+                ls -lha
                 
+            - name: Generate bundle size report
+              working-directory: frontend-dist
+              run: |
+                # Get total size of frontend-dist folder
+                total_size=$(du -sh . | cut -f1)
+                
+                # Create bundle size report
+                cat > AAA_bundle_size.md << EOF
+                # Bundle Size Report
+                
+                **Total bundle size:** $total_size
+                
+                ## Top 20 Largest Files
+                
+                \`\`\`
+                $(find . -type f -exec du -h {} + | sort -hr | head -20)
+                \`\`\`
+                
+                Generated on: $(date)
+                EOF
+                
+
             - name: Check for corrupt files
               working-directory: frontend-dist
               run: |

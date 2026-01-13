@@ -27,7 +27,7 @@ jobs:
                     > 
                     > <a href="https://binder.plutojl.org/{{ version }}/"><img alt="Binder logo" src="https://mybinder.org/badge_logo.svg"></a>
                     >
-                    > Generate your own binder links using [pluto-on-binder.glitch.me](https://pluto-on-binder.glitch.me/)!
+                    > Learn more about Binder and Pluto at [plutojl.org/en/docs/binder](https://plutojl.org/en/docs/binder/)!
 
                     {% if custom %}
                     {{ custom }}

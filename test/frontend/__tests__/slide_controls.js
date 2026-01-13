@@ -4,6 +4,7 @@ import {
     createNewNotebook,
     getCellIds,
     getPlutoUrl,
+    gotoPlutoMainMenu,
     importNotebook,
     manuallyEnterCells,
     runAllChanged,
@@ -17,10 +18,10 @@ describe("slideControls", () => {
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
      * so I need to manually create the shared browser.
-     * @type {puppeteer.Browser}
+     * @type {import("puppeteer").Browser}
      */
     let browser = null
-    /** @type {puppeteer.Page} */
+    /** @type {import("puppeteer").Page} */
     let page = null
 
     beforeAll(async () => {
@@ -28,7 +29,7 @@ describe("slideControls", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)
@@ -42,7 +43,7 @@ describe("slideControls", () => {
     })
 
     it("should create titles", async () => {
-        await importNotebook(page, "slides.jl", { permissionToRunCode: false })
+        await importNotebook(page, "slides.jl", { permissionToRunCode: false, timeout: 120 * 1000 })
         const plutoCellIds = await getCellIds(page)
         const content = await waitForContent(page, `pluto-cell[id="${plutoCellIds[1]}"] pluto-output`)
         expect(content).toBe("Slide 2\n")
@@ -54,7 +55,7 @@ describe("slideControls", () => {
         expect(await slide_1_title.isIntersectingViewport()).toBe(true)
 
         await page.click(`.toggle_export[title="Export..."]`)
-        await page.waitForTimeout(500)
+        await new Promise((resolve) => setTimeout(resolve, 500))
         await page.waitForSelector(".toggle_presentation", { visible: true })
         await page.click(".toggle_presentation")
 

@@ -1,7 +1,10 @@
-import { html, useRef, useState, useContext } from "../imports/Preact.js"
+import { html, useRef, useState, useContext, useEffect, useLayoutEffect } from "../imports/Preact.js"
 
-import { OutputBody, PlutoImage } from "./CellOutput.js"
+import { ANSITextOutput, OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
+import { useEventListener } from "../common/useEventListener.js"
+import { is_noop_action } from "../common/SliderServerClient.js"
+import { t } from "../common/lang.js"
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -22,7 +25,8 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/plain":
-            return html`<pre class="no-block">${body}</pre>`
+            // Check if the content contains ANSI escape codes
+            return html`<${ANSITextOutput} body=${body} />`
         case "application/vnd.pluto.tree+object":
             return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
@@ -32,33 +36,75 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
     }
 }
 
-const More = ({ on_click_more }) => {
+const More = ({ on_click_more, disable }) => {
     const [loading, set_loading] = useState(false)
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useKeyboardClickable(element_ref)
 
     return html`<pluto-tree-more
-        class=${loading ? "loading" : ""}
+        ref=${element_ref}
+        tabindex=${disable ? "-1" : "0"}
+        role="button"
+        aria-disabled=${disable ? "true" : "false"}
+        disable=${disable}
+        class=${loading ? "loading" : disable ? "disabled" : ""}
         onclick=${(e) => {
-            if (!loading) {
+            if (!loading && !disable) {
                 if (on_click_more() !== false) {
                     set_loading(true)
                 }
             }
         }}
-        >more</pluto-tree-more
+        >${t("t_tree_show_more_items")}</pluto-tree-more
     >`
 }
 
-const prefix = ({ prefix, prefix_short }) =>
-    html`<pluto-tree-prefix><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix>`
+const useKeyboardClickable = (element_ref) => {
+    useEventListener(
+        element_ref,
+        "keydown",
+        (e) => {
+            if (e.key === " ") {
+                e.preventDefault()
+            }
+            if (e.key === "Enter") {
+                e.preventDefault()
+                element_ref.current.click()
+            }
+        },
+        []
+    )
+
+    useEventListener(
+        element_ref,
+        "keyup",
+        (e) => {
+            if (e.key === " ") {
+                e.preventDefault()
+                element_ref.current.click()
+            }
+        },
+        []
+    )
+}
+
+const prefix = ({ prefix, prefix_short }) => {
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useKeyboardClickable(element_ref)
+    return html`<pluto-tree-prefix role="button" tabindex="0" ref=${element_ref}
+        ><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix
+    >`
+}
 
 const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) => {
     const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
-    actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, objectid, dim)
+    return actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, objectid, dim)
 }
 
 export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
         let self = node_ref.current
@@ -78,7 +124,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html 
         if (node_ref.current == null || node_ref.current.closest("pluto-tree.collapsed") != null) {
             return false
         }
-        actions_show_more({
+        return actions_show_more({
             pluto_actions,
             cell_id,
             node_ref,
@@ -86,10 +132,11 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html 
             dim: 1,
         })
     }
+    const more_is_noop_action = is_noop_action(pluto_actions?.reshow_cell)
 
     const mimepair_output = (pair) =>
         html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
-    const more = html`<p-r><${More} on_click_more=${on_click_more} /></p-r>`
+    const more = html`<p-r><${More} disable=${more_is_noop_action || cell_id === "cell_id_not_known"} on_click_more=${on_click_more} /></p-r>`
 
     let inner = null
     switch (body.type) {
@@ -103,28 +150,28 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html 
         case "Array":
         case "Set":
         case "Tuple":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more" ? more : html`<p-r>${body.type === "Set" ? "" : html`<p-k>${r[0]}</p-k>`}<p-v>${mimepair_output(r[1])}</p-v></p-r>`
                     )}</pluto-tree-items
                 >`
             break
         case "Dict":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more" ? more : html`<p-r><p-k>${mimepair_output(r[0])}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`
                     )}</pluto-tree-items
                 >`
             break
         case "NamedTuple":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more" ? more : html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`
                     )}</pluto-tree-items
                 >`
             break
         case "struct":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) => html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`)}</pluto-tree-items
                 >`
             break
@@ -136,7 +183,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html 
 const EmptyCols = ({ colspan = 999 }) => html`<thead>
     <tr class="empty">
         <td colspan=${colspan}>
-            <div>⌀ <small>(This table has no columns)</small></div>
+            <div>⌀ <small>${t("t_table_no_columns")}</small></div>
         </td>
     </tr>
 </thead>`
@@ -145,26 +192,26 @@ const EmptyRows = ({ colspan = 999 }) => html`<tr class="empty">
     <td colspan=${colspan}>
         <div>
             <div>⌀</div>
-            <small>(This table has no rows)</small>
+            <small>${t("t_table_no_rows")}</small>
         </div>
     </td>
 </tr>`
 
-export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
+export const TableView = ({ mime, body, cell_id, persist_js_state, sanitize_html }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
 
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+    const mimepair_output = (pair) =>
+        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
     const more = (dim) => html`<${More}
-        on_click_more=${() => {
+        on_click_more=${() =>
             actions_show_more({
                 pluto_actions,
                 cell_id,
                 node_ref,
                 objectid: body.objectid,
                 dim,
-            })
-        }}
+            })}
     />`
     // More than the columns, not big enough to break Firefox (https://bugzilla.mozilla.org/show_bug.cgi?id=675417)
     const maxcolspan = 3 + (body?.schema?.names?.length ?? 1)

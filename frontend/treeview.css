@@ -1,8 +1,10 @@
+@charset "UTF-8";
+
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
-@import url("juliamono.css");
+@import url("./fonts/juliamono.css");
 
 /*  */
 
@@ -175,6 +177,10 @@ pluto-tree-more {
     white-space: nowrap;
 }
 
+pluto-tree-more.disabled {
+    cursor: not-allowed;
+}
+
 pluto-tree-more::before {
     margin-left: 0.2em;
     margin-right: 0.5em;
@@ -241,7 +247,7 @@ pluto-tree p-r pre {
 
 jlerror {
     font-size: 0.75rem;
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--julia-mono-font-stack);
 }
 jlerror {
     display: block;
@@ -257,24 +263,50 @@ jlerror > header {
     color: var(--jlerror-header-color);
     border-left: 3px solid var(--jlerror-header-color);
     padding: 0.7rem;
+    background: var(--white);
+    border-radius: 3px;
 }
 jlerror > header > p {
     margin-block-end: 0.2em;
+    white-space: pre-wrap;
 }
 jlerror > header > p:first-child {
     font-weight: bold;
+    margin-block-start: 0;
 }
-jlerror .stacktrace-header {
+jlerror .stacktrace-header,
+jlerror .error-header {
     font-family: var(--system-ui-font-stack);
 }
-jlerror .stacktrace-header > secret-h1 {
+jlerror .error-header {
+    margin-block-end: 1em;
+}
+jlerror secret-h1 {
     font-size: 1.9rem;
     font-weight: 700;
+    color: var(--pluto-output-h-color);
 }
 jlerror > section {
     border-block-start: 3px dashed var(--pkg-terminal-border-color);
     margin-block-start: 1rem;
     padding-block-start: 1rem;
+}
+jlerror .stacktrace-waiting-to-view {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1rem 0 0 0;
+}
+jlerror .stacktrace-waiting-to-view button {
+    background: var(--white);
+    border: 3px solid var(--pkg-terminal-border-color);
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1em;
+    color: var(--pluto-output-color);
+    font-family: var(--system-ui-font-stack);
+    cursor: pointer;
+    font-weight: 700;
 }
 jlerror > section > ol {
     line-height: 1.6;
@@ -282,11 +314,22 @@ jlerror > section > ol {
     /* transform-origin: top; */
     /* perspective-origin: top; */
 }
+jlerror > section > ol > li {
+    margin-block-end: 1em;
+}
+
+jlerror > section > ol > li:not(.important):not(:hover) {
+    opacity: 0.5;
+}
+
+jlerror > section > ol > li:not(.important)::marker {
+    font-weight: 100;
+}
 jlerror > section > ol > li.from_this_notebook {
     --bg: var(--jl-info-acccolor);
     background: var(--bg);
     outline: 3px solid var(--bg);
-    padding: 0.4em 0.2em;
+    padding: 0.4em 0em;
     border-radius: 0.6em;
 }
 jlerror > section .classical-frame > mark {
@@ -296,7 +339,24 @@ jlerror > section .classical-frame > mark {
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
-jlerror > section .classical-frame > em > a[href] {
+jlerror > section .classical-frame > mark > strong {
+    color: var(--black);
+}
+jlerror > section .classical-frame s-span {
+    /* color: var(--cm-color-type); */
+}
+jlerror > section .classical-frame s-span .argument_name {
+    color: var(--jlerror-mark-color);
+    color: var(--cm-color-variable);
+    color: var(--cm-color-type);
+}
+jlerror > section .frame-source {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    /* justify-content: flex-end; */
+}
+jlerror > section .frame-source > a {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
@@ -304,15 +364,21 @@ jlerror > section .classical-frame > em > a[href] {
     border-left: 3px solid var(--jlerror-a-border-left-color);
     /* font-family: var(--system-ui-font-stack); */
 }
-jlerror > section .classical-frame > em > a[href].remote-url {
+jlerror > section .frame-source > a:not([href]) {
+    filter: grayscale(1);
+}
+jlerror > section .frame-source > a[href].remote-url {
     filter: hue-rotate(160deg);
 }
-jlerror > section li.from_this_notebook:not(.from_this_cell) .classical-frame > em > a[href] {
+jlerror > section li.from_this_notebook:not(.from_this_cell) .frame-source > a[href] {
     filter: hue-rotate(50deg);
 }
-jlerror > section .classical-frame > span {
+jlerror > section .frame-source > span {
     opacity: 0.4;
     padding: 0px 0.2em;
+}
+jlerror > section .doclink {
+    user-select: none;
 }
 
 jlerror li::marker {
@@ -330,7 +396,7 @@ jlerror li.from_this_notebook .classical-frame {
 jlerror li a.frame-line-preview {
     display: block;
     text-decoration: none;
-    border: 3px solid var(--cm-clickable-underline);
+    border: 3px solid var(--cm-color-clickable-underline);
     --br: 0.6em;
     border-radius: var(--br);
     --crop: -0.5em;
@@ -365,7 +431,7 @@ jlerror li .frame-line-preview pre > code:not(.frame-line) {
 }
 jlerror li .frame-line-preview pre > code::before {
     content: var(--before-content);
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
     margin-right: 0.7em;
     width: 2ch;
     display: inline-block;
@@ -377,6 +443,28 @@ jlerror li .frame-line-preview pre > code:first-of-type:not(.frame-line) {
 }
 jlerror li .frame-line-preview pre > code:last-of-type:not(.frame-line) {
     margin-bottom: var(--crop);
+}
+
+jlerror .dont-panic {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5em;
+    background: var(--pluto-logs-debug-color);
+    color: var(--black);
+    border-radius: 0.2em;
+    font-family: var(--system-ui-font-stack);
+    font-size: 1.2rem;
+    font-weight: 700;
+    transform: rotate(6deg);
+}
+
+pluto-editor.disable_ui jlerror .dont-panic {
+    display: none;
+}
+
+pluto-logs jlerror .dont-panic {
+    display: none;
 }
 
 table.pluto-table {
@@ -444,6 +532,7 @@ table.pluto-table tbody th:first-child {
     background-color: var(--main-bg-color);
     position: sticky;
     left: -10px; /* padding-left of pluto-output*/
+    white-space: nowrap;
 }
 
 table.pluto-table .pluto-tree-more-td {

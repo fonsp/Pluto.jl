@@ -156,7 +156,10 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         }
 
         let open_remotely = async (p1, p2) => {
-            const open_url = with_query_params(new URL("open", binder_session_url), { [p1]: p2 })
+            const open_url = with_query_params(new URL("open", binder_session_url), {
+                [p1]: p2,
+                execution_allowed: "true",
+            })
 
             console.log(`open ${p1}:`, open_url)
             return fetch(with_token(open_url), {

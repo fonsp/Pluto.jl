@@ -1,6 +1,6 @@
 # Collect timing and allocations information; this is printed later.
 using TimerOutputs: TimerOutput, @timeit
-const TOUT = TimerOutput()
+TOUT = TimerOutput()
 macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
 function print_timeroutput()
     # Sleep to avoid old logs getting tangled up in the output.
@@ -26,9 +26,11 @@ function insert_cell!(notebook, cell)
     push!(notebook.cell_order, cell.cell_id)
 end
 
-function delete_cell!(notebook, cell)
+function delete_cell!(🍭, notebook, cell)
+    # this matches exactly what the frontend does when you delete a cell, check out `confirm_delete_multiple` in `Editor.js
     deleteat!(notebook.cell_order, findfirst(==(cell.cell_id), notebook.cell_order))
     delete!(notebook.cells_dict, cell.cell_id)
+    Pluto.update_run!(🍭, notebook, Pluto.Cell[])
 end
 
 function setcode!(cell, newcode)
@@ -37,7 +39,7 @@ end
 
 function noerror(cell; verbose=true)
     if cell.errored && verbose
-        @show cell.output.body
+        @show cell.output.body cell.logs
     end
     !cell.errored
 end
@@ -51,7 +53,7 @@ function expecterror(err, cell; strict=true)
     msg = sprint(showerror, err)
 
     # UndefVarError(:x, #undef)
-    if err isa UndefVarError && !isdefined(err, :scope) && VERSION > v"1.10"
+    if err isa UndefVarError && !isdefined(err, :scope) && VERSION >= v"1.11"
         strict = false
         msg = first(split(msg, '\n'; limit=2))
     end
@@ -144,6 +146,8 @@ function verify_no_running_processes()
     if length(Distributed.procs()) != 1 || !isempty(Malt.__iNtErNaL_get_running_procs())
         @error "Not all notebook processes were closed during tests!" Distributed.procs() Malt.__iNtErNaL_get_running_procs()
     end
+    
+    check_project()
 end
 
 # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
@@ -154,7 +158,11 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     name="PlutoPkgTestRegistry",
 )
 
-const snapshots_dir = joinpath(@__DIR__, "snapshots")
+const pkg_fixtures = joinpath(@__DIR__, "packages", "fixtures")
+
+
+
+snapshots_dir = joinpath(@__DIR__, "snapshots")
 
 isdir(snapshots_dir) && rm(snapshots_dir; force=true, recursive=true)
 mkdir(snapshots_dir)
@@ -169,4 +177,30 @@ function cleanup(session, notebook)
     
     WorkspaceManager.unmake_workspace((session, notebook))
 end
+
+
+
+# ╔═╡ 9fb3787f-d524-4463-a3c7-a346f0eaada0
+yo(f) = let
+	p = joinpath(Base.active_project(), f)
+	if isfile(p)
+		c = read(p)
+		Text("file: $(length(c)) bytes, hash: $(hash(c))")
+	else
+		Text("(empty file)")
+	end
+end
+
+# ╔═╡ 50be1a92-ba29-4e27-be62-21508596dbee
+function check_project()
+    println()
+    println("Checking project")
+	@show(LOAD_PATH)
+	@show(Base.ACTIVE_PROJECT[])
+	@show(yo("Project.toml"))
+	@show(yo("Manifest.toml"))
+    println()
+end
+
+
 

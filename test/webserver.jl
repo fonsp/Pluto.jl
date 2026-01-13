@@ -57,14 +57,14 @@ end
         (" 🍕🍕", (6, 10), (3, 5)), # a 🍕 is two UTF16 codeunits
     ]
     for (s, (start_byte, end_byte), (from, to)) in tests
-        @test PlutoRunner.map_byte_range_to_utf16_codepoints(s, start_byte, end_byte) == (from, to)
+        @test Pluto.PlutoRunner.map_byte_range_to_utf16_codepoints(s, start_byte, end_byte) == (from, to)
     end
 end
 
 
 @testset "Exports" begin
     port, socket = 
-        @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543) 
+        @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543)
 
     close(socket)
     @test 5543 <= port < 5600
@@ -104,11 +104,18 @@ end
     @test poll(60) do
         haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
     end
-    sleep(1)
+    sleep(2)
     
     # Note that the notebook is running async right now! It's not finished yet. But we can already run these tests:
     
-    fileA = download(local_url("notebookfile?id=$(notebook.notebook_id)"))
+    fileA = try
+        download(local_url("notebookfile?id=$(notebook.notebook_id)"))
+    catch
+        # try again :)
+        sleep(1)
+        download(local_url("notebookfile?id=$(notebook.notebook_id)"))
+    end
+
     fileB = tempname()
     write(fileB, sprint(Pluto.save_notebook, notebook))
     
@@ -119,11 +126,19 @@ end
     @test occursin(string(Pluto.PLUTO_VERSION), export_contents)
     @test occursin("</html>", export_contents)
     
+    # wait for Pkg to finish
+    for _ in 1:10
+        Pluto.withtoken(Pluto.pkg_token) do
+            sleep(0.01)
+        end
+    end
+    
     for notebook in values(🍭.notebooks)
-        SessionActions.shutdown(🍭, notebook; keep_in_session=false)
+        SessionActions.shutdown(🍭, notebook; keep_in_session=false, async=false)
     end
     
     close(server)
 end
+sleep(2)
 
 end # testset

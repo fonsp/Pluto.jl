@@ -1,6 +1,8 @@
 import REPL: ends_with_semicolon
 import .Configuration
+import .Throttled
 import ExpressionExplorer: is_joined_funcname
+import UUIDs: UUID
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -56,6 +58,9 @@ function run_reactive_core!(
 	
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
 	
+	# A state sync will come soon from this function, so let's delay anything coming from the status_tree listener, see https://github.com/fonsp/Pluto.jl/issues/2978
+	Throttled.force_throttle_without_run(notebook.status_tree.update_listener_ref[])
+	
 	run_status = Status.report_business_started!(notebook.status_tree, :run)
 	Status.report_business_started!(run_status, :resolve_topology)
 	cell_status = Status.report_business_planned!(run_status, :evaluate)
@@ -77,8 +82,8 @@ function run_reactive_core!(
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
     new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, removed_cells)
 
-    # find (indirectly) deactivated cells and update their status
-    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
+    # find (directly and indirectly) deactivated cells and update their status
+    indirectly_deactivated = collect(topological_order_cached(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
 
     for cell in indirectly_deactivated
         cell.running = false
@@ -90,18 +95,22 @@ function run_reactive_core!(
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
+    old_order = topological_order_cached(old_topology, roots)
 
-    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    old_runnable = setdiff(old_order.runnable, already_run)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 
     new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
     # get the new topological order
-    new_order = topological_order(new_topology, new_roots)
+    new_order = topological_order_cached(new_topology, new_roots)
     new_runnable = setdiff(new_order.runnable, already_run)
-    to_run = setdiff!(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+    to_run = setdiff!(
+        union(new_runnable, old_runnable),
+        indirectly_deactivated,
+        keys(new_order.errable)
+    )::Vector{Cell} # TODO: think if old error cell order matters
 
 
     # change the bar on the sides of cells to "queued"
@@ -119,10 +128,13 @@ function run_reactive_core!(
 
 	# Save the notebook. In most cases, this is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point. (More saves might happen if a macro expansion or package using happens.)
 	save && save_notebook(session, notebook)
-
+	
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
-    send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
+    send_notebook_changes_throttled = Throttled.throttled(1.0 / 20; runtime_multiplier=2.0) do
+		# We will do a state sync now, so that means that we can delay the status_tree state sync loop, see https://github.com/fonsp/Pluto.jl/issues/2978
+		Throttled.force_throttle_without_run(notebook.status_tree.update_listener_ref[])
+		# State sync:
         send_notebook_changes!(ClientRequest(; session, notebook))
     end
     send_notebook_changes_throttled()
@@ -229,8 +241,8 @@ function run_reactive_core!(
     end
 
     notebook.wants_to_interrupt = false
-    flush_notebook_changes()
 	Status.report_business_finished!(run_status)
+    flush(send_notebook_changes_throttled)
     return new_order
 end
 
@@ -402,10 +414,10 @@ function update_save_run!(
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
-		original_pwd = pwd()
+		offline_session = ServerSession()
 		offline_workspace = WorkspaceManager.make_workspace(
 			(
-				ServerSession(),
+				offline_session,
 				notebook,
 			),
 			is_offline_renderer=true,
@@ -416,11 +428,11 @@ function update_save_run!(
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
 
-		cd(original_pwd)
 		to_run_online = setdiff(cells, to_run_offline)
 		
 		clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
 		
+		finalize(offline_session)
 		send_notebook_changes!(ClientRequest(; session, notebook))
 	end
 
@@ -500,9 +512,6 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 		
 		if length(fellow_assigners_new) > length(fellow_assigners_old)
 			other_definers = setdiff(fellow_assigners_new, (cell,))
-			
-			@debug "Solving multiple defs" cell.cell_id cell_id.(other_definers) disjoint(cells, other_definers)
-
 			# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
 			if disjoint(cells, other_definers)
 				# all fellow cells (including the current cell) should meet some criteria:
@@ -637,7 +646,7 @@ end
 
 function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     skipped_cells = filter(is_skipped_as_script, notebook.cells)
-    indirectly_skipped = collect(topological_order(topology, skipped_cells))
+    indirectly_skipped = collect(topological_order_cached(topology, skipped_cells))
     for cell in notebook.cells
         cell.depends_on_skipped_cells = false
     end
@@ -648,11 +657,29 @@ end
 
 function update_disabled_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_disabled = collect(topological_order(topology, disabled_cells))
+    indirectly_disabled = collect(topological_order_cached(topology, disabled_cells))
     for cell in notebook.cells
         cell.depends_on_disabled_cells = false
     end
     for cell in indirectly_disabled
         cell.depends_on_disabled_cells = true
     end
+end
+
+
+import LRUCache
+
+const _cache_for_topological_order = LRUCache.LRU{UInt, TopologicalOrder{Cell}}(; maxsize = 10)
+
+function topological_order_cached(topology::NotebookTopology, roots::AbstractVector{Cell}; kwargs...)
+	h = hash((
+		# the `topology` object is designed to be `===` the same if the cell inputs dont change. So we should use objectid here
+		objectid(topology), 
+		# we don't just hash `roots` directly because thats quite a lot of work
+		objectid.(roots),
+		# we hash the kwargs
+		kwargs))
+	get!(_cache_for_topological_order, h) do
+		topological_order(topology, roots; kwargs...)
+	end
 end

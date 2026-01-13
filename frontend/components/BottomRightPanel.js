@@ -2,10 +2,11 @@ import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
-import { is_finished, ProcessTab, total_done, total_tasks, useStatusItem } from "./ProcessTab.js"
+import { is_finished, StatusTab, total_done, total_tasks, useStatusItem } from "./StatusTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { t, th } from "../common/lang.js"
 
 /**
  * @typedef PanelTabName
@@ -78,12 +79,41 @@ export let BottomRightPanel = ({
 
     const my_clock_is_ahead_by = useMyClockIsAheadBy({ connected })
 
+    const on_popout_click = async () => {
+        // Open a Picture-in-Picture window, see https://developer.chrome.com/docs/web-platform/document-picture-in-picture/
+        // @ts-ignore
+        const pip_window = await documentPictureInPicture.requestWindow()
+
+        // Copy style sheets
+        ;[...document.styleSheets].forEach((styleSheet) => {
+            try {
+                const style = document.createElement("style")
+                style.textContent = [...styleSheet.cssRules].map((rule) => rule.cssText).join("")
+                pip_window.document.head.appendChild(style)
+            } catch (e) {
+                const link = document.createElement("link")
+                link.rel = "stylesheet"
+                link.type = styleSheet.type
+                // @ts-ignore
+                link.media = styleSheet.media
+                // @ts-ignore
+                link.href = styleSheet.href
+                pip_window.document.head.appendChild(link)
+            }
+        })
+        pip_window.document.body.append(container_ref.current.firstElementChild)
+        pip_window.addEventListener("pagehide", (event) => {
+            const pipPlayer = event.target.querySelector("pluto-helpbox")
+            container_ref.current.append(pipPlayer)
+        })
+    }
+
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
                 <header translate=${false}>
                     <button
-                        title="Live Docs: Search for Julia documentation, and get live documentation of everything you type."
+                        title=${t("t_panel_docs_description")}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-docs": true,
@@ -96,10 +126,10 @@ export let BottomRightPanel = ({
                         }}
                     >
                         <span class="tabicon"></span>
-                        <span class="tabname">Live Docs</span>
+                        <span class="tabname">${t("t_panel_docs")}</span>
                     </button>
                     <button
-                        title=${"Process status"}
+                        title=${t("t_panel_status")}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
@@ -115,21 +145,31 @@ export let BottomRightPanel = ({
                         <span class="tabicon"></span>
                         <span class="tabname"
                             >${open_tab === "process" || !show_business_counter
-                                ? "Status"
-                                : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`}</span
+                                ? t("t_panel_status_short")
+                                : th("t_panel_status_progress", {
+                                      progress: html`<span class="subprogress-counter"
+                                          >${t("t_panel_status_progress_inner", { done: status_done, total: status_total })}</span
+                                      >`,
+                                  })}</span
                         >
                     </button>
+
                     ${hidden
                         ? null
-                        : html`<button
-                              class="helpbox-close"
-                              title="Close panel"
-                              onClick=${() => {
-                                  set_open_tab(null)
-                              }}
-                          >
-                              <span></span>
-                          </button>`}
+                        : html` ${"documentPictureInPicture" in window
+                                  ? html`<button class="helpbox-popout" title=${t("t_panel_popout")} onClick=${on_popout_click}>
+                                        <span></span>
+                                    </button>`
+                                  : null}
+                              <button
+                                  class="helpbox-close"
+                                  title=${t("t_panel_close")}
+                                  onClick=${() => {
+                                      set_open_tab(null)
+                                  }}
+                              >
+                                  <span></span>
+                              </button>`}
                 </header>
                 ${open_tab === "docs"
                     ? html`<${LiveDocsTab}
@@ -140,7 +180,7 @@ export let BottomRightPanel = ({
                           sanitize_html=${sanitize_html}
                       />`
                     : open_tab === "process"
-                    ? html`<${ProcessTab}
+                    ? html`<${StatusTab}
                           notebook=${notebook}
                           backend_launch_logs=${backend_launch_logs}
                           my_clock_is_ahead_by=${my_clock_is_ahead_by}
