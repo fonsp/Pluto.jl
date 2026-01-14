@@ -93,7 +93,7 @@ function format_output_default(@nospecialize(val), @nospecialize(context=default
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
-        bt = stacktrace(catch_backtrace())
+        bt = catch_backtrace()
         format_output(CapturedException(title, bt))
     end
 end
