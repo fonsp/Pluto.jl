@@ -12,7 +12,7 @@ Localizing Pluto is a great way to help the Julia community, because it makes Ju
 
 We also want to break the tradition that "programming is in English". Programming is for everyone, and we hope that computers can be used regardless of language and culture.
 
-Your work is also an **open source** contribution! Because you contribute localizations via git and github, you will be listed in the Pluto contributors list (https://github.com/fonsp/Pluto.jl), and in the Pluto release notes (https://github.com/fonsp/Pluto.jl/releases).
+Your work is also an **open source** contribution! Because you contribute localizations via git and github, you will be listed in the Pluto contributors list (https://github.com/JuliaPluto/Pluto.jl), and in the Pluto release notes (https://github.com/JuliaPluto/Pluto.jl/releases).
 
 
 
@@ -87,7 +87,7 @@ You use the `_one`, `_other`, `_zero`, `_two`, `_few`, `_many`, and `_other` suf
 
 ## How to contribute
 
-Before you start, take a look at [the Issues and PRs labeled "language"](https://github.com/fonsp/Pluto.jl/issues?q=label%3Alanguage). Someone else might already be working on this language, and you could collaborate!
+Before you start, take a look at [the Issues and PRs labeled "language"](https://github.com/JuliaPluto/Pluto.jl/issues?q=label%3Alanguage). Someone else might already be working on this language, and you could collaborate!
 
 
 ### Initial setup:

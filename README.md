@@ -17,7 +17,7 @@
 
 
 
-<h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" width=300 height=74 ></h1>
+<h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/JuliaPluto/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" width=300 height=74 ></h1>
 
 _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
 
@@ -31,7 +31,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 <p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
 
 
-<img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
+<img alt="reactivity screencap" src="https://raw.githubusercontent.com/JuliaPluto/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
 
 
 
@@ -45,7 +45,7 @@ Cells can contain _arbitrary_ Julia code, and you can use external libraries. Th
 
 ### Output
 
-Your notebooks are **saved as pure Julia files** ([sample](https://github.com/fonsp/Pluto.jl/blob/main/sample/Basic.jl)), which you can then import as if you had been programming in a regular editor all along. You can also export your notebook with cell outputs as attractive HTML and PDF documents. By reordering cells and hiding code, you have full control over how you tell your story.
+Your notebooks are **saved as pure Julia files** ([sample](https://github.com/JuliaPluto/Pluto.jl/blob/main/sample/Basic.jl)), which you can then import as if you had been programming in a regular editor all along. You can also export your notebook with cell outputs as attractive HTML and PDF documents. By reordering cells and hiding code, you have full control over how you tell your story.
 
 <br >
 
@@ -126,7 +126,7 @@ See [plutojl.org/#install](https://plutojl.org/#install) for an easy guide to in
 
 ## Questions and Help
 
-Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki) and the [documentation](https://plutojl.org).
+Questions? Have a look at the [FAQ](https://github.com/JuliaPluto/Pluto.jl/wiki) and the [documentation](https://plutojl.org).
 <br>
 <br>
 <br>
@@ -139,13 +139,13 @@ Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki) and 
 
 ## Contribute to Pluto
 
-Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/main/CONTRIBUTING.md) to start working on the package.
+Follow [these instructions](https://github.com/JuliaPluto/Pluto.jl/blob/main/CONTRIBUTING.md) to start working on the package.
 
 <img src="https://raw.githubusercontent.com/gist/fonsp/9a36c183e2cad7c8fc30290ec95eb104/raw/ca3a38a61f95cd58d79d00b663a3c114d21e284e/cute.svg">
 
 ## License
 
-Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). Pluto.jl is built by gluing together open source software:
+Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/JuliaPluto/Pluto.jl/blob/main/LICENSE). Pluto.jl is built by gluing together open source software:
 
 -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
 -   `CodeMirror` - [license](https://github.com/codemirror/codemirror.next/blob/master/LICENSE-MIT)
@@ -161,7 +161,7 @@ If you want to reference Pluto.jl in scientific writing, you can use our DOI: [!
 
 ### Featured notebooks
 
-Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
+Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/JuliaPluto/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
 
 Your notebook files are _yours_, you also do not need to credit us. Have fun!
 
@@ -172,12 +172,12 @@ The Pluto project is an ambition to [_rethink what a programming environment sho
 ### You can chat with us
 
 -   talk with fellow Pluto users in the **[Zulip chat room](https://gist.github.com/fonsp/db7d00fd3fe5bc0b379b4af9ec6674b6)** (_search for the `pluto.jl` stream_)
--   use Pluto's **[built-in feedback system:](https://github.com/fonsp/Pluto.jl/issues/182#issue-637726414)**
+-   use Pluto's **[built-in feedback system:](https://github.com/JuliaPluto/Pluto.jl/issues/182#issue-637726414)**
 -   contact fons **[via email](mailto:fons@plutojl.org)**
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
 
-Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
+Questions? Have a look at the [FAQ](https://github.com/JuliaPluto/Pluto.jl/wiki).
 
 ## Sponsors
 

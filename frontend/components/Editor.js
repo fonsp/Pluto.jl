@@ -762,7 +762,7 @@ export class Editor extends Component {
                                 ;(ignore ? console.log : console.error)(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
-Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
+Please report this: https://github.com/JuliaPluto/Pluto.jl/issues adding the info below:
 failing path: ${failing_path}
 notebook previous value: ${path_value}
 patch: ${JSON.stringify(
@@ -1824,7 +1824,7 @@ ${t("t_key_autosave_description")}`
                     <footer>
                         <div id="info">
                             <${LanguagePicker} />
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
+                            <a href="https://github.com/JuliaPluto/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
                             <span style="flex: 1 1 0%; min-width: 5ch;"></span>
                             <form id="feedback" action="#" method="post">
                                 <label for="opinion">${th("t_how_can_we_improve", {
