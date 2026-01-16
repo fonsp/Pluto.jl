@@ -25,7 +25,7 @@ function cdnified_html(filename::AbstractString;
             try
                 original = read(project_relative_path("frontend-dist", filename), String)
                 
-                cdn_root = "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/"
+                cdn_root = "https://cdn.jsdelivr.net/gh/JuliaPluto/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/"
 
                 @debug "Using CDN for Pluto assets:" cdn_root
 
@@ -43,7 +43,7 @@ function cdnified_html(filename::AbstractString;
         let
             original = read(project_relative_path("frontend", filename), String)
 
-            cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
+            cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/JuliaPluto/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
 
             @debug "Using CDN for Pluto assets:" cdn_root
     

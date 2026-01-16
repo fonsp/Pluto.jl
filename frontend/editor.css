@@ -464,7 +464,7 @@ kbd {
     font-weight: 600;
 }
 
-/* Avoid scrollbar in in-line latex with markdown, see https://github.com/fonsp/Pluto.jl/issues/1309 */
+/* Avoid scrollbar in in-line latex with markdown, see https://github.com/JuliaPluto/Pluto.jl/issues/1309 */
 pluto-output mjx-assistive-mml {
     height: 1px;
 }

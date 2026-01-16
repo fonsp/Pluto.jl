@@ -738,7 +738,7 @@ export const CellInput = ({
                         set_error(exception)
                         console.error("EditorView exception!", exception)
                         // alert(
-                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/JuliaPluto/Pluto.jl/issues`
                         // )
                     }),
                 ],
