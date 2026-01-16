@@ -1,7 +1,7 @@
 # This GitHub action checks whether a new version of this package
 # has been registred in the official registry.
 # If so, it creates a new _release_:
-# https://github.com/fonsp/Pluto.jl/releases
+# https://github.com/JuliaPluto/Pluto.jl/releases
 
 name: TagBot
 
