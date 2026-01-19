@@ -1,8 +1,8 @@
 name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
-authors = ["Fons van der Plas <fons@plutojl.org>"]
 version = "0.20.21"
+authors = ["Fons van der Plas <fons@plutojl.org>"]
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -47,7 +47,7 @@ ExpressionExplorer = "0.5, 0.6, 1"
 FileWatching = "1"
 GracefulPkg = "2"
 HTTP = "^1.10.17"
-HypertextLiteral = "0.7, 0.8, 0.9"
+HypertextLiteral = "0.7, 0.8, 0.9, 1"
 InteractiveUtils = "1"
 LRUCache = "1.6.2"
 Logging = "1"
