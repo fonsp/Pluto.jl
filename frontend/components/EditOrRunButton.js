@@ -10,17 +10,17 @@ export const RunLocalButton = ({ show, start_local }) => {
         start_local()
     }
 
-    return html`<div class="edit_or_run">
-        <button
-            onClick=${(e) => {
-                e.stopPropagation()
-                e.preventDefault()
-                start_local()
-            }}
-        >
-            ${th("t_edit_or_run_this_notebook")}
-        </button>
-    </div>`
+    return html`<button
+        class="edit_or_run_button"
+        onClick=${(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            start_local()
+        }}
+    >
+        <span class="yayicon"></span>
+        <span class="text">${th("t_edit_or_run_this_notebook")}</span>
+    </button>`
 }
 
 /**
@@ -54,15 +54,16 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
     const recommend_download = notebookfile_ref.current.startsWith("data:")
     const runtime_str = expected_runtime_str(notebook)
 
-    return html`<div class="edit_or_run">
-        <button
+    return html`<button
+            class="edit_or_run_button"
             onClick=${(e) => {
                 toggleModal()
                 e.stopPropagation()
                 e.preventDefault()
             }}
         >
-            ${th("t_edit_or_run_this_notebook")}
+            <span class="yayicon"></span>
+            <span class="text">${th("t_edit_or_run_this_notebook")}</span>
         </button>
         <dialog ref=${dialog_ref} class="binder_help_text">
             <span onClick=${closeModal} class="close"></span>
@@ -72,7 +73,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                           ${t("t_edit_or_run_description_1")}
                           <b>${th("t_edit_or_run_description_2")}</b>
                       </p>
-                      ${runtime_str == null ? null : html` <div class="expected_runtime_box">${t("t_edit_or_run_runtime", { runtime: runtime_str })}</div>`}
+                      ${runtime_str == null ? null : html` <div class="expected_runtime_box">${th("t_edit_or_run_runtime", { runtime: runtime_str })}</div>`}
                       <h2 style="margin-top: 3em;">${th("t_binder_help_text_title")}</h2>
                       <div style="padding: 0 2rem;">
                           <button onClick=${start_binder}>
@@ -119,23 +120,22 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                 <li>
                     <div class="command">${t("t_edit_or_run_run_pluto")}</div>
                     <p>${th("t_edit_or_run_run_pluto_description", { url: "https://plutojl.org/#install" })}</p>
-                    <img src="https://user-images.githubusercontent.com/6933510/107865594-60864b00-6e68-11eb-9625-2d11fd608e7b.png" />
+                    <img src="https://plutojl.org/assets/img/terminal%20run%20pluto.png" />
                 </li>
                 <li>
                     ${recommend_download
                         ? html`
                               <div class="command">${th("t_edit_or_run_open_the_notebook_file")}</div>
                               <p>${th("t_edit_or_run_open_the_notebook_file_description")}</p>
-                              <img src="https://user-images.githubusercontent.com/6933510/119374043-65556900-bcb9-11eb-9026-149c1ba2d05b.png" />
+                              <img src="https://plutojl.org/assets/img/open%20notebook%20path%20or%20url.png" />
                           `
                         : html`
                               <div class="command">${th("t_edit_or_run_paste_url_in_the_open_box")}</div>
-                              <video playsinline autoplay loop src="https://i.imgur.com/wf60p5c.mp4" />
+                              <img src="https://plutojl.org/assets/img/open%20notebook%20path%20or%20url.png" />
                           `}
                 </li>
             </ol>
-        </dialog>
-    </div>`
+        </dialog>`
 }
 
 const expected_runtime = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {

@@ -44,16 +44,18 @@ export class CellOutput extends Component {
         this.old_height = 0
         // @ts-ignore Is there a way to use the latest DOM spec?
         this.resize_observer = new ResizeObserver((entries) => {
-            const new_height = this.base.offsetHeight
+            const new_height = this.base?.offsetHeight ?? 0
 
-            // Scroll the page to compensate for change in page height:
-            if (document.body.querySelector("pluto-cell:focus-within")) {
-                const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-                if (
-                    !(document.activeElement?.tagName === "SUMMARY") &&
-                    (cell_outputs_after_focused.length === 0 || !Array.from(cell_outputs_after_focused).includes(this.base))
-                ) {
-                    window.scrollBy(0, new_height - this.old_height)
+            if (new_height !== this.old_height) {
+                // Scroll the page to compensate for change in page height:
+                if (document.body.querySelector("pluto-cell:focus-within")) {
+                    const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
+                    if (
+                        !(document.activeElement?.tagName === "SUMMARY") &&
+                        (cell_outputs_after_focused.length === 0 || !Array.from(cell_outputs_after_focused).includes(this.base))
+                    ) {
+                        window.scrollBy(0, new_height - this.old_height)
+                    }
                 }
             }
 
@@ -388,7 +390,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
-                let code = node.innerText
+                let code = node.textContent
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
@@ -789,10 +791,11 @@ function apply_enhanced_markup_features(container, pluto_actions) {
         if (container.firstElementChild?.matches("div.markdown")) {
             container.querySelectorAll("pre > code").forEach((code_element) => {
                 const pre = code_element.parentElement
+                if (pre.closest("table, pluto-display, bond, pluto-tree")) return
                 generateCopyCodeButton(pre)
             })
             container.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((header_element) => {
-                if (header_element.closest("table, pluto-display, bond")) return
+                if (header_element.closest("table, pluto-display, bond, pluto-tree")) return
                 generateCopyHeaderIdButton(/** @type {HTMLHeadingElement} */ (header_element), pluto_actions)
             })
         }

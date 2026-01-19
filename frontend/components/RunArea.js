@@ -41,7 +41,6 @@ export const RunArea = ({
     }
 
     const on_double_click = (/** @type {MouseEvent} */ e) => {
-        console.log(running_disabled)
         if (running_disabled)
             open_pluto_popup({
                 type: "info",

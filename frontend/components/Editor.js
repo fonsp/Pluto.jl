@@ -12,7 +12,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
-import { DropRuler } from "./DropRuler.js"
+import { DropRuler, get_drop_index_for_paste } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
@@ -40,14 +40,18 @@ import { IsolatedCell } from "./Cell.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
-import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
+import { ViewCodeOrLaunchBackendButtons } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
+import { ProjectTomlEditor } from "./ProjectTomlEditor.js"
 import { LanguagePicker } from "./LanguagePicker.js"
-import { t, th } from "../common/lang.js"
+import { getCurrentLanguage, t, th } from "../common/lang.js"
+import { PlutoLandUpload } from "./PlutoLandUpload.js"
+import { BigPkgTerminal } from "./PkgTerminalView.js"
+import { is_desktop, move_notebook, wait_for_file_move } from "./DesktopInterface.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -95,12 +99,16 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
+    inspecting_hidden_code: state.inspecting_hidden_code,
     bonds_disabled: !(
-        state.initializing ||
-        // connected to regular pluto server
-        state.connected ||
-        // connected to slider server
-        (launch_params.slider_server_url != null && (state.slider_server?.connecting || state.slider_server?.interactive))
+        // initializing, no answer yet
+        (
+            state.initializing ||
+            // connected to regular pluto server
+            state.connected ||
+            // connected to slider server
+            (launch_params.slider_server_url != null && (state.slider_server?.connecting || state.slider_server?.interactive))
+        )
     ),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
@@ -296,6 +304,7 @@ export const url_logo_small = get_included_external_source("pluto-logo-small")?.
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
+ * inspecting_hidden_code: boolean,
  * backend_launch_phase: ?number,
  * backend_launch_logs: ?string,
  * binder_session_url: ?string,
@@ -339,6 +348,7 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
+            inspecting_hidden_code: false,
             backend_launch_phase:
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
@@ -743,8 +753,8 @@ export class Editor extends Component {
                                 }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
-                                /** @type {String} Example: `"a.b[2].c"` */
-                                const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
+                                /** Example: `"a.b[2].c"` */
+                                const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? String(exception)
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
                                 const ignore = should_ignore_patch_error(failing_path)
@@ -752,7 +762,7 @@ export class Editor extends Component {
                                 ;(ignore ? console.log : console.error)(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
-Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
+Please report this: https://github.com/JuliaPluto/Pluto.jl/issues adding the info below:
 failing path: ${failing_path}
 notebook previous value: ${path_value}
 patch: ${JSON.stringify(
@@ -914,8 +924,11 @@ all patches: ${JSON.stringify(patches, null, 1)}
             this.setState({
                 initializing: false,
                 static_preview: false,
+                inspecting_hidden_code: false,
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
+
+            this.updateLang()
 
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
@@ -971,14 +984,16 @@ all patches: ${JSON.stringify(patches, null, 1)}
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
-            create_pluto_connection({
-                ws_address: ws_address,
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) => {
+            const psu = this.props.launch_params.pluto_server_url
+            return create_pluto_connection({
+                ws_address: ws_address ?? (psu ? ws_address_from_base(psu) : undefined),
                 on_unrequested_update: on_update,
                 on_connection_status: on_connection_status,
                 on_reconnect: on_reconnect,
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
+        }
 
         this.on_disable_ui = () => {
             set_disable_ui_css(this.state.disable_ui, props.pluto_editor_element)
@@ -1016,7 +1031,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${is_desktop() ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1188,7 +1203,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm(t("t_confirm_move_file", { old_path, new_path }))) {
+                if (!confirm(t("t_confirm_move_file", { old_path, new_path, interpolation: { escapeValue: false } }))) {
                     throw new Error("Declined by user")
                 }
             }
@@ -1211,31 +1226,22 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
         this.desktop_submit_file_change = async () => {
             this.setState({ moving_file: true })
-            /**
-             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
-             * frontend to communicate with the electron side. It is an IPC
-             * bridge between render process and main process. More info
-             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
-             *
-             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
-             * once the move is complete, we listen to it using `once`.
-             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
-             */
-            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
-                if (!!loc)
-                    await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
-                            state.notebook.in_temp_dir = false
-                            state.notebook.path = loc
-                        })
-                    )
-                this.setState({ moving_file: false })
-                // @ts-ignore
-                document.activeElement?.blur()
-            })
 
-            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
-            window.plutoDesktop?.fileSystem.moveNotebook()
+            const file_moved_promise = wait_for_file_move()
+            // ask the electron backend to start moving the notebook. The promise above will be resolved once it is done.
+            move_notebook()
+
+            const loc = await file_moved_promise
+            if (!!loc)
+                await this.setStatePromise(
+                    immer((/** @type {EditorState} */ state) => {
+                        state.notebook.in_temp_dir = false
+                        state.notebook.path = loc
+                    })
+                )
+            this.setState({ moving_file: false })
+            // @ts-ignore
+            document.activeElement?.blur()
         }
 
         this.delete_selected = () => {
@@ -1355,7 +1361,7 @@ ${control_name}${and}/:   ${t("t_key_ctrl_slash")}
 ${control_name}${and}M:   ${t("t_key_ctrl_m")}
 ${fold_prefix}${and}[:   ${t("t_key_ctrl_m")}
 ${fold_prefix}${and}]:   ${t("t_key_ctrl_m")}
-${ctrl_or_cmd_name}${and}Q:   ${t("t_key_ctrl_q")}
+${control_name}${and}Q:   ${t("t_key_ctrl_q")}
 
 ${t("t_key_selection_description")}
 ${ctrl_or_cmd_name}${and}C:   ${t("t_key_ctrl_c")}
@@ -1424,7 +1430,8 @@ ${t("t_key_autosave_description")}`
             if (topaste) {
                 const deserializer = detect_deserializer(topaste)
                 if (deserializer != null) {
-                    this.actions.add_deserialized_cells(topaste, -1, deserializer)
+                    const drop_index = get_drop_index_for_paste(this.props.pluto_editor_element)
+                    this.actions.add_deserialized_cells(topaste, drop_index, deserializer)
                     e.preventDefault()
                 }
             }
@@ -1457,6 +1464,11 @@ ${t("t_key_autosave_description")}`
         })
     }
 
+    updateLang() {
+        const lang = this.state.notebook.metadata?.frontmatter?.language
+        document.documentElement.lang = lang ?? getCurrentLanguage()
+    }
+
     componentDidMount() {
         const lp = this.props.launch_params
         if (this.state.static_preview) {
@@ -1472,8 +1484,9 @@ ${t("t_key_autosave_description")}`
                     : // @ts-ignore
                       `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
             )
+            this.updateLang()
         } else {
-            this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
+            this.connect()
         }
     }
 
@@ -1506,11 +1519,8 @@ ${t("t_key_autosave_description")}`
             setup_mathjax()
         }
 
-        if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
-            console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
-        }
-        if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
-            console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
+        if (old_state.notebook.metadata?.frontmatter?.language !== new_state.notebook.metadata?.frontmatter?.language) {
+            this.updateLang()
         }
     }
 
@@ -1610,6 +1620,7 @@ ${t("t_key_autosave_description")}`
                             }
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
+                            process_waiting_for_permission=${status.process_waiting_for_permission}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                             start_recording=${() => this.setState({ recording_waiting_to_start: true })}
@@ -1706,7 +1717,7 @@ ${t("t_key_autosave_description")}`
                                 })
                             )}
                     />
-                    <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
+                    <${ViewCodeOrLaunchBackendButtons} editor=${this} launch_params=${launch_params} status=${status} />
                     <${FrontMatterInput}
                         filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
@@ -1714,6 +1725,17 @@ ${t("t_key_autosave_description")}`
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
+                    />
+                    <${ProjectTomlEditor}
+                        notebook=${notebook}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
+                    />
+                    <${PlutoLandUpload}
+                        notebook_id=${notebook.notebook_id}
+                        notebookexport_url=${this.export_url("notebookexport")}
+                    />
+                    <${BigPkgTerminal}
+                        notebook=${notebook}
                     />
                     ${this.props.preamble_element}
                     <${Main}>
@@ -1730,6 +1752,7 @@ ${t("t_key_autosave_description")}`
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
+                            inspecting_hidden_code=${status.inspecting_hidden_code}
                             is_process_ready=${this.is_process_ready()}
                             process_waiting_for_permission=${status.process_waiting_for_permission}
                             sanitize_html=${status.sanitize_html}
@@ -1801,14 +1824,14 @@ ${t("t_key_autosave_description")}`
                     <footer>
                         <div id="info">
                             <${LanguagePicker} />
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
+                            <a href="https://github.com/JuliaPluto/Pluto.jl/wiki" target="_blank">${t("t_FAQ")}</a>
                             <span style="flex: 1 1 0%; min-width: 5ch;"></span>
                             <form id="feedback" action="#" method="post">
                                 <label for="opinion">${th("t_how_can_we_improve", {
                                     pluto: html`<a href="https://plutojl.org/" target="_blank">Pluto.jl</a>`,
                                 })}</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder=${t("t_instant_feedback_ellipsis")} />
-                                <button>Send</button>
+                                <button>${t("t_instant_feedback_send")}</button>
                             </form>
                         </div>
                     </footer>

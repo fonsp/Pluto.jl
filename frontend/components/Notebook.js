@@ -43,6 +43,7 @@ const CellMemo = ({
     nbpkg,
     global_definition_locations,
     is_first_cell,
+    inspecting_hidden_code,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
@@ -65,6 +66,7 @@ const CellMemo = ({
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
                 is_first_cell=${is_first_cell}
+                inspecting_hidden_code=${inspecting_hidden_code}
             />
         `
     }, [
@@ -99,6 +101,7 @@ const CellMemo = ({
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
         is_first_cell,
+        inspecting_hidden_code,
     ])
 }
 
@@ -126,6 +129,7 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
+ *  inspecting_hidden_code: boolean,
  * }} props
  * */
 export const Notebook = ({
@@ -138,6 +142,7 @@ export const Notebook = ({
     disable_input,
     process_waiting_for_permission,
     sanitize_html = true,
+    inspecting_hidden_code,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -216,6 +221,7 @@ export const Notebook = ({
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
                         is_first_cell=${i === 0}
+                        inspecting_hidden_code=${inspecting_hidden_code}
                     />`
                 )}
             ${

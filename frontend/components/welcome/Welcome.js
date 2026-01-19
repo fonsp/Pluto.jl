@@ -10,6 +10,7 @@ import { Featured } from "./Featured.js"
 import { get_environment } from "../../common/Environment.js"
 import default_featured_sources from "../../featured_sources.js"
 import { t, th } from "../../common/lang.js"
+import { add_block_screen_text_listener } from "../DesktopInterface.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -95,6 +96,12 @@ export const Welcome = ({ launch_params }) => {
         })
     }, [])
 
+    useEffect(() => {
+        add_block_screen_text_listener((/** @type string */ block_screen_text) => {
+            set_block_screen_with_this_text(block_screen_text)
+        })
+    }, [])
+
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
     // When block_screen_with_this_text is null (default), all is fine. When it is a string, we show a big banner with that text, and disable all other UI. https://github.com/fonsp/Pluto.jl/pull/2292
@@ -136,6 +143,8 @@ export const Welcome = ({ launch_params }) => {
         `
     }
 
+    // Changing this?
+    // Then also update index.html and the generate_index_html function.
     return html`
         <section id="title">
             <h1>${th("t_welcome_to_pluto", { pluto: html`<img src=${url_logo_big} />` })}</h1>
@@ -151,7 +160,7 @@ export const Welcome = ({ launch_params }) => {
                 />
             </div>
         </section>
-        <section id="open_action">
+        <section id="open">
             <div>
                 <${Open}
                     client=${client_ref.current}

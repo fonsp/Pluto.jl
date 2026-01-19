@@ -7,7 +7,12 @@ import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+import Scratch
+import UUIDs
 import GracefulPkg
+import ..TempDirInScratch
+import TOML
+
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode, :complete_remote_package)
     const REPLMode = Pkg.REPLMode
@@ -15,8 +20,7 @@ else
     const REPLMode = Base.get_extension(Pkg, :REPLExt)
 end
 
-# Should be in Base
-flatmap(args...) = vcat(map(args...)...)
+const flatmap = collect ∘ Iterators.flatmap
 
 # Should be in Base
 function select(f::Function, xs)
@@ -87,7 +91,7 @@ else
 end
 
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), mktempdir())
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), TempDirInScratch.tempdir())
 
 # ⚠️ Internal API with fallback
 function load_ctx!(original::PkgContext)
@@ -162,14 +166,17 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     end
 end
 
-# I'm a pirate harrr 🏴‍☠️
-@static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
-		get(io, :sneaky_enable_tty, false) === true
-end
-@static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
-	Base.Precompilation.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
-		get(io, :sneaky_enable_tty, false) === true
+@static if !(v"1.11.7" <= VERSION < v"1.12.0-aaa" || VERSION >= v"1.12.0-rc1")
+	# Versions that do no include https://github.com/JuliaLang/julia/pull/58887
+	# I'm a pirate harrr 🏴‍☠️
+	@static if isdefined(Pkg, :can_fancyprint)
+		Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+			get(io, :sneaky_enable_tty, false) === true
+	end
+	@static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
+		Base.Precompilation.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+			get(io, :sneaky_enable_tty, false) === true
+	end
 end
 
 ###
@@ -347,6 +354,20 @@ function package_versions(package_name::AbstractString)::Vector
     end
 end
 
+"""
+Return a Vector of UUIDs for the given package name. Returns an empty Vector if the package was not found.
+"""
+function package_uuids(package_name::AbstractString)::Vector{Base.UUID}
+	try
+		flatmap(_parsed_registries[]) do reg
+			RegistryInstances.uuids_from_name(reg, package_name)
+		end
+	catch e
+		@warn "Pkg compat: failed to get package UUIDs." exception=(e,catch_backtrace())
+		Base.UUID[]
+	end
+end
+
 # ✅ "Public" API using RegistryInstances
 """
 Return the URL of the package's documentation (if possible) or homepage. Returns `nothing` if the package was not found.
@@ -397,7 +418,7 @@ function dependencies(ctx)
 
 			to reset this notebook's environment.
 
-			Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
+			Before doing so, consider sending your notebook file to https://github.com/JuliaPluto/Pluto.jl/issues together with the following info:
 			""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
 		end
 
@@ -437,7 +458,7 @@ end
 ###
 
 
-const _project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "weakdeps", "sources", "extensions", "compat"]
+const _project_key_order = ["name", "uuid", "keywords", "license", "desc", "version", "workspace", "deps", "weakdeps", "sources", "extensions", "compat"]
 project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
 
@@ -447,7 +468,7 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	project_path = project_file(ctx)
 	
 	toml = if isfile(project_path)
-		Pkg.TOML.parsefile(project_path)
+		TOML.parsefile(project_path)
 	else
 		Dict{String,Any}()
 	end
@@ -458,7 +479,20 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	isempty(compat) && delete!(toml, "compat")
 
 	write(project_path, sprint() do io
-		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
+		@static if VERSION > v"1.12.0-aaa"
+			inline_tables = Base.IdSet{Dict}()
+			if haskey(toml, "sources")
+				for source in values(toml["sources"])
+					source isa Dict || error("Expected `sources` to be a table")
+					push!(inline_tables, source)
+				end
+			end
+			TOML.print(io, toml; sorted=true, inline_tables, by=(key -> (project_key_order(key), key)))
+		else
+			# same but without inline_tables
+			TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
+			
+		end
 	end)
 	
 	return _update_project_hash!(load_ctx!(ctx))
@@ -506,11 +540,8 @@ function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
 		_modify_compat!(ctx) do compat
 			for p in keys(compat)
-				m_version = get_manifest_version(ctx, p)
-				if m_version !== nothing && !is_stdlib(p)
-					if compat[p] == "~" * string(m_version)
-						delete!(compat, p)
-					end
+				if match(r"^~\d+\.\d+\.\d+$", compat[p]) !== nothing
+					delete!(compat, p)
 				end
 			end
 		end

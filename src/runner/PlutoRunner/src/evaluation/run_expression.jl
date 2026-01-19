@@ -125,7 +125,7 @@ function run_inside_trycatch(m::Module, f::Union{Expr,Function})::Tuple{Any,Unio
             f()
         end
     catch ex
-        bt = stacktrace(catch_backtrace())
+        bt = catch_backtrace()
         (CapturedException(ex, bt), nothing)
     end
 end
@@ -198,7 +198,7 @@ function run_expression(
         try
             try_macroexpand(m, notebook_id, cell_id, expr; capture_stdout)
         catch e
-            result = CapturedException(e, stacktrace(catch_backtrace()))
+            result = CapturedException(e, catch_backtrace())
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
             return (result, nothing)
         end

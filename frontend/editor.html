@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 
 <head>
     <meta name="viewport" content="width=device-width" />
@@ -25,12 +25,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.3.11/js/iframeResizer.min.js" defer></script>
 
-    <link rel="pluto-external-source" id="vmsg-wasm" href="https://unpkg.com/vmsg@0.4.0/vmsg.wasm">
-    <link rel="pluto-external-source" id="arrow_up_circle_icon" href="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg">
-    <link rel="pluto-external-source" id="document_text_icon" href="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg">
-    <link rel="pluto-external-source" id="help_circle_icon" href="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg">
-    <link rel="pluto-external-source" id="open_icon" href="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/open-outline.svg">
-
     <!-- This doesn't do anything unless activated, and it makes sure parcel bundles this -->
     <script id="iframe-resizer-content-window-script" src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.3.11/js/iframeResizer.contentWindow.min.js" crossorigin="anonymous" defer></script>
 
@@ -48,7 +42,7 @@
 
 <body class="no-MαθJax">
     <div style="display: flex; min-height: 100vh;">
-        <pluto-editor class="loading fullscreen">
+        <pluto-editor class="loading fullscreen" translate="no">
             <progress style="filter: grayscale(1)" class="statefile-fetch-progress delete-me-when-live" max="100"></progress>
         </pluto-editor>
     </div>

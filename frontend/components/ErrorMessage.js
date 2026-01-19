@@ -7,9 +7,26 @@ import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { ansi_to_html } from "../imports/AnsiUp.js"
 import { FixWithAIButton } from "./FixWithAIButton.js"
-import { t, th } from "../common/lang.js"
+import { localized_list_htl, t, th } from "../common/lang.js"
 
 const nbsp = "\u00A0"
+
+/**
+ * See the matching Julia file, Exception.jl in PlutoRunner.
+ * @typedef {Object} StackFrame
+ * @property {string} call
+ * @property {string} call_short
+ * @property {string|null} func
+ * @property {boolean} inlined
+ * @property {boolean} from_c
+ * @property {string} file
+ * @property {string} path
+ * @property {number} line
+ * @property {string} linfo_type
+ * @property {string|null} url
+ * @property {string|null} source_package
+ * @property {string|null} parent_module
+ */
 
 const extract_cell_id = (/** @type {string} */ file) => {
     if (file.includes("#@#==#")) return null
@@ -32,6 +49,9 @@ const focus_line = (cell_id, line) =>
         })
     )
 
+/**
+ * @param {{frame: StackFrame}} props
+ */
 const DocLink = ({ frame }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -44,8 +64,8 @@ const DocLink = ({ frame }) => {
 
     const nb = pluto_actions.get_notebook()
     const pkg_name = frame.source_package
-    const builtin = ["Main", "Core", "Base"].includes(pkg_name)
-    const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
+    const builtin = ["Main", "Core", "Base"].includes(pkg_name ?? "")
+    const installed = nb?.nbpkg?.installed_versions?.[frame.source_package ?? ""] != null
     if (!builtin && nb?.nbpkg != null && !installed) return null
 
     return html` ${nbsp}<span
@@ -97,7 +117,13 @@ const StackFrameFilename = ({ frame, cell_id }) => {
 
 const at = html`<span> ${t("t_stack_frame_location")}${nbsp}</span>`
 
-const ignore_funccall = (frame) => frame.call === "top-level scope"
+const ignore_funccall = (/** @type {StackFrame} */ frame) => {
+    if (frame.call === "top-level scope") return true
+    // In Julia 1.12, you sometimes get the top-level code (like calling sqrt(-1) in a cell) as a "macro expansion" when you run the cell again a second time. 🤷
+    if (frame.call === "macro expansion" && !frame.file.includes("#@#==#") && extract_cell_id(frame.file) != null) return true
+
+    return false
+}
 const ignore_location = (frame) => frame.file === "none"
 
 const funcname_args = (call) => {
@@ -188,7 +214,7 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
     useLayoutEffect(() => {
         if (code_ref.current) {
-            code_ref.current.innerText = code
+            code_ref.current.textContent = code
             delete code_ref.current.dataset.highlighted
             highlight(code_ref.current, "julia")
         }
@@ -240,7 +266,7 @@ export const ParseError = ({ cell_id, diagnostics, last_run_timestamp }) => {
             </header>
             <section>
                 <div class="stacktrace-header">
-                    <secret-h1>Syntax errors</secret-h1>
+                    <secret-h1>${t("t_header_list_of_syntax_errors")}</secret-h1>
                 </div>
                 <ol>
                     ${diagnostics.map(
@@ -299,6 +325,8 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
     return true
 }
 
+const frame_is_toplevel_disguised_as_macro_expansion = (frame) => {}
+
 const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
@@ -316,8 +344,15 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
-console.log({ wot: t("t_multiple_definitions_for", { symbols: ["x", "y", "z"] }) })
-
+/**
+ * Display runtime errors with stack trace.
+ * @param {Object} props
+ * @param {string} props.msg
+ * @param {StackFrame[]} props.stacktrace
+ * @param {string} [props.plain_error]
+ * @param {string} props.cell_id
+ * @returns {any}
+ */
 export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -368,7 +403,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 html`<p>Tried to reevaluate an <code>include</code> call, this is not supported. You might need to restart this notebook from the main menu.</p>
                     <p>
                         For a workaround, use the alternative version of <code>include</code> described here:
-                        <a target="_blank" href="https://github.com/fonsp/Pluto.jl/issues/115#issuecomment-661722426">GH issue 115</a>
+                        <a target="_blank" href="https://github.com/JuliaPluto/Pluto.jl/issues/115#issuecomment-661722426">GH issue 115</a>
                     </p>
                     <p>In the future, <code>include</code> will be deprecated, and this will be the default.</p>`,
         },
@@ -388,9 +423,13 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
                         let symbol_links = syms.map((what) => html`<a href="#${encodeURI(what)}">${what}</a>`)
 
-                        return html`<p>Cyclic references among${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                        const symbol_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+
+                        return html`<p>${th("t_cyclic_references_among", { symbols: symbol_interp })}</p>`
                     } else {
-                        return html`<p>${line}</p>`
+                        // This must be the hint.
+
+                        return html`<p>${th("t_combine_cells_begin_block")}</p>`
                     }
                 }),
         },
@@ -414,9 +453,11 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                             return html`<a href="#" onclick=${onclick}>${what}</a>`
                         })
 
-                        return html`<p>${th("t_multiple_definitions_for", { symbols: symbol_links })}</p>`
+                        const symbol_interp = localized_list_htl(symbol_links, syms, { type: "conjunction" })
+
+                        return html`<p>${th("t_multiple_definitions_for", { symbols: symbol_interp })}</p>`
                     } else {
-                        return html`<p>${line}</p>`
+                        return html`<p>${th("t_combine_cells_begin_block")}</p>`
                     }
                 }),
         },
@@ -436,13 +477,18 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
-                const match = x.match(/UndefVarError: (.*) not defined/)
+                const match = x.match(/UndefVarError: (.*) not defined in (.*).*/)
                 let sym = (match?.[1] ?? "").replaceAll("`", "")
+                let module = (match?.[2] ?? "").replaceAll("`", "").replaceAll(/Main\.var\"workspace#\d+\"/g, "this notebook")
                 const undefvar_is_from_upstream = Object.values(notebook?.cell_dependencies ?? {}).some((map) =>
                     Object.keys(map.downstream_cells_map).includes(sym)
                 )
 
                 if (Object.keys(erred_upstreams).length === 0 || !undefvar_is_from_upstream) {
+                    if (sym && module) {
+                        return html` <p>UndefVarError: <code>${sym}</code> not defined in ${module}.</p>
+                            <p>${x.replace(/UndefVarError.*\n?/, "")}</p>`
+                    }
                     return html`<p>${x}</p>`
                 }
 
@@ -455,8 +501,9 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
 
-                // const plural = symbol_links.length > 1
-                return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_links })}</em></p>`
+                const symbol_interp = localized_list_htl(symbol_links, Object.keys(erred_upstreams), { type: "disjunction" })
+
+                return html`<p><em>${th("t_another_cell_defining_xs_contains_errors", { symbols: symbol_interp })}</em></p>`
             },
             show_stacktrace: () => {
                 const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
@@ -494,7 +541,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
     const first_stack_from_here = stacktrace.findIndex((frame) => extract_cell_id(frame.file) != null)
 
-    const limited = !show_more && first_stack_from_here != -1 && first_stack_from_here < stacktrace.length - 1
+    const limited = !show_more && first_stack_from_here !== -1 && first_stack_from_here < stacktrace.length - 1
 
     const limited_stacktrace = (limited ? stacktrace.slice(0, first_stack_from_here + 1) : stacktrace).filter(
         (frame) => !(ignore_location(frame) && ignore_funccall(frame))
@@ -504,7 +551,8 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
 
     const [stacktrace_waiting_to_view, set_stacktrace_waiting_to_view] = useState(true)
     useEffect(() => {
-        set_stacktrace_waiting_to_view(true)
+        const from_another_cell = first_stack_from_here !== -1 && extract_cell_id(stacktrace[first_stack_from_here].file) !== cell_id
+        set_stacktrace_waiting_to_view(!from_another_cell)
     }, [msg, stacktrace, cell_id])
 
     return html`<jlerror>
@@ -513,7 +561,7 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
             <!-- <p>This message was included with the error:</p> -->
         </div>
 
-        <header>${matched_rewriter.display(msg)}</header>
+        <header translate="yes">${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : stacktrace_waiting_to_view
@@ -576,7 +624,6 @@ const get_first_package = (limited_stacktrace) => {
 
 const motivational_word_probability = 0.1
 const motivational_words = /** @type {string[]} */ (t("t_motivational_words_be_creative_and_write_as_many_as_you_want", { returnObjects: true }))
-console.log("motivational_words", motivational_words)
 
 const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {
@@ -591,6 +638,7 @@ const get_erred_upstreams = (
     /** @type {string} */ cell_id,
     /** @type {string[]} */ visited_edges = []
 ) => {
+    /** @type {Record<string, string>} */
     let erred_upstreams = {}
     if (notebook != null && notebook?.cell_results?.[cell_id]?.errored) {
         const referenced_variables = Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map)

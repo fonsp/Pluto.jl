@@ -162,14 +162,15 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
             console.log(current_recording_ref.current)
 
-            let element = document.createElement("a")
-            element.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(output_html))
-            element.setAttribute("download", `${notebook_name_ref.current} recording.html`)
-
-            element.style.display = "none"
-            document.body.appendChild(element)
-            element.click()
-            document.body.removeChild(element)
+            window.dispatchEvent(
+                new CustomEvent("open pluto html export", {
+                    detail: {
+                        is_recording: true,
+                        download_filename: `${notebook_name_ref.current} recording.html`,
+                        download_url: "data:text/html;charset=utf-8," + encodeURIComponent(output_html),
+                    },
+                })
+            )
         }
 
         recording_start_time_ref.current = 0

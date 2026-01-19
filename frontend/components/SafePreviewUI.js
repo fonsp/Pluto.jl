@@ -36,10 +36,10 @@ export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_sourc
                                           </p>
                                           ${warn_about_untrusted_code
                                               ? html`
-                                                    <pluto-output class="rich_output"
+                                                    <pluto-output translate="yes" class="rich_output"
                                                         ><div class="markdown">
                                                             <div class="admonition warning">
-                                                                <p class="admonition-title">Warning</p>
+                                                                <p class="admonition-title">${t("t_safe_preview_confirm_warning")}</p>
                                                                 <p>${t("t_safe_preview_confirm_before")}</p>
                                                                 ${risky_file_source == null ? null : html`<p><code>${risky_file_source}</code></pre>`}
                                                                 <p>${t("t_safe_preview_confirm_after")}</p>

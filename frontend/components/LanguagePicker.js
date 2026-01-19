@@ -11,7 +11,7 @@ export const LanguagePicker = () => {
 
     const handleLanguageChange = async (event) => {
         if (event.target.value === "contribute") {
-            window.open("https://github.com/fonsp/Pluto.jl/tree/main/frontend/lang", "_blank")
+            window.open("https://github.com/JuliaPluto/Pluto.jl/tree/main/frontend/lang", "_blank")
             return
         }
 
@@ -37,9 +37,9 @@ export const LanguagePicker = () => {
                 onChange=${handleLanguageChange}
             >
                 ${availableLanguages.map(
-                    (lang) => html`<option value=${lang.code}>${lang.name}${lang.completeness < 100 ? ` (${lang.completeness}%)` : ""}</option>`
+                    (lang) => html`<option value=${lang.code}>${lang.name}${lang.completeness < 98 ? ` (${lang.completeness}%)` : ""}</option>`
                 )}
-                <option value="contribute">Help translate!</option>
+                <option value="contribute">💡 Help translate!</option>
             </select>
         </div>
     `
