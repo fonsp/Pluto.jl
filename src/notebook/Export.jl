@@ -42,9 +42,10 @@ function cdnified_html(filename::AbstractString;
                     @assert isfile(project_relative_path(distdir, url)) "Could not find the file $(project_relative_path(distdir, url)) locally, that's a bad sign."
                     @info "let's see it $url, $should_use_bundled_cdn "
                     if base64assets
-                        return file2base64dataurl(project_relative_path(distdir, url))
+                        file2base64dataurl(project_relative_path(distdir, url))
+                    else
+                        URIs.resolvereference(cdn_root, url) |> string
                     end
-                    URIs.resolvereference(cdn_root, url) |> string
                 end
             catch e
                 get(ENV, "JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING", "false") == "true" || @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork or development branch of Pluto." exception=(e,catch_backtrace()) maxlog=1
