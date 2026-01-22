@@ -86,7 +86,7 @@ jobs:
                 Generated on: $(date)
                 EOF
 
-            - name: Generate bundle size report
+            - name: Generate bundle size report - offline
               working-directory: frontend-dist-offline
               run: |
                 total_size=$(du -sh . | cut -f1)
