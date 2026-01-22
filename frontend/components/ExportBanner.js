@@ -5,6 +5,7 @@ import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import * as desktop from "./DesktopInterface.js"
+import { with_offline_bundle_query } from "./PlutoLandUpload.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -124,8 +125,7 @@ export const ExportBanner = ({
     const pride = true
     const prideMonth = new Date().getMonth() === 5
 
-    const warn_if_safe_preview = () =>
-        process_waiting_for_permission ? confirm(t("t_export_safe_preview_warning")) : true
+    const warn_if_safe_preview = () => (process_waiting_for_permission ? confirm(t("t_export_safe_preview_warning")) : true)
 
     return html`
         <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${prideMonth ? "pride" : ""}>
@@ -137,7 +137,7 @@ export const ExportBanner = ({
                     <section>${th("t_export_card_notebook_file_description")}</section>
                 </a>
                 <a
-                    href=${notebookexport_url}
+                    href=${with_offline_bundle_query(notebookexport_url)}
                     target="_blank"
                     class="export_card"
                     download=""
