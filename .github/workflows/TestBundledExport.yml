@@ -26,6 +26,7 @@ jobs:
                   using Test
                   
                   @test_logs Pluto.generate_html()
+                  @test_logs Pluto.generate_html(offline_bundle=true)
                   @test_logs Pluto.generate_index_html()
                   '
 
