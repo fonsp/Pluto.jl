@@ -23,6 +23,7 @@
         ]
     },
     "optimizers": {
+        "*.html": [],
         "*.svg": [
             "...",
             "@parcel/optimizer-data-url"

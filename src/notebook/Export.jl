@@ -15,8 +15,8 @@ end
 
 cdnified_editor_html(; kwargs...) = cdnified_html("editor.html"; kwargs...)
 
-function file2base64dataurl(path::AbstractString)
-    string("data:", mime_from_path(path), ";base64,", base64encode(read(path)))
+function file2base64dataurl(path::AbstractString, contents=read(path))
+    "data:$(mime_from_path(path));base64,$(base64encode(contents))"
 end
 
 function cdnified_html(filename::AbstractString;
@@ -42,13 +42,22 @@ function cdnified_html(filename::AbstractString;
                     @assert isfile(project_relative_path(distdir, url)) "Could not find the file $(project_relative_path(distdir, url)) locally, that's a bad sign."
                     @info "let's see it $url, $should_use_bundled_cdn "
                     if base64assets
-                        file2base64dataurl(project_relative_path(distdir, url))
+                        localpath = project_relative_path(distdir, url)
+                        contents_to_inline = if !endswith(localpath, ".css")
+                            read(localpath)
+                        else
+                            # If the resource is a CSS file, find all the url(...) references and cdnify the URLs.
+                            replace_with_cdn(read(localpath, String); lang=:css) do css_url
+                                "\"$(URIs.resolvereference(cdn_root, css_url))\""
+                            end
+                        end
+                        file2base64dataurl(localpath, contents_to_inline)
                     else
                         URIs.resolvereference(cdn_root, url) |> string
                     end
                 end
             catch e
-                get(ENV, "JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING", "false") == "true" || @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork or development branch of Pluto." exception=(e,catch_backtrace()) maxlog=1
+                @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork or development branch of Pluto." exception=(e,catch_backtrace()) maxlog=1
                 nothing
             end
         end,
@@ -237,23 +246,33 @@ replace_substring(s::String, sub::SubString, newval::AbstractString) = *(
 
 const dont_cdnify = ("new","open","shutdown","move","notebooklist","notebookfile","statefile","notebookexport","notebookupload")
 
-const source_pattern = r"\s(?:src|href)=\"(.+?)\""
+# Regex pattern to find all src= or href= attribute values in HTML
+const source_pattern_html = r"\s(?:src|href)\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s>]+))"
+# and all url(...) patterns in CSS
+const source_pattern_css = r"url\s*\(\s*(?:\"([^\"]*)\"|'([^']*)'|([^)\s]+))\s*\)"
 
-function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
-	next_match = match(source_pattern, s, idx)
+
+function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1; lang::Symbol=:html)
+	pattern = lang === :html ? source_pattern_html : source_pattern_css
+	
+	next_match = match(pattern, s, idx)
 	if next_match === nothing
 		s
 	else
-		url = only(next_match.captures)
-		if occursin("//", url) || url ∈ dont_cdnify || occursin("data:", url)
+		url = something(next_match.captures...)
+		if occursin("data:", url) || occursin("//", url) || url ∈ dont_cdnify
 			# skip this one
-			replace_with_cdn(cdnify, s, nextind(s, next_match.offset))
+			replace_with_cdn(cdnify, s, nextind(s, next_match.offset); lang)
 		else
-			replace_with_cdn(cdnify, replace_substring(
-				s,
-				url,
-				cdnify(url)
-			))
+			newval = cdnify(url)
+			new_contents = replace_substring(s, url, newval)
+			# recurse
+			replace_with_cdn(
+				cdnify, new_contents, 
+				# continue searching after the current match
+				nextind(new_contents, url.offset + ncodeunits(newval));
+				lang
+			)
 		end
 	end
 end
