@@ -6,10 +6,10 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
-        "clean": "rm -rf ../frontend-dist ../frontend-dist-offline",
+        "clean": "rm -rf ../frontend-dist ../frontend-dist-offline ../frontend/.parcel-cache",
         "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html",
         "note about order": "super weird but index.html has to come before editor.html or the prefetch in index.html will not bundle correctly.",
-        "build": "npm run clean && cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html",
+        "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc index.html editor.html error.jl.html",
         "build-offline": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist-offline --config ../frontend-bundler/.parcelrc-offline editor.html",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
