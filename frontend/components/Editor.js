@@ -1027,13 +1027,16 @@ all patches: ${JSON.stringify(patches, null, 1)}
         }
         this.on_disable_ui()
 
-        setInterval(() => {
-            if (!this.state.static_preview && document.visibilityState === "visible") {
-                // view stats on https://stats.plutojl.org/
-                //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${is_desktop() ? "-desktop" : ""}`)
-            }
-        }, 1000 * 15 * 60)
+        setInterval(
+            () => {
+                if (!this.state.static_preview && document.visibilityState === "visible") {
+                    // view stats on https://stats.plutojl.org/
+                    //@ts-ignore
+                    count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${is_desktop() ? "-desktop" : ""}`)
+                }
+            },
+            1000 * 15 * 60
+        )
         setInterval(() => {
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 update_stored_recent_notebooks(this.state.notebook.path)
@@ -1671,23 +1674,25 @@ ${t("t_key_autosave_description")}`
                                 status.binder && status.loading
                                     ? t("t_process_status_loading_binder")
                                     : statusval === "disconnected"
-                                    ? t("t_process_status_reconnecting")
-                                    : statusval === "loading"
-                                    ? t("t_process_status_loading")
-                                    : statusval === "nbpkg_restart_required"
-                                    ? th("t_process_restart_action_required", { restart_notebook: restart_button(t("t_process_restart_action")) })
-                                    : statusval === "nbpkg_restart_recommended"
-                                    ? th("t_process_restart_action_recommended", { restart_notebook: restart_button(t("t_process_restart_action")) })
-                                    : statusval === "process_restarting"
-                                    ? th("t_process_restarting")
-                                    : statusval === "process_dead"
-                                    ? th("t_process_exited_restart_action", { restart_action_short: restart_button(t("t_process_restart_action_short")) })
-                                    : statusval === "process_waiting_for_permission"
-                                    ? restart_button(t("t_process_give_permission_to_run_code"), true)
-                                    : null
+                                      ? t("t_process_status_reconnecting")
+                                      : statusval === "loading"
+                                        ? t("t_process_status_loading")
+                                        : statusval === "nbpkg_restart_required"
+                                          ? th("t_process_restart_action_required", { restart_notebook: restart_button(t("t_process_restart_action")) })
+                                          : statusval === "nbpkg_restart_recommended"
+                                            ? th("t_process_restart_action_recommended", { restart_notebook: restart_button(t("t_process_restart_action")) })
+                                            : statusval === "process_restarting"
+                                              ? th("t_process_restarting")
+                                              : statusval === "process_dead"
+                                                ? th("t_process_exited_restart_action", {
+                                                      restart_action_short: restart_button(t("t_process_restart_action_short")),
+                                                  })
+                                                : statusval === "process_waiting_for_permission"
+                                                  ? restart_button(t("t_process_give_permission_to_run_code"), true)
+                                                  : null
                             }</div>
                             <button class="toggle_export" title=${t("t_export_action_ellipsis")} onClick=${() =>
-            this.setState({ export_menu_open: !export_menu_open })}><span></span></button>
+                                this.setState({ export_menu_open: !export_menu_open })}><span></span></button>
                         </nav>
                     </header>
                     

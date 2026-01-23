@@ -60,15 +60,16 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line, sanitize_htm
         return null
     }
 
-    const dot = (log, i) => html`<${Dot}
-        set_cm_highlighted_line=${set_cm_highlighted_line}
-        level=${log.level}
-        msg=${log.msg}
-        kwargs=${log.kwargs}
-        sanitize_html=${sanitize_html}
-        key=${i}
-        y=${is_hidden_input ? 0 : log.line - 1}
-    /> `
+    const dot = (log, i) =>
+        html`<${Dot}
+            set_cm_highlighted_line=${set_cm_highlighted_line}
+            level=${log.level}
+            msg=${log.msg}
+            kwargs=${log.kwargs}
+            sanitize_html=${sanitize_html}
+            key=${i}
+            y=${is_hidden_input ? 0 : log.line - 1}
+        /> `
 
     return html`
         <pluto-logs-container>
@@ -144,10 +145,10 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
             >${is_progress
                 ? html`<${Progress} name="${msg[0]}" progress=${progress} />`
                 : is_stdout
-                ? html`<${MoreInfo} body=${th("t_logs_stdout")} /> <${LogViewAnsiUp} value=${msg[0]} />`
-                : html`${mimepair_output(msg)}${kwargs.map(
-                      ([k, v]) => html`<pluto-log-dot-kwarg><pluto-key>${k}</pluto-key><pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>`
-                  )}`}</pluto-log-dot
+                  ? html`<${MoreInfo} body=${th("t_logs_stdout")} /> <${LogViewAnsiUp} value=${msg[0]} />`
+                  : html`${mimepair_output(msg)}${kwargs.map(
+                        ([k, v]) => html`<pluto-log-dot-kwarg><pluto-key>${k}</pluto-key><pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>`
+                    )}`}</pluto-log-dot
         >
     </pluto-log-dot-positioner>`
 }

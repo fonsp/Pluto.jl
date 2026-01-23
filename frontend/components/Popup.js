@@ -153,8 +153,8 @@ export const Popup = ({ notebook, disable_input }) => {
                       clear_recent_event=${() => set_recent_event(null)}
                   />`
                 : type === "info" || type === "warn"
-                ? html`<div>${recent_event?.body}</div>`
-                : null}
+                  ? html`<div>${recent_event?.body}</div>`
+                  : null}
         </pluto-popup>
         <div tabindex="0">
             <!-- We need this dummy tabindexable element here so that the element_focused_before_popup mechanism works on static exports. When tabbing out of the popup, focus would otherwise leave the page altogether because it's the last focusable element in DOM. -->
@@ -217,7 +217,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
         set_showterminal(debounced_busy)
     }, [debounced_busy])
 
-    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? "Loading..." : notebook.nbpkg?.terminal_outputs[recent_event?.package_name] ?? ""
+    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? "Loading..." : (notebook.nbpkg?.terminal_outputs[recent_event?.package_name] ?? "")
 
     const showupdate = pkg_status?.offer_update ?? false
 
