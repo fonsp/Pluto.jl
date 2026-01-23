@@ -5,6 +5,7 @@ import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
 import { getCurrentLanguage, t, th } from "../common/lang.js"
 import * as desktop from "./DesktopInterface.js"
+import { with_offline_bundle_query } from "./PlutoLandUpload.js"
 
 const Circle = ({ fill }) => html`
     <svg

@@ -9,6 +9,15 @@ import { exportNotebookDesktop, WarnForVisisblePasswords } from "./ExportBanner.
 import { useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 
+/** Add the &offline_bundle=true query parameter to a URL string */
+export const with_offline_bundle_query = (/** @type {string | URL | undefined} */ url) => {
+    if (!url) return url
+    if (url?.toString().startsWith("data:")) return url
+    const u = new URL(url, window.location.href)
+    u.searchParams.set("offline_bundle", "true")
+    return u.toString()
+}
+
 /**
  * @param {{
  *  notebook_id: String,
@@ -49,6 +58,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
             set_upload_flow_state("generating")
             set_upload_progress(0)
 
+            // We download the HTML export **without** offline bundle. This makes the file much smaller so there is less work for pluto.land.
             const notebook_response = await fetch(String(download_url))
             const notebook_blob = await notebook_response.blob()
 
@@ -84,7 +94,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
             <div class="ple-bigbutton-container">
                 <a
                     class="ple-bigbutton"
-                    href=${download_url}
+                    href=${String(download_url)}
                     target="_blank"
                     download=${download_filename ?? ""}
                     onClick=${(e) => {

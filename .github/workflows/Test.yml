@@ -9,6 +9,7 @@ on:
             - "frontend/**"
             - "frontend-bundler/**"
             - "frontend-dist/**"
+            - "frontend-dist-offline/**"
             - "test/frontend/**"
             - "**.md"
         branches:
@@ -18,6 +19,7 @@ on:
             - "frontend/**"
             - "frontend-bundler/**"
             - "frontend-dist/**"
+            - "frontend-dist-offline/**"
             - "test/frontend/**"
             - "**.md"
         branches-ignore:
