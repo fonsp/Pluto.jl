@@ -24,9 +24,9 @@ jobs:
       
       - uses: actions/setup-node@v4
         with:
-          node-version: "21.x"
+          node-version: "22.x"
 
-      - run: npm install typescript@5.4.3 -g
+      - run: npm install typescript@5.9.3 -g
       
       - run: npm install
         working-directory: frontend

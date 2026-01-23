@@ -424,19 +424,20 @@ const UpdateWidget = ({ view, from, to, name, version, get_avaible_versions }) =
     if (stages == null) return null
 
     return html`${stages.map(
-        ({ entry, label }) => html`<button
-            onClick=${() => {
-                view.dispatch({
-                    changes: {
-                        from,
-                        to,
-                        insert: `"${entry}"`,
-                    },
-                })
-            }}
-        >
-            ${label}
-        </button>`
+        ({ entry, label }) =>
+            html`<button
+                onClick=${() => {
+                    view.dispatch({
+                        changes: {
+                            from,
+                            to,
+                            insert: `"${entry}"`,
+                        },
+                    })
+                }}
+            >
+                ${label}
+            </button>`
     )}`
 }
 
@@ -460,14 +461,16 @@ const decs = (/** @type {EditorView} */ view, get_avaible_versions) => {
 
                     let deco = Decoration.widget({
                         // widget: new ReactWidget(html`<span style=${{ opacity: 0.2 }}>${name} at ${version}</span>`),
-                        widget: new ReactWidget(html` <${UpdateWidget}
-                            view=${view}
-                            from=${node.from}
-                            to=${node.to}
-                            name=${name}
-                            version=${version}
-                            get_avaible_versions=${get_avaible_versions}
-                        />`),
+                        widget: new ReactWidget(
+                            html` <${UpdateWidget}
+                                view=${view}
+                                from=${node.from}
+                                to=${node.to}
+                                name=${name}
+                                version=${version}
+                                get_avaible_versions=${get_avaible_versions}
+                            />`
+                        ),
                         side: 1,
                     })
                     widgets.push(deco.range(node.to))

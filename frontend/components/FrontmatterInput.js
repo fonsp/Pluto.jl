@@ -176,8 +176,8 @@ const clean_data = (obj) => {
                   .filter(([key, val]) => val != null)
           )
         : _.isArray(obj)
-        ? obj.map(clean_data).filter((x) => x != null)
-        : obj
+          ? obj.map(clean_data).filter((x) => x != null)
+          : obj
 
     return !_.isNumber(a) && _.isEmpty(a) ? null : a
 }
@@ -237,8 +237,8 @@ const Input = ({ value, on_value, type, id }) => {
     return type === "tags"
         ? html`<rbl-tag-input id=${id} ref=${input_ref} />`
         : type === "license"
-        ? LicenseInput({ ref: input_ref, id })
-        : html`<input dir="auto" type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} pattern=${pattern} title=${placeholder} />`
+          ? LicenseInput({ ref: input_ref, id })
+          : html`<input dir="auto" type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} pattern=${pattern} title=${placeholder} />`
 }
 
 // https://choosealicense.com/licenses/

@@ -160,12 +160,12 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
             className=${status === "busy"
                 ? "busy"
                 : status === "installed"
-                ? "installed"
-                : status === "not_found"
-                ? "not_found"
-                : status === "will_be_installed"
-                ? "will_be_installed"
-                : ""}
+                  ? "installed"
+                  : status === "not_found"
+                    ? "not_found"
+                    : status === "will_be_installed"
+                      ? "will_be_installed"
+                      : ""}
         >
             <button
                 onClick=${(event) => {

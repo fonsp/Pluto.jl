@@ -151,17 +151,17 @@ const EditorLoader = ({ launch_params, pluto_editor_element }) => {
     return error_banner != null
         ? error_banner
         : ready_for_editor
-        ? html`<${Editor}
-              initial_notebook_state=${initial_notebook_state_ref.current}
-              launch_params=${launch_params}
-              preamble_element=${preamble_element}
-              pluto_editor_element=${pluto_editor_element}
-          />`
-        : // todo: show preamble html
-          html`
-              ${preamble_element}
-              <${FetchProgress} progress=${statefile_download_progress} />
-          `
+          ? html`<${Editor}
+                initial_notebook_state=${initial_notebook_state_ref.current}
+                launch_params=${launch_params}
+                preamble_element=${preamble_element}
+                pluto_editor_element=${pluto_editor_element}
+            />`
+          : // todo: show preamble html
+            html`
+                ${preamble_element}
+                <${FetchProgress} progress=${statefile_download_progress} />
+            `
 }
 
 // Create a web component for EditorLoader that takes in additional launch parameters as attributes

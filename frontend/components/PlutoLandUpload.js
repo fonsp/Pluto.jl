@@ -123,38 +123,38 @@ export const PlutoLandUpload = ({ notebook_id }) => {
                           </a>
                       `
                     : upload_flow_state === "uploading" || upload_flow_state === "generating"
-                    ? html` <div class="ple-plutoland-phase">
-                          <p>${th("t_plutoland_upload_uploading")}</p>
-                          ${prog}
-                      </div>`
-                    : upload_flow_state === "success"
-                    ? html` <div class="ple-plutoland-phase">
-                          <p>${th(is_recording ? "t_plutoland_upload_success_recording" : "t_plutoland_upload_success")}</p>
-                          <div class="ple-plutoland-url-container">
-                              <a href=${`https://pluto.land/n/${plutoland_data.id}`} target="_blank" class="ple-plutoland-url">
-                                  ${`https://pluto.land/n/${plutoland_data.id}`}
-                              </a>
-                              <a
-                                  href="#"
-                                  title=${t("t_plutoland_upload_delete")}
-                                  onClick=${async (e) => {
-                                      e.preventDefault()
+                      ? html` <div class="ple-plutoland-phase">
+                            <p>${th("t_plutoland_upload_uploading")}</p>
+                            ${prog}
+                        </div>`
+                      : upload_flow_state === "success"
+                        ? html` <div class="ple-plutoland-phase">
+                              <p>${th(is_recording ? "t_plutoland_upload_success_recording" : "t_plutoland_upload_success")}</p>
+                              <div class="ple-plutoland-url-container">
+                                  <a href=${`https://pluto.land/n/${plutoland_data.id}`} target="_blank" class="ple-plutoland-url">
+                                      ${`https://pluto.land/n/${plutoland_data.id}`}
+                                  </a>
+                                  <a
+                                      href="#"
+                                      title=${t("t_plutoland_upload_delete")}
+                                      onClick=${async (e) => {
+                                          e.preventDefault()
 
-                                      await fetch(`https://pluto.land/n/${plutoland_data.id}`, {
-                                          method: "DELETE",
-                                          headers: {
-                                              "X-Creation-Secret": String(plutoland_data.creation_secret),
-                                          },
-                                      })
-                                      set_upload_flow_state("waiting")
-                                      set_plutoland_data({})
-                                  }}
-                              >
-                                  ${InlineIonicon("trash-bin-outline", { inlineMargin: true })}
-                              </a>
-                          </div>
-                      </div>`
-                    : html` <div class="ple-plutoland-phase">Error: ${upload_flow_state}</div>`}
+                                          await fetch(`https://pluto.land/n/${plutoland_data.id}`, {
+                                              method: "DELETE",
+                                              headers: {
+                                                  "X-Creation-Secret": String(plutoland_data.creation_secret),
+                                              },
+                                          })
+                                          set_upload_flow_state("waiting")
+                                          set_plutoland_data({})
+                                      }}
+                                  >
+                                      ${InlineIonicon("trash-bin-outline", { inlineMargin: true })}
+                                  </a>
+                              </div>
+                          </div>`
+                        : html` <div class="ple-plutoland-phase">Error: ${upload_flow_state}</div>`}
             </div>
         </div>
         <div class="final"><button onClick=${close}>${t("t_frontmatter_cancel")}</button></div>

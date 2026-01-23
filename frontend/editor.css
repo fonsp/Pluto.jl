@@ -40,11 +40,13 @@
     --pluto-operator-ligatures: none;
     --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
-        "Segoe UI Symbol", system-ui, sans-serif;
+    --lato-ui-font-stack:
+        "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        system-ui, sans-serif;
     --roboto-mono-font-stack: "Roboto Mono", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", monospace;
-    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
-        "Segoe UI Symbol", system-ui, sans-serif;
+    --system-ui-font-stack:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", system-ui,
+        sans-serif;
     color-scheme: light dark;
 }
 
@@ -500,7 +502,9 @@ pluto-output details summary {
     border-radius: 3px;
     padding: 0.5em;
     margin: -0.5em -0.5em 0;
-    transition: color 0.25s ease-in-out, background-color 0.25s ease-in-out;
+    transition:
+        color 0.25s ease-in-out,
+        background-color 0.25s ease-in-out;
     /* Border may have transparency, let's not change the border with a background-color */
     background-clip: padding-box;
 }
@@ -531,7 +535,9 @@ header#pluto-nav {
     z-index: 60;
     background-color: var(--header-bg-color);
     transform: translateY(0px);
-    transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
+    transition:
+        background-color 0.5s ease-in-out,
+        transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px var(--header-border-color);
     font-family: var(--roboto-mono-font-stack);
     font-weight: 400;
@@ -1191,13 +1197,17 @@ loading-bar {
     top: 0px;
     left: 0px;
     display: block;
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
+    transition:
+        width cubic-bezier(0.14, 0.71, 0, 0.99) 2s,
+        opacity linear 0.2s;
     opacity: 0;
     z-index: 12000;
     animation: move-background 2s ease-in-out infinite;
 }
 loading-bar.slow {
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+    transition:
+        width cubic-bezier(0.14, 0.71, 0, 0.99) 10s,
+        opacity linear 0.5s;
 }
 @media (prefers-reduced-motion) {
     loading-bar {
@@ -1243,7 +1253,9 @@ pluto-editor.is_recording > .outline-frame.recording {
 .outline-frame.playback {
     opacity: 1;
     position: absolute;
-    transition: top 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    transition:
+        top 0.3s ease-in-out,
+        opacity 0.3s ease-in-out;
     border: 12px solid #357ddcba;
     /* background: #7b77ff12; */
     box-shadow: inset 0px 0px 20px 20px #919bff2b;
@@ -2347,14 +2359,18 @@ pluto-popup {
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
-    transition: transform 0.5s ease-in-out, opacity 0.1s ease-in-out;
+    transition:
+        transform 0.5s ease-in-out,
+        opacity 0.1s ease-in-out;
     pointer-events: none;
 }
 
 pluto-popup.visible {
     opacity: 1;
     transform: scale(1);
-    transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    transition:
+        transform 0.2s ease-in-out,
+        opacity 0.2s ease-in-out;
     pointer-events: initial;
 }
 
@@ -3408,7 +3424,10 @@ nav#undo_delete {
     color: var(--black);
     box-shadow: 00px 00px 10px 2px var(--undo-delete-box-shadow-color);
     opacity: 1;
-    transition: 0.2s linear box-shadow, 0.2s ease-out margin-bottom, 0.05s linear opacity;
+    transition:
+        0.2s linear box-shadow,
+        0.2s ease-out margin-bottom,
+        0.05s linear opacity;
 }
 
 nav#undo_delete.hidden {
@@ -3491,7 +3510,9 @@ pluto-logs-container pluto-progress-bar {
     padding: 0.3em 0.6em;
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
-    transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 0.5s, opacity linear 0.2s;
+    transition:
+        background-size cubic-bezier(0.14, 0.71, 0, 0.99) 0.5s,
+        opacity linear 0.2s;
     display: grid;
     align-items: center;
 }

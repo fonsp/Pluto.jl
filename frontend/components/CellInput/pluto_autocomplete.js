@@ -246,7 +246,7 @@ const julia_code_completions_to_cm =
                         // (quick) fix for identifiers that need to be escaped
                         // Ideally this is done with Meta.isoperator on the julia side
                         let text_to_apply =
-                            completion_type === "method" ? to_complete : is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+                            completion_type === "method" ? to_complete : is_field_expression ? (override_text_to_apply_in_field_expression(text) ?? text) : text
 
                         value_type = value_type === "Function" && text.startsWith("@") ? "Macro" : value_type
 

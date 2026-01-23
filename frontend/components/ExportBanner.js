@@ -124,8 +124,7 @@ export const ExportBanner = ({
     const pride = true
     const prideMonth = new Date().getMonth() === 5
 
-    const warn_if_safe_preview = () =>
-        process_waiting_for_permission ? confirm(t("t_export_safe_preview_warning")) : true
+    const warn_if_safe_preview = () => (process_waiting_for_permission ? confirm(t("t_export_safe_preview_warning")) : true)
 
     return html`
         <dialog id="export" inert=${!open} open=${open} ref=${element_ref} class=${prideMonth ? "pride" : ""}>
@@ -182,10 +181,10 @@ export const ExportBanner = ({
                         style=${getCurrentLanguage() === "el"
                             ? "--size: 26ch"
                             : getCurrentLanguage() === "de"
-                            ? "--size: 24ch"
-                            : getCurrentLanguage() === "pt-PT"
-                            ? "--size: 26ch"
-                            : null}
+                              ? "--size: 24ch"
+                              : getCurrentLanguage() === "pt-PT"
+                                ? "--size: 26ch"
+                                : null}
                     >
                         <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
                         <section>${th("t_export_card_record_description")}</section>

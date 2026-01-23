@@ -565,47 +565,47 @@ export const ErrorMessage = ({ msg, stacktrace, plain_error, cell_id }) => {
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : stacktrace_waiting_to_view
-            ? html`<section class="stacktrace-waiting-to-view">
-                  <button onClick=${() => set_stacktrace_waiting_to_view(false)}>${t("t_show_stack_trace")}</button>
-              </section>`
-            : html`<section>
-                  <div class="stacktrace-header">
-                      <secret-h1>${t("t_stack_trace")}</secret-h1>
-                      <p>${t("t_here_is_what_happened_the_most_recent_locations_are_first")}</p>
-                  </div>
+              ? html`<section class="stacktrace-waiting-to-view">
+                    <button onClick=${() => set_stacktrace_waiting_to_view(false)}>${t("t_show_stack_trace")}</button>
+                </section>`
+              : html`<section>
+                    <div class="stacktrace-header">
+                        <secret-h1>${t("t_stack_trace")}</secret-h1>
+                        <p>${t("t_here_is_what_happened_the_most_recent_locations_are_first")}</p>
+                    </div>
 
-                  <ol>
-                      ${limited_stacktrace.map((frame, frame_index) => {
-                          const frame_cell_id = extract_cell_id(frame.file)
-                          const from_this_notebook = frame_cell_id != null
-                          const from_this_cell = cell_id === frame_cell_id
-                          const important = frame_is_important_heuristic(frame, frame_index, limited_stacktrace, frame_cell_id)
+                    <ol>
+                        ${limited_stacktrace.map((frame, frame_index) => {
+                            const frame_cell_id = extract_cell_id(frame.file)
+                            const from_this_notebook = frame_cell_id != null
+                            const from_this_cell = cell_id === frame_cell_id
+                            const important = frame_is_important_heuristic(frame, frame_index, limited_stacktrace, frame_cell_id)
 
-                          return html`<li class=${cl({ from_this_notebook, from_this_cell, important })}>
-                              <div class="classical-frame">
-                                  <${Funccall} frame=${frame} />
-                                  <div class="frame-source">
-                                      ${at}<${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
-                                      <${DocLink} frame=${frame} />
-                                  </div>
-                              </div>
-                              ${from_this_notebook ? html`<${LinePreview} frame=${frame} num_context_lines=${from_this_cell ? 1 : 2} />` : null}
-                          </li>`
-                      })}
-                      ${limited
-                          ? html`<li class="important">
-                                <a
-                                    href="#"
-                                    onClick=${(e) => {
-                                        set_show_more(true)
-                                        e.preventDefault()
-                                    }}
-                                    >${t("t_show_more")}</a
-                                >
+                            return html`<li class=${cl({ from_this_notebook, from_this_cell, important })}>
+                                <div class="classical-frame">
+                                    <${Funccall} frame=${frame} />
+                                    <div class="frame-source">
+                                        ${at}<${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                        <${DocLink} frame=${frame} />
+                                    </div>
+                                </div>
+                                ${from_this_notebook ? html`<${LinePreview} frame=${frame} num_context_lines=${from_this_cell ? 1 : 2} />` : null}
                             </li>`
-                          : null}
-                  </ol>
-              </section>`}
+                        })}
+                        ${limited
+                            ? html`<li class="important">
+                                  <a
+                                      href="#"
+                                      onClick=${(e) => {
+                                          set_show_more(true)
+                                          e.preventDefault()
+                                      }}
+                                      >${t("t_show_more")}</a
+                                  >
+                              </li>`
+                            : null}
+                    </ol>
+                </section>`}
         ${pluto_actions.get_session_options?.()?.server?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
