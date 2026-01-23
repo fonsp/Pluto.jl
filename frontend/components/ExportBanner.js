@@ -137,7 +137,7 @@ export const ExportBanner = ({
                     <section>${th("t_export_card_notebook_file_description")}</section>
                 </a>
                 <a
-                    href=${with_offline_bundle_query(notebookexport_url)}
+                    href=${notebookexport_url}
                     target="_blank"
                     class="export_card"
                     download=""
@@ -182,10 +182,10 @@ export const ExportBanner = ({
                         style=${getCurrentLanguage() === "el"
                             ? "--size: 26ch"
                             : getCurrentLanguage() === "de"
-                            ? "--size: 24ch"
-                            : getCurrentLanguage() === "pt-PT"
-                            ? "--size: 26ch"
-                            : null}
+                              ? "--size: 24ch"
+                              : getCurrentLanguage() === "pt-PT"
+                                ? "--size: 26ch"
+                                : null}
                     >
                         <header role="none"><${Circle} fill="#E86F51" />${th("t_export_card_record")}</header>
                         <section>${th("t_export_card_record_description")}</section>

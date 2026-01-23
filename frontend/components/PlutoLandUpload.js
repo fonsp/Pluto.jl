@@ -94,7 +94,7 @@ export const PlutoLandUpload = ({ notebook_id }) => {
             <div class="ple-bigbutton-container">
                 <a
                     class="ple-bigbutton"
-                    href=${with_offline_bundle_query(String(download_url))}
+                    href=${String(download_url)}
                     target="_blank"
                     download=${download_filename ?? ""}
                     onClick=${(e) => {
