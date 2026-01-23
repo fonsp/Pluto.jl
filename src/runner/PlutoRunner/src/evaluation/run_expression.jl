@@ -38,7 +38,12 @@ end
 function delete_computer!(computers::Dict{UUID,Computer}, cell_id::UUID)
     computer = pop!(computers, cell_id)
     UseEffectCleanups.trigger_cleanup(cell_id)
-    Base.delete_method(methods(computer.f) |> only) # Make the computer function uncallable
+    # Make the computer function uncallable
+    if VERSION < v"1.12.0-0"
+        Base.visit(Base.delete_method, methods(computer.f).mt)
+    else
+        foreach(Base.delete_method, methods(computer.f))
+    end
 end
 
 parse_cell_id(filename::Symbol) = filename |> string |> parse_cell_id
