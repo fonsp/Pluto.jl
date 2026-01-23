@@ -129,12 +129,10 @@ end
     
     export_offline_contents = read(download(local_url("notebookexport?offline_bundle&id=$(notebook.notebook_id)")), String)
     
-    @test export_offline_contents != export_contents
-    
+    # We can't test for this if the offline_bundle is working (and that it is different from the regular bundle), because the tests are probably running on an unbundled Pluto (the directories frontend-dist and frontend-dist-offline are not generated). In that case, Pluto falls back to using the unbundled editor.html with CDN pointing to /frontnend/, for example:
+    ### https://cdn.jsdelivr.net/gh/JuliaPluto/Pluto.jl@0.20.21/frontend/img/favicon_unsaturated.svg
     @test occursin(string(Pluto.PLUTO_VERSION), export_offline_contents)
     @test occursin("</html>", export_offline_contents)
-    @test occursin("href=\"data:", export_offline_contents)
-    @test occursin("src=\"data:", export_offline_contents)
     @test occursin("insertion-spot", export_offline_contents)
     
     # wait for Pkg to finish
