@@ -23,6 +23,7 @@ import {
     portugues_pt,
     suomi,
     corporate_english,
+    czech,
 } from "../imports/lang_imports.js"
 
 const without_empty_keys = (obj) => {
@@ -31,6 +32,7 @@ const without_empty_keys = (obj) => {
 
 const resources = {
     "zh": without_empty_keys(chinese_simplified),
+    "cs": without_empty_keys(czech),
     "da": without_empty_keys(dansk),
     "de": without_empty_keys(deutsch),
     "el": without_empty_keys(ellinika),

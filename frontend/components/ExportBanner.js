@@ -178,7 +178,7 @@ export const ExportBanner = ({
                             e.preventDefault()
                         }}
                         class="export_card"
-                        style=${getCurrentLanguage() === "el"
+                        style=${getCurrentLanguage() === "el" || getCurrentLanguage() === "cs"
                             ? "--size: 26ch"
                             : getCurrentLanguage() === "de"
                               ? "--size: 24ch"
