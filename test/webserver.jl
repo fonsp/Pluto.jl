@@ -125,6 +125,17 @@ end
     
     @test occursin(string(Pluto.PLUTO_VERSION), export_contents)
     @test occursin("</html>", export_contents)
+    @test occursin("insertion-spot", export_contents)
+    
+    export_offline_contents = read(download(local_url("notebookexport?offline_bundle&id=$(notebook.notebook_id)")), String)
+    
+    @test export_offline_contents != export_contents
+    
+    @test occursin(string(Pluto.PLUTO_VERSION), export_offline_contents)
+    @test occursin("</html>", export_offline_contents)
+    @test occursin("href=\"data:", export_offline_contents)
+    @test occursin("src=\"data:", export_offline_contents)
+    @test occursin("insertion-spot", export_offline_contents)
     
     # wait for Pkg to finish
     for _ in 1:10
