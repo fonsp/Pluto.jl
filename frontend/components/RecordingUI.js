@@ -2,7 +2,6 @@ import _ from "../imports/lodash.js"
 import { createSilentAudio, create_recorder } from "../common/AudioRecording.js"
 import { html, useEffect, useState, useRef, useCallback, useLayoutEffect, useMemo } from "../imports/Preact.js"
 import { AudioPlayer } from "./AudioPlayer.js"
-import immer from "../imports/immer.js"
 import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { t, th } from "../common/lang.js"
@@ -57,7 +56,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
             alert(
                 `We were unable to activate your microphone. Make sure that it is connected, and that this site (${
                     window.location.protocol + "//" + window.location.host
-                }) has permission to use the microphone.`
+                }) has permission to use the microphone.`,
             )
             console.warn("Failed to create audio recorder asdfasdf ", e)
             await stop_recording()
@@ -77,7 +76,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
         initial_html = initial_html.replaceAll(
             "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
-            "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@8d243df/frontend/"
+            "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@8d243df/frontend/",
         )
         // initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/", "http://localhost:1234/")
 
@@ -157,7 +156,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                 window.pluto_recording_url = "data:;base64,${await base64_arraybuffer(pack({ steps: steps, scrolls: scrolls }))}";
                 window.pluto_recording_audio_url = ${audio_data_url == null ? null : `"${audio_data_url}"`};
                 </script>
-                ${magic_tag}`
+                ${magic_tag}`,
             )
 
             console.log(current_recording_ref.current)
@@ -169,7 +168,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                         download_filename: `${notebook_name_ref.current} recording.html`,
                         download_url: "data:text/html;charset=utf-8," + encodeURIComponent(output_html),
                     },
-                })
+                }),
             )
         }
 
@@ -203,18 +202,18 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                   </div>
               </div>`
             : is_recording
-            ? html`<div class="outline-frame-actions-container">
-                  <div class="overlay-button">
-                      <button
-                          onclick=${() => {
-                              stop_recording()
-                          }}
-                      >
-                          <span>${th("t_recording_ui_stop_recording")}<span class="stop-recording-icon pluto-icon"></span></span>
-                      </button>
-                  </div>
-              </div>`
-            : null}
+              ? html`<div class="outline-frame-actions-container">
+                    <div class="overlay-button">
+                        <button
+                            onclick=${() => {
+                                stop_recording()
+                            }}
+                        >
+                            <span>${th("t_recording_ui_stop_recording")}<span class="stop-recording-icon pluto-icon"></span></span>
+                        </button>
+                    </div>
+                </div>`
+              : null}
     `
 }
 
@@ -243,14 +242,14 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
                         new Uint8Array(
                             await (
                                 await fetch(new Request(recording_url, { integrity: recording_url_integrity ?? undefined })).then(assert_response_ok)
-                            ).arrayBuffer()
-                        )
+                            ).arrayBuffer(),
+                        ),
                     )
                 } else {
                     return null
                 }
             }),
-        [recording_url]
+        [recording_url],
     )
     let computed_reverse_patches_ref = useRef(/** @type{Array<PatchStep>?} */ (null))
 
@@ -345,7 +344,7 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
                 match_state_to_playback_ref.current()
             }
         },
-        [match_state_to_playback_running_ref, match_state_to_playback_ref]
+        [match_state_to_playback_running_ref, match_state_to_playback_ref],
     )
 
     const event_names = ["seeked", "suspend", "play", "pause", "ended", "waiting"]
