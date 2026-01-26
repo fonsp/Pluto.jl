@@ -2,7 +2,7 @@
   "t_language_name": "Czech",
   "t_my_work": "Moje Práce",
   "t_newnotebook": "Vytvoř <strong>nový sešit</strong>",
-  "t_welcome_to_pluto": "Vítej v {{plutu}}",
+  "t_welcome_to_pluto": "Vítej v {{pluto}}",
   "t_confirmdeletencells": "Určitě chceš smazet {{count}} buňek?",
   "t_FORGET": "ZAPOMEŇ",
   "t_live_docs_search_placeholder": "Helej v dokumentaci...",
