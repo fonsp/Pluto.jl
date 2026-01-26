@@ -220,7 +220,7 @@
   "t_time_minutes_other": "{{count}} minut",
   "t_time_seconds_one": "{{count}} sekunda",
   "t_time_seconds_other": "{{count}} sekund",
-  "t_frontmatter_title": "Záhlaví",
+  "t_frontmatter_title": "Frontmatter",
   "t_frontmatter_description": "Pokud tento sešit bude publikovaný na webu je možné nastavit parametry níže pro nastavení HTML metadat. Toto je užitečné pro vyhledávače a sociální sítě.",
   "t_frontmatter_synchronized": "Záhlaví synchronizováno ✔\n\nTyto parametry budou použity při budoucích exportech.",
   "t_frontmatter_delete_field": "Smazat pole",
