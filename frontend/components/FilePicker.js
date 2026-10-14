@@ -47,6 +47,7 @@ export const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ 
  *  suggest_new_file?: {base: String},
  *  button_label: String,
  *  placeholder: String,
+ *  aria_label?: String,
  *  on_submit: (new_path: String) => Promise<void>,
  *  on_desktop_submit?: () => Promise<void>,
  *  client: import("../common/PlutoConnection.js").PlutoConnection,
@@ -54,7 +55,7 @@ export const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ 
  *  readonly: Boolean,
  * }} props
  */
-export const FilePicker = ({ value, readonly, suggest_new_file, button_label, placeholder, on_submit, on_desktop_submit, client, clear_on_blur }) => {
+export const FilePicker = ({ value, readonly, suggest_new_file, button_label, placeholder, aria_label, on_submit, on_desktop_submit, client, clear_on_blur }) => {
     const [current_value, set_current_value] = useState(value)
 
     const [url_value, set_url_value] = useState("")
@@ -253,7 +254,7 @@ export const FilePicker = ({ value, readonly, suggest_new_file, button_label, pl
                           ],
 
                     Placeholder(placeholder),
-                    EditorView.contentAttributes.of({ "aria-label": t("t_aria_label_filepicker") }),
+                    EditorView.contentAttributes.of({ "aria-label": aria_label ?? t("t_aria_label_filepicker") }),
                     tab_help_plugin,
                 ],
             }),
